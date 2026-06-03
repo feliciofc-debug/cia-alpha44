@@ -1,0 +1,50 @@
+/**
+ * Seleção do provedor de IA por ambiente, com fallback automático para o mock.
+ *
+ * LLM_PROVIDER = anthropic | openai | mock (default: auto-detecta pela chave).
+ * O mock nunca falha e mantém o sistema 100% funcional sem chave — argumento de
+ * venda: "traga sua própria chave de IA".
+ */
+
+import type { ComexEntry } from "@cia/pipeline";
+import type { LlmProvider } from "./types.js";
+import { criarMockProvider } from "./mock.js";
+import { criarAnthropicProvider } from "./anthropic.js";
+import { criarOpenAiProvider } from "./openai.js";
+
+export * from "./types.js";
+
+export function escolherProvider(seed: ComexEntry[]): LlmProvider {
+  const escolha = (process.env.LLM_PROVIDER ?? "auto").toLowerCase();
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  const openaiKey = process.env.OPENAI_API_KEY;
+  const mock = criarMockProvider(seed);
+
+  try {
+    if (escolha === "anthropic" && anthropicKey) return criarAnthropicProvider(anthropicKey);
+    if (escolha === "openai" && openaiKey) return criarOpenAiProvider(openaiKey);
+    if (escolha === "auto") {
+      if (anthropicKey) return criarAnthropicProvider(anthropicKey);
+      if (openaiKey) return criarOpenAiProvider(openaiKey);
+    }
+  } catch {
+    return mock;
+  }
+  return mock;
+}
+
+/** Envolve um provider para nunca derrubar a requisição: em erro, cai no mock. */
+export function comFallback(primario: LlmProvider, mock: LlmProvider): LlmProvider {
+  if (!primario.disponivel) return primario;
+  return {
+    nome: primario.nome,
+    disponivel: primario.disponivel,
+    async classify(itens) {
+      try {
+        return await primario.classify(itens);
+      } catch {
+        return mock.classify(itens);
+      }
+    },
+  };
+}

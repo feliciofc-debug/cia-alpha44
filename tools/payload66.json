@@ -1,0 +1,33 @@
+{
+  "cliente": "Demo Planilha 66",
+  "cambio": 5.2051,
+  "freteTotalUS": 3500,
+  "siscomex": 154.23,
+  "outrasDespesasBaseBRL": 14040,
+  "params": { "markupPct": 0.04 },
+  "despesas": [
+    { "nome": "AFRMM", "valorBRL": 4000, "entraBaseNota": true },
+    { "nome": "Armazenagem", "valorBRL": 6000, "entraBaseNota": true },
+    { "nome": "Liberação BL", "valorBRL": 2500, "entraBaseNota": true },
+    { "nome": "Registro ANVISA/INMETRO", "valorBRL": 0, "entraBaseNota": true },
+    { "nome": "Administrativo", "valorBRL": 5000, "entraBaseNota": false },
+    { "nome": "Transp+Esc DTA", "valorBRL": 3500, "entraBaseNota": false },
+    { "nome": "Transporte SP", "valorBRL": 8000, "entraBaseNota": true },
+    { "nome": "Escolta SP", "valorBRL": 2500, "entraBaseNota": false },
+    { "nome": "Despacho HON", "valorBRL": 4000, "entraBaseNota": true }
+  ],
+  "itens": [
+    { "descOriginal": "Ferramenta", "ncm": "82042000", "pesoLiqKg": 1448, "fobTotalUS": 2027.2, "aliquotas": { "ii": 0.162, "ipi": 0.052, "pis": 0.021, "cofins": 0.0965 } },
+    { "descOriginal": "Luminária", "ncm": "94052100", "pesoLiqKg": 1278, "fobTotalUS": 1917, "aliquotas": { "ii": 0.162, "ipi": 0.0975, "pis": 0.021, "cofins": 0.0965 } },
+    { "descOriginal": "Luminária 2", "ncm": "94052100", "pesoLiqKg": 1849, "fobTotalUS": 2773.5, "aliquotas": { "ii": 0.162, "ipi": 0.0975, "pis": 0.021, "cofins": 0.0965 } },
+    { "descOriginal": "Peça bike", "ncm": "87141000", "pesoLiqKg": 1068, "fobTotalUS": 2670, "aliquotas": { "ii": 0.144, "ipi": 0.09, "pis": 0.021, "cofins": 0.0965 } },
+    { "descOriginal": "Bolsa", "ncm": "42029200", "pesoLiqKg": 663, "fobTotalUS": 1989, "aliquotas": { "ii": 0.35, "ipi": 0.065, "pis": 0.021, "cofins": 0.0965 } },
+    { "descOriginal": "Câmera", "ncm": "85258929", "pesoLiqKg": 4952, "fobTotalUS": 27000, "aliquotas": { "ii": 0.2, "ipi": 0.15, "pis": 0.021, "cofins": 0.0965 } },
+    { "descOriginal": "Transformador", "ncm": "85044010", "pesoLiqKg": 1212, "fobTotalUS": 1818, "aliquotas": { "ii": 0.18, "ipi": 0.05, "pis": 0.021, "cofins": 0.0965 } },
+    { "descOriginal": "Eletrodoméstico", "ncm": "85098090", "pesoLiqKg": 1324, "fobTotalUS": 2118.4, "aliquotas": { "ii": 0.18, "ipi": 0.065, "pis": 0.021, "cofins": 0.0965 } },
+    { "descOriginal": "Peça aço", "ncm": "73269090", "pesoLiqKg": 1173, "fobTotalUS": 2228.7, "aliquotas": { "ii": 0.18, "ipi": 0.05, "pis": 0.021, "cofins": 0.0965 } },
+    { "descOriginal": "Disjuntor", "ncm": "85366100", "pesoLiqKg": 667, "fobTotalUS": 800.4, "aliquotas": { "ii": 0.16, "ipi": 0.0975, "pis": 0.021, "cofins": 0.0965 } },
+    { "descOriginal": "Aparelho médico", "ncm": "90191000", "pesoLiqKg": 471, "fobTotalUS": 800.7, "aliquotas": { "ii": 0.2, "ipi": 0.052, "pis": 0.021, "cofins": 0.0965 } },
+    { "descOriginal": "Alumínio", "ncm": "76151000", "pesoLiqKg": 1812, "fobTotalUS": 2536.8, "aliquotas": { "ii": 0.25, "ipi": 0.065, "pis": 0.021, "cofins": 0.0965 } }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "fonte": "Seed inicial TEC/TIPI (NCMs validados na planilha 66). Override manual permitido; substituível pelo Classif TT.",
+  "pisPadrao": 0.021,
+  "cofinsPadrao": 0.0965,
+  "itens": {
+    "82042000": { "ii": 0.162, "ipi": 0.052, "pis": 0.021, "cofins": 0.0965 },
+    "94052100": { "ii": 0.162, "ipi": 0.0975, "pis": 0.021, "cofins": 0.0965 },
+    "87141000": { "ii": 0.144, "ipi": 0.09, "pis": 0.021, "cofins": 0.0965 },
+    "42029200": { "ii": 0.35, "ipi": 0.065, "pis": 0.021, "cofins": 0.0965 },
+    "85258929": { "ii": 0.2, "ipi": 0.15, "pis": 0.021, "cofins": 0.0965 },
+    "85044010": { "ii": 0.18, "ipi": 0.05, "pis": 0.021, "cofins": 0.0965 },
+    "85098090": { "ii": 0.18, "ipi": 0.065, "pis": 0.021, "cofins": 0.0965 },
+    "73269090": { "ii": 0.18, "ipi": 0.05, "pis": 0.021, "cofins": 0.0965 },
+    "85366100": { "ii": 0.16, "ipi": 0.0975, "pis": 0.021, "cofins": 0.0965 },
+    "90191000": { "ii": 0.2, "ipi": 0.052, "pis": 0.021, "cofins": 0.0965 },
+    "76151000": { "ii": 0.25, "ipi": 0.065, "pis": 0.021, "cofins": 0.0965 }
+  }
+}
