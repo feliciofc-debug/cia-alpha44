@@ -55,13 +55,35 @@ IRRF          = (markup + base_nota * 2,7%) * 25%
 > consistente; por isso o total do motor difere em exatos R$ 0,99 do total da
 > planilha — diferença que é a própria inconsistência da fonte.
 
+## Onde está salvo
+
+| O quê | Caminho |
+|---|---|
+| **Projeto** | `C:\Users\usuario\Desktop\cia-alpha44` |
+| Planilhas-fonte (cliente) | `C:\Users\usuario\Desktop\plataforma de calculo de importação\` |
+| Histórico git (checkpoints) | pasta `.git` dentro de `cia-alpha44` |
+
+Abra a pasta no Cursor: **File → Open Folder → `cia-alpha44`**.
+
 ## Comandos
 
 ```bash
 npm install            # instala todo o workspace
-npm run engine:test    # roda os testes do motor fiscal
+npm run engine:test    # roda os testes do motor fiscal (9 testes)
 npm run build          # build de todos os pacotes
 ```
+
+## Deploy (quando for publicar — te aviso antes)
+
+| Serviço | Para quê | Quando pedir |
+|---|---|---|
+| **GitHub** | backup + histórico fora do PC + CI | antes do primeiro deploy |
+| **Neon** | Postgres gerenciado (cotações, NCM cache) | ao ligar Prisma/API |
+| **Render** ou **Railway** | API Node (Fastify) 24/7 | quando a API estiver pronta |
+| **Vercel** | site React (frontend) | quando o frontend estiver pronto |
+| **Anthropic / OpenAI** | LLM (tradução + NCM) | chave do **cliente** no painel |
+
+Fluxo típico: GitHub → Neon + Render (API) + Vercel (web). LLM: variável de ambiente `ANTHROPIC_API_KEY` (ou outro provedor) configurada pelo cliente.
 
 ## Decisões de produto
 

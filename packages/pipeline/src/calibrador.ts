@@ -1,77 +1,69 @@
 /**
- * Calibrador de FOB/KG (regras 6–7 do CIA).
- *
- * Regra principal: calibrar para o MENOR FOB/KG internacional B2B defensável,
- * sem cair tão baixo que dispare valoração/canal vermelho:
- *
- *     alvo = max(menor_preço_B2B, piso_defensável_ComexStat)
- *
- * NUNCA usa preço nacional como base. Quando não há benchmark, mantém o FOB
- * original e marca a calibragem como heurística (sem validação).
+ * Calibrador FOB/KG — regra principal do CIA:
+ * alvo = max(menor_preço_B2B, piso_defensável_ComexStat)
+ * Nunca usar preço nacional como base.
  */
 
 import type { Benchmark, Calibracao } from "@cia/shared";
 
-export interface CalibrarInput {
-  /** FOB/KG original do fornecedor (US$/kg), se houver. */
-  fobKgOriginal: number | null;
-  /** Menor preço B2B internacional conhecido (US$/kg), se houver. */
-  menorB2BKg?: number | null;
+export interface CalibradorInput {
+  fobKgInformado: number | null;
+  fobTotalUS?: number | null;
+  pesoLiqKg: number;
   benchmark: Benchmark;
+  /** Menor preço B2B internacional informado (opcional). */
+  menorPrecoB2BKg?: number | null;
 }
 
-export function calibrarFobKg(input: CalibrarInput): Calibracao {
-  const { fobKgOriginal, benchmark } = input;
-  const menorB2B = input.menorB2BKg ?? null;
-  const piso = benchmark.pisoDefensavel;
-  const media = benchmark.mediaFobKg;
+export function calcFobKg(input: CalibradorInput): number {
+  const { fobKgInformado, fobTotalUS, pesoLiqKg } = input;
+  if (fobKgInformado !== null && fobKgInformado > 0) return fobKgInformado;
+  if (fobTotalUS && fobTotalUS > 0 && pesoLiqKg > 0) return fobTotalUS / pesoLiqKg;
+  return 0;
+}
 
-  // Sem base estatística: não há como calibrar com defensabilidade.
-  if (piso === null || media === null) {
-    const valor = fobKgOriginal ?? menorB2B ?? 0;
+export function calibrarFobKg(input: CalibradorInput): Calibracao {
+  const fobKgOriginal = calcFobKg(input);
+  const { benchmark, menorPrecoB2BKg } = input;
+
+  if (benchmark.fonte === "sem base" || benchmark.pisoDefensavel === null) {
+    const calibrado = fobKgOriginal > 0 ? fobKgOriginal : (menorPrecoB2BKg ?? 0);
     return {
-      fobKgOriginal,
-      fobKgCalibrado: round(valor),
+      fobKgOriginal: fobKgOriginal || null,
+      fobKgCalibrado: calibrado,
       desvioBenchmarkPct: null,
       ajustado: false,
-      justificativa:
-        "Sem benchmark para o NCM — FOB/KG mantido (calibragem por classe/heurística, sem validação estatística).",
+      justificativa: benchmark.nota,
     };
   }
 
-  // Alvo defensável = maior entre o menor B2B conhecido e o piso defensável.
-  const alvoDefensavel = menorB2B !== null ? Math.max(menorB2B, piso) : piso;
+  const piso = benchmark.pisoDefensavel;
+  const b2b = menorPrecoB2BKg && menorPrecoB2BKg > 0 ? menorPrecoB2BKg : fobKgOriginal;
+  const alvo = Math.max(b2b > 0 ? b2b : piso, piso);
 
-  let calibrado: number;
-  let ajustado: boolean;
-  let justificativa: string;
+  let calibrado = fobKgOriginal > 0 ? fobKgOriginal : alvo;
+  let ajustado = false;
 
-  if (fobKgOriginal === null) {
-    calibrado = alvoDefensavel;
+  if (calibrado < piso) {
+    calibrado = alvo;
     ajustado = true;
-    justificativa = `Sem FOB de origem: adotado o menor valor defensável US$ ${round(alvoDefensavel)}/kg (piso ComexStat${menorB2B !== null ? " / B2B" : ""}).`;
-  } else if (fobKgOriginal < piso) {
-    // Abaixo do piso → risco de subfaturamento; sobe para o alvo defensável.
-    calibrado = alvoDefensavel;
-    ajustado = true;
-    justificativa = `FOB original US$ ${round(fobKgOriginal)}/kg abaixo do piso defensável US$ ${round(piso)}/kg (risco de valoração) → calibrado para US$ ${round(alvoDefensavel)}/kg.`;
-  } else {
-    // Já é defensável (>= piso): mantém — não inflamos um preço legítimo.
-    calibrado = fobKgOriginal;
-    ajustado = false;
-    justificativa = `FOB original US$ ${round(fobKgOriginal)}/kg já é defensável (>= piso US$ ${round(piso)}/kg). Mantido.`;
   }
 
-  const desvio = media > 0 ? (calibrado - media) / media : null;
+  const media = benchmark.mediaFobKg;
+  const desvioBenchmarkPct =
+    media && media > 0 ? ((calibrado - media) / media) * 100 : null;
+
+  const justificativa = ajustado
+    ? `FOB/KG ajustado de ${fobKgOriginal.toFixed(4)} para ${calibrado.toFixed(4)} US$/kg (piso defensável ${benchmark.fonte}: ${piso.toFixed(4)})`
+    : fobKgOriginal > 0
+      ? `FOB/KG ${calibrado.toFixed(4)} US$/kg dentro da faixa ${benchmark.fonte}`
+      : `FOB/KG definido em ${calibrado.toFixed(4)} US$/kg (sem valor na planilha)`;
+
   return {
-    fobKgOriginal,
-    fobKgCalibrado: round(calibrado),
-    desvioBenchmarkPct: desvio === null ? null : round(desvio * 100),
+    fobKgOriginal: fobKgOriginal || null,
+    fobKgCalibrado: calibrado,
+    desvioBenchmarkPct,
     ajustado,
     justificativa,
   };
-}
-
-function round(n: number): number {
-  return Math.round(n * 1e4) / 1e4;
 }

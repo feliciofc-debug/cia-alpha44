@@ -1,25 +1,17 @@
 /**
- * Benchmark FOB/KG a partir do ComexStat (regra 6) e do histórico próprio (regra 7).
- *
- * Honestidade (regra 8): o export ComexStat disponível traz a MÉDIA de FOB/KG por
- * NCM (não a distribuição P10/P25/mediana). Portanto:
- *  - `mediaFobKg` é o dado real observado.
- *  - `pisoDefensavel` é uma HEURÍSTICA derivada da média (não um percentil real),
- *    rotulada como tal na `nota`.
- *  - quando não há base para o NCM, retornamos fonte "sem base" — nunca fingimos
- *    validação.
+ * Lookup de benchmark FOB/KG (ComexStat seed + histórico próprio).
+ * Regra 8: sem base → "sem base", nunca finge validação.
  */
 
 import type { Benchmark, FonteBenchmark } from "@cia/shared";
+import { formatNcm } from "@cia/shared";
+import comexstatData from "./data/comexstat-china-2023s1.json" with { type: "json" };
 
-export interface ComexEntry {
+export interface ComexStatEntry {
   ncm: string;
   desc: string;
-  /** Média de FOB/KG observada (US$/kg). */
   fobKg: number;
-  /** Média de CIF/KG observada (US$/kg). */
   cifKg: number;
-  /** Tamanho da amostra (nº de DIs). */
   amostra: number;
 }
 
@@ -28,72 +20,96 @@ export interface ComexSeed {
   contexto: string;
   geradoEm: string;
   total: number;
-  itens: ComexEntry[];
+  itens: ComexStatEntry[];
 }
 
-export type BenchmarkIndex = Map<string, ComexEntry>;
-
-function normNcm(ncm: string): string {
-  return ncm.replace(/\D/g, "");
+export interface HistoricoEntry {
+  ncm: string;
+  fobKg: number;
+  amostra: number;
 }
 
-export function buildBenchmarkIndex(entries: ComexEntry[]): BenchmarkIndex {
-  const idx: BenchmarkIndex = new Map();
-  for (const e of entries) idx.set(normNcm(e.ncm), e);
-  return idx;
+const comexstatIndex = new Map<string, ComexStatEntry>();
+for (const row of comexstatData.itens as ComexStatEntry[]) {
+  comexstatIndex.set(row.ncm, row);
 }
 
-/** Desconto sobre a média que define o piso defensável (heurística). */
-const DESCONTO_PISO = 0.2; // 20% abaixo da média
-const AMOSTRA_MINIMA_CONFIAVEL = 5;
+/** Índice em memória do histórico próprio (regra 7 — prioridade sobre ComexStat). */
+const historicoIndex = new Map<string, HistoricoEntry>();
+
+export function registrarHistorico(entries: HistoricoEntry[]): void {
+  for (const e of entries) {
+    const ncm = normalizarNcm(e.ncm);
+    const prev = historicoIndex.get(ncm);
+    if (!prev || e.amostra >= prev.amostra) {
+      historicoIndex.set(ncm, { ncm, fobKg: e.fobKg, amostra: e.amostra });
+    }
+  }
+}
+
+export function normalizarNcm(ncm: string): string {
+  return ncm.replace(/\D/g, "").padStart(8, "0").slice(0, 8);
+}
 
 /**
- * Monta o benchmark para um NCM. `historico` (opcional) tem prioridade sobre o
- * ComexStat (regra 7: o histórico próprio é a referência preferencial).
+ * Piso defensável heurístico a partir da média ComexStat.
+ * Sem percentis reais na base → desvio conservador por tamanho de amostra.
  */
-export function lookupBenchmark(
-  index: BenchmarkIndex,
-  ncm: string,
-  historico?: { mediaFobKg: number; amostra: number } | null,
-): Benchmark {
-  if (historico && historico.mediaFobKg > 0) {
-    const media = historico.mediaFobKg;
+export function calcPisoDefensavel(mediaFobKg: number, amostra: number): number {
+  if (mediaFobKg <= 0) return 0;
+  const fator =
+    amostra >= 20 ? 0.75 : amostra >= 10 ? 0.7 : amostra >= 5 ? 0.65 : 0.6;
+  return mediaFobKg * fator;
+}
+
+export function calcTetoHeuristico(mediaFobKg: number, amostra: number): number {
+  if (mediaFobKg <= 0) return 0;
+  const fator =
+    amostra >= 20 ? 1.35 : amostra >= 10 ? 1.4 : amostra >= 5 ? 1.45 : 1.5;
+  return mediaFobKg * fator;
+}
+
+export function lookupBenchmark(ncm: string): Benchmark {
+  const key = normalizarNcm(ncm);
+
+  const hist = historicoIndex.get(key);
+  if (hist && hist.fobKg > 0) {
+    const piso = calcPisoDefensavel(hist.fobKg, hist.amostra);
+    const teto = calcTetoHeuristico(hist.fobKg, hist.amostra);
     return {
-      fonte: "Histórico próprio" satisfies FonteBenchmark,
-      mediaFobKg: media,
-      pisoDefensavel: round(media * (1 - DESCONTO_PISO)),
-      teto: null,
-      amostra: historico.amostra,
-      nota: `Referência prioritária: histórico próprio (${historico.amostra} cotação(ões) fechada(s)). Piso defensável = média −${DESCONTO_PISO * 100}% (heurística).`,
+      fonte: "Histórico próprio",
+      mediaFobKg: hist.fobKg,
+      pisoDefensavel: piso,
+      teto,
+      amostra: hist.amostra,
+      nota: `Benchmark do histórico próprio (${hist.amostra} ref.) · NCM ${formatNcm(key)}`,
     };
   }
 
-  const e = index.get(normNcm(ncm));
-  if (e && e.fobKg > 0) {
-    const confiavel = e.amostra >= AMOSTRA_MINIMA_CONFIAVEL;
+  const cs = comexstatIndex.get(key);
+  if (cs && cs.fobKg > 0) {
+    const piso = calcPisoDefensavel(cs.fobKg, cs.amostra);
+    const teto = calcTetoHeuristico(cs.fobKg, cs.amostra);
     return {
-      fonte: "ComexStat" satisfies FonteBenchmark,
-      mediaFobKg: round(e.fobKg),
-      pisoDefensavel: round(e.fobKg * (1 - DESCONTO_PISO)),
-      teto: null,
-      amostra: e.amostra,
-      nota:
-        `ComexStat (1ºsem/2023, China, marítima): média US$ ${round(e.fobKg)}/kg em ${e.amostra} DI(s). ` +
-        `Piso defensável = média −${DESCONTO_PISO * 100}% (heurística — base traz média, não distribuição).` +
-        (confiavel ? "" : " ⚠ amostra pequena, confiança reduzida."),
+      fonte: "ComexStat",
+      mediaFobKg: cs.fobKg,
+      pisoDefensavel: piso,
+      teto,
+      amostra: cs.amostra,
+      nota: `ComexStat — ${comexstatData.contexto} · ${cs.amostra} DI(s) · média US$ ${cs.fobKg.toFixed(4)}/kg`,
     };
   }
 
   return {
-    fonte: "sem base" satisfies FonteBenchmark,
+    fonte: "sem base",
     mediaFobKg: null,
     pisoDefensavel: null,
     teto: null,
     amostra: 0,
-    nota: "Sem base ComexStat/histórico para este NCM — calibragem por classe/heurística (sem validação estatística).",
+    nota: `Sem benchmark carregado para NCM ${formatNcm(key)} — calibragem por classe/heurística`,
   };
 }
 
-function round(n: number): number {
-  return Math.round(n * 1e6) / 1e6;
+export function getComexStatStats(): { total: number; contexto: string } {
+  return { total: comexstatIndex.size, contexto: comexstatData.contexto };
 }

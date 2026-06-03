@@ -1,104 +1,74 @@
 /**
- * Análise de risco / canal aduaneiro provável (regras 9–10 do CIA).
- *
- * Score 0–100 (maior = mais risco). Sinais considerados:
- *  - distância do FOB/KG em relação ao benchmark (subfaturamento → valoração);
- *  - anuência por NCM (ANATEL/ANVISA/INMETRO → conferência técnica);
- *  - antidumping vigente (→ vermelho);
- *  - ausência de base de benchmark (incerteza);
- *  - amostra pequena no benchmark.
- *
- * O canal NÃO é só uma função do score: regras específicas (antidumping,
- * subfaturamento abaixo do piso) têm precedência.
+ * Análise de risco / canal aduaneiro (regras 9–10).
  */
 
 import type { Benchmark, Calibracao, Canal, Risco } from "@cia/shared";
 
 export interface RiscoInput {
-  benchmark: Benchmark;
+  ncm: string;
+  descPt: string;
   calibracao: Calibracao;
-  /** FOB/KG efetivamente usado na cotação (US$/kg). */
-  fobKgFinal: number;
-  /** Órgãos anuentes para o NCM (ex.: ["ANATEL"]). */
+  benchmark: Benchmark;
   anuencia?: string[];
-  /** Há antidumping vigente para o NCM/origem? */
   antidumping?: boolean;
+  pesoLiqKg?: number;
+  qtd?: number | null;
 }
 
 export function analisarRisco(input: RiscoInput): Risco {
-  const { benchmark, fobKgFinal } = input;
-  const anuencia = input.anuencia ?? [];
-  const antidumping = input.antidumping ?? false;
-  const media = benchmark.mediaFobKg;
-  const piso = benchmark.pisoDefensavel;
-
-  let score = 8; // baseline verde
   const flags: string[] = [];
-  const motivos: string[] = [];
+  let score = 0;
+  let canal: Canal = "VERDE_PROVAVEL";
 
-  // 1) Distância do benchmark.
-  let abaixoDoPiso = false;
-  if (media !== null) {
-    const desvio = (fobKgFinal - media) / media;
-    const desvioPct = Math.round(desvio * 100);
-    if (piso !== null && fobKgFinal < piso) {
-      abaixoDoPiso = true;
-      score += 55;
-      flags.push("FOB abaixo do piso defensável");
-      motivos.push(`FOB/KG ${Math.abs(desvioPct)}% abaixo da média ComexStat e abaixo do piso defensável → risco de valoração`);
-    } else if (desvio < -0.1) {
-      score += 22;
-      flags.push("FOB abaixo da média");
-      motivos.push(`FOB/KG ${Math.abs(desvioPct)}% abaixo da média ComexStat para esta NCM`);
+  const { benchmark, calibracao, anuencia = [], antidumping = false } = input;
+  const desvio = calibracao.desvioBenchmarkPct;
+
+  if (antidumping) {
+    score += 40;
+    flags.push("Antidumping vigente para o NCM");
+    canal = "VERMELHO_TECNICO";
+  }
+
+  if (anuencia.length > 0) {
+    score += 25;
+    flags.push(`Anuência: ${anuencia.join(", ")}`);
+    if (canal === "VERDE_PROVAVEL") canal = "AMARELO_TECNICO";
+  }
+
+  if (benchmark.fonte !== "sem base" && desvio !== null) {
+    if (desvio < -25) {
+      score += 45;
+      flags.push(
+        `FOB/KG ${Math.abs(desvio).toFixed(0)}% abaixo da média ${benchmark.fonte} → risco de valoração`,
+      );
+      canal = "CINZA_VALORACAO";
+    } else if (desvio < -10) {
+      score += 25;
+      flags.push(`FOB/KG ${Math.abs(desvio).toFixed(0)}% abaixo da mediana/média ${benchmark.fonte}`);
+      if (canal === "VERDE_PROVAVEL") canal = "CINZA_VALORACAO";
+    } else if (desvio <= 15) {
+      score += 0;
+      flags.push(`FOB/KG dentro da faixa defensável (${benchmark.fonte})`);
     } else {
-      motivos.push(`FOB/KG coerente com o benchmark (${desvioPct >= 0 ? "+" : ""}${desvioPct}% vs média)`);
-    }
-    if (benchmark.amostra > 0 && benchmark.amostra < 5) {
-      score += 8;
-      flags.push("amostra pequena");
+      score += 10;
+      flags.push(`FOB/KG ${desvio.toFixed(0)}% acima da média — verificar coerência`);
+      if (canal === "VERDE_PROVAVEL") canal = "AMARELO_TECNICO";
     }
   } else {
+    flags.push("Sem benchmark — risco estimado por heurística");
     score += 15;
-    flags.push("sem benchmark");
-    motivos.push("Sem base de benchmark para o NCM — incerteza de valoração");
+    if (canal === "VERDE_PROVAVEL") canal = "AMARELO_TECNICO";
   }
 
-  // 2) Anuência.
-  if (anuencia.length > 0) {
-    score += 18;
-    flags.push(...anuencia.map((a) => `anuência ${a}`));
-    motivos.push(`Anuência exigida: ${anuencia.join(", ")} → conferência técnica provável`);
-  }
-
-  // 3) Antidumping.
-  if (antidumping) {
-    score += 50;
-    flags.push("antidumping vigente");
-    motivos.push("Antidumping vigente para o NCM/origem");
+  if (calibracao.ajustado) {
+    score += 5;
+    flags.push("FOB/KG calibrado para piso defensável");
   }
 
   score = Math.min(100, Math.max(0, score));
 
-  // Canal: regras específicas têm precedência sobre o score.
-  let canal: Canal;
-  if (antidumping) {
-    canal = "VERMELHO_TECNICO";
-  } else if (abaixoDoPiso) {
-    canal = "CINZA_VALORACAO";
-  } else if (anuencia.length > 0) {
-    canal = score >= 50 ? "VERMELHO_TECNICO" : "AMARELO_TECNICO";
-  } else if (score >= 50) {
-    canal = "VERMELHO_TECNICO";
-  } else if (score >= 25) {
-    canal = "AMARELO_TECNICO";
-  } else {
-    canal = "VERDE_PROVAVEL";
-  }
+  const justificativa =
+    flags.length > 0 ? flags.join(" · ") : "Sem sinais de risco identificados";
 
-  return {
-    canal,
-    score,
-    justificativa: motivos.join(". ") + ".",
-    flags,
-  };
+  return { canal, score, justificativa, flags };
 }

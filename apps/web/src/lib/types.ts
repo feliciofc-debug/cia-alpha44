@@ -1,0 +1,177 @@
+/** Tipos espelhados das respostas da API (desacoplado do backend para o bundle do browser). */
+
+export type Canal = "VERDE_PROVAVEL" | "AMARELO_TECNICO" | "VERMELHO_TECNICO" | "CINZA_VALORACAO";
+export type FonteBenchmark = "ComexStat" | "Histórico próprio" | "sem base";
+
+export interface Aliquotas {
+  ii: number;
+  ipi: number;
+  pis: number;
+  cofins: number;
+  icmsEntrada: number;
+}
+
+export interface NcmCandidato {
+  ncm: string;
+  descricaoOficial?: string;
+  confianca: number;
+}
+
+export interface Benchmark {
+  fonte: FonteBenchmark;
+  mediaFobKg: number | null;
+  pisoDefensavel: number | null;
+  teto: number | null;
+  amostra: number;
+  nota: string;
+}
+
+export interface Calibracao {
+  fobKgOriginal: number | null;
+  fobKgCalibrado: number;
+  desvioBenchmarkPct: number | null;
+  ajustado: boolean;
+  justificativa: string;
+}
+
+export interface Risco {
+  canal: Canal;
+  score: number;
+  justificativa: string;
+  flags: string[];
+}
+
+export interface Item {
+  id?: string;
+  descOriginal: string;
+  descPt: string;
+  descDuimp: string;
+  ncm: string;
+  ncmCandidatos: NcmCandidato[];
+  pesoBrutoKg: number | null;
+  pesoLiqKg: number;
+  qtd: number | null;
+  fobUnitarioUS: number | null;
+  fobTotalUS: number;
+  aliquotas: Aliquotas;
+  aliquotasOverride: boolean;
+  benchmark?: Benchmark;
+  calibracao?: Calibracao;
+  risco?: Risco;
+  anuencia: string[];
+  antidumping: boolean;
+}
+
+export interface Despesa {
+  nome: string;
+  valorBRL: number;
+  entraBaseSaida: boolean;
+  entraBaseNota: boolean;
+}
+
+export interface ParamsSaida {
+  markupPct: number;
+  pisSaida: number;
+  cofinsSaida: number;
+  icmsSaida: number;
+  csllSobreMarkup: number;
+  irrfAliq: number;
+  irrfBaseNotaPct: number;
+  ipiTetoAliqMedia: number;
+  icmsEntrada: number;
+}
+
+export interface Cotacao {
+  id?: string;
+  cliente: string;
+  benefFiscal: string;
+  moeda: string;
+  cambio: number;
+  freteTotalUS: number;
+  adicionaisVaUS: number;
+  reducaoBaseUS: number;
+  siscomex: number;
+  antidumpingBRL: number;
+  incoterm: string;
+  origem: string;
+  destino: string;
+  itens: Item[];
+  despesas: Despesa[];
+  outrasDespesasBaseBRL?: number;
+  params: ParamsSaida;
+}
+
+export interface ItemResult {
+  ref?: string;
+  ncm: string;
+  fobUS: number;
+  pesoLiqKg: number;
+  freteKgGlobal: number;
+  cifKgUS: number;
+  cifItemUS: number;
+  cifItemBRL: number;
+  ii: number;
+  ipi: number;
+  pis: number;
+  cofins: number;
+  icmsEntrada: number;
+}
+
+export interface ResultadoCotacao {
+  cambio: number;
+  itens: ItemResult[];
+  entrada: {
+    fobTotalUS: number;
+    pesoLiqTotalKg: number;
+    cifTotalBRL: number;
+    iiTotal: number;
+    ipiTotal: number;
+    pisTotal: number;
+    cofinsTotal: number;
+    siscomex: number;
+    antidumpingBRL: number;
+    impostosEntradaTotal: number;
+  };
+  saida: {
+    outrasDespesasBaseBRL: number;
+    taxasLocaisTotalBRL: number;
+    aliqMediaIPI: number;
+    markup: number;
+    baseSaida: number;
+    vendaLiquida: number;
+    difIPI: number;
+    difPIS: number;
+    difCOFINS: number;
+    icmsSaida: number;
+    csll: number;
+    irrf: number;
+    baseNotaSaida: number;
+    impostosSaidaTotal: number;
+  };
+  totalBRL: number;
+  totalUS: number;
+}
+
+export interface ParsedSheet {
+  arquivo?: string;
+  abaUsada: string;
+  headerRowIndex: number;
+  colunas: { campo: string; colIndex: number; header: string; confianca: number }[];
+  mapeamento: Record<string, number>;
+  linhas: LinhaCrua[];
+  totalLinhas: number;
+  avisos: string[];
+}
+
+export interface LinhaCrua {
+  __row: number;
+  descOriginal: string;
+  ncm: string | null;
+  qtd: number | null;
+  unidade: string | null;
+  pesoBrutoKg: number | null;
+  pesoLiqKg: number | null;
+  fobUnitarioUS: number | null;
+  fobTotalUS: number | null;
+  dimensoes: string | null;
+}

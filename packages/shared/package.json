@@ -14,7 +14,7 @@
   "files": ["dist", "src"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "vitest run"
+    "test": "echo \"@cia/shared: no tests yet\""
   },
   "dependencies": {
     "zod": "^3.23.8"
