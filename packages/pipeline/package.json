@@ -1,0 +1,29 @@
+{
+  "name": "@cia/pipeline",
+  "version": "0.1.0",
+  "description": "Pipeline de cotação: parser de planilha, benchmark ComexStat, calibrador FOB/KG e análise de risco/canal.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "src"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/copy-data.cjs",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@cia/fiscal-engine": "*",
+    "@cia/shared": "*",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  }
+}
