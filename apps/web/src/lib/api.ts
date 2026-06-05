@@ -1,10 +1,18 @@
-import type { Cotacao, Item, ParsedSheet, ResultadoCotacao } from "./types";
+import type {
+  Cotacao,
+  CotacaoLista,
+  CotacaoSalva,
+  Item,
+  ParsedSheet,
+  ResultadoCotacao,
+} from "./types";
 
 export interface AnaliseCompleta {
   itens: Item[];
   provider: string;
   resultado: ResultadoCotacao | null;
   avisoFiscal: string | null;
+  cotacao: Cotacao;
 }
 
 /** Vazio = proxy local do Vite (`/api` → localhost:3333). Produção: HTTPS direto na VPS. */
@@ -123,8 +131,35 @@ export const api = {
       avisoFiscal: comFob
         ? null
         : "Planilha sem FOB/preços — NCM e risco analisados; totais fiscais quando houver valores.",
+      cotacao,
     };
   },
+
+  listarCotacoes: (cliente?: string) => {
+    const q = cliente ? `?cliente=${encodeURIComponent(cliente)}` : "";
+    return fetch(`${BASE}/api/cotacoes${q}`).then(handle<CotacaoLista>);
+  },
+
+  buscarCotacao: (id: string) => fetch(`${BASE}/api/cotacoes/${id}`).then(handle<CotacaoSalva>),
+
+  salvarCotacao: (payload: {
+    cotacao: Cotacao;
+    itens: Item[];
+    resultado: ResultadoCotacao | null;
+    provider?: string;
+  }) =>
+    fetch(`${BASE}/api/cotacoes`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    }).then(handle<CotacaoSalva>),
+
+  duplicarCotacao: (id: string, opts?: { markupPct?: number; cliente?: string }) =>
+    fetch(`${BASE}/api/cotacoes/${id}/duplicar`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(opts ?? {}),
+    }).then(handle<CotacaoSalva>),
 
   calcular: (cotacao: Cotacao) =>
     fetch(`${BASE}/api/calcular`, {

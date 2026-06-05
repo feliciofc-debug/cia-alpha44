@@ -8,6 +8,13 @@ import { cotacaoSchema } from "@cia/shared";
 import { getState } from "./state.js";
 import { buscarCambioPtax } from "./services/cambio.js";
 import { calcularCotacao, montarItens } from "./services/cotacao.js";
+import {
+  buscarCotacao,
+  duplicarCotacao,
+  listarCotacoes,
+  PersistenciaIndisponivelError,
+  salvarCotacao,
+} from "./services/cotacoes-persist.js";
 import { ingerirArquivo } from "./services/ingest.js";
 
 const PORT = Number(process.env.PORT ?? 3333);
@@ -75,7 +82,75 @@ export async function buildServer() {
     return { resultado, itens };
   });
 
+  const salvarBody = z.object({
+    cotacao: cotacaoSchema,
+    itens: z.array(z.any()),
+    resultado: z.any().nullable().optional().default(null),
+    provider: z.string().optional(),
+  });
+
+  app.get("/api/cotacoes", async (req, reply) => {
+    try {
+      const q = req.query as { cliente?: string; limite?: string };
+      return await listarCotacoes({
+        cliente: q.cliente,
+        limite: q.limite ? Number(q.limite) : undefined,
+      });
+    } catch (e) {
+      return persistenciaErro(reply, e);
+    }
+  });
+
+  app.get("/api/cotacoes/:id", async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string };
+      const row = await buscarCotacao(id);
+      if (!row) return reply.status(404).send({ erro: "Cotação não encontrada." });
+      return row;
+    } catch (e) {
+      return persistenciaErro(reply, e);
+    }
+  });
+
+  app.post("/api/cotacoes", async (req, reply) => {
+    const parsed = salvarBody.safeParse(req.body);
+    if (!parsed.success) return reply.status(400).send({ erro: "Body inválido", detalhe: parsed.error.flatten() });
+    try {
+      return await salvarCotacao({
+        cotacao: parsed.data.cotacao,
+        itens: parsed.data.itens as import("@cia/shared").Item[],
+        resultado: parsed.data.resultado ?? null,
+        provider: parsed.data.provider,
+      });
+    } catch (e) {
+      return persistenciaErro(reply, e);
+    }
+  });
+
+  app.post("/api/cotacoes/:id/duplicar", async (req, reply) => {
+    const body = z
+      .object({ markupPct: z.number().min(0).max(1).optional(), cliente: z.string().optional() })
+      .safeParse(req.body ?? {});
+    if (!body.success) return reply.status(400).send({ erro: "Body inválido", detalhe: body.error.flatten() });
+    try {
+      const { id } = req.params as { id: string };
+      const dup = await duplicarCotacao(id, getState(), body.data);
+      if (!dup) return reply.status(404).send({ erro: "Cotação não encontrada." });
+      return dup;
+    } catch (e) {
+      return persistenciaErro(reply, e);
+    }
+  });
+
   return app;
+}
+
+function persistenciaErro(reply: import("fastify").FastifyReply, e: unknown) {
+  if (e instanceof PersistenciaIndisponivelError) {
+    return reply.status(503).send({ erro: e.message });
+  }
+  const msg = e instanceof Error ? e.message : "Erro de persistência.";
+  return reply.status(500).send({ erro: msg });
 }
 
 async function main() {

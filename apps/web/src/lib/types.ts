@@ -165,6 +165,38 @@ export interface ParsedSheet {
   avisos: string[];
 }
 
+export type CotacaoStatus = "RASCUNHO" | "CALCULADA" | "ARQUIVADA";
+
+export interface CotacaoResumo {
+  id: string;
+  cliente: string;
+  status: CotacaoStatus;
+  totalBRL: number | null;
+  canalPredominante: Canal | null;
+  markupPct: number;
+  totalItens: number;
+  criadoEm: string;
+}
+
+export interface CotacaoLista {
+  cotacoes: CotacaoResumo[];
+  totalHoje: number;
+}
+
+export interface CotacaoSalva {
+  id: string;
+  status: CotacaoStatus;
+  criadoEm: string;
+  calculadoEm: string | null;
+  canalPredominante: Canal | null;
+  totalBRL: number | null;
+  provider: string | null;
+  cotacao: Cotacao;
+  itens: Item[];
+  resultado: ResultadoCotacao | null;
+  avisoFiscal: string | null;
+}
+
 export interface LinhaCrua {
   __row: number;
   descOriginal: string;

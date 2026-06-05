@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@cia/db": "*",
     "@cia/fiscal-engine": "*",
     "@cia/pipeline": "*",
     "@cia/shared": "*",

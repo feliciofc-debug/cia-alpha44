@@ -3,7 +3,7 @@
 import type { ClassifyItemInput, ClassifyItemOutput, LlmProvider } from "./types.js";
 import { SYSTEM_PROMPT, buildUserPrompt, parseClassifyResponse } from "./prompt.js";
 
-export function criarAnthropicProvider(apiKey: string, model = process.env.ANTHROPIC_MODEL ?? "claude-3-5-sonnet-latest"): LlmProvider {
+export function criarAnthropicProvider(apiKey: string, model = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6"): LlmProvider {
   return {
     nome: `anthropic:${model}`,
     disponivel: true,
