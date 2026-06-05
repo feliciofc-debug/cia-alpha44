@@ -107,6 +107,11 @@ function LoginModal({
             />
           </div>
           {erro && <p className="text-sm text-red-400">{erro}</p>}
+          {mode === "login" && (
+            <p className="rounded-lg border border-white/5 bg-white/5 px-3 py-2 text-xs text-slate-400">
+              Acesso demonstração: <span className="text-slate-200">demo@cia-alpha44.com.br</span>
+            </p>
+          )}
           <button type="submit" className="btn-primary w-full" disabled={loading}>
             {loading ? "Aguarde…" : mode === "login" ? "Entrar" : "Cadastrar"}
           </button>
