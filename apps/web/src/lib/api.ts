@@ -1,7 +1,9 @@
 import type { Cotacao, Item, ParsedSheet, ResultadoCotacao } from "./types";
 
-/** Vazio = usa proxy do Vite (`/api` → localhost:3333). */
+/** Vazio = proxy local do Vite (`/api` → localhost:3333). Produção: HTTPS direto na VPS. */
 const BASE = (import.meta.env.VITE_API_URL as string) || "";
+
+const PARSE_TIMEOUT_MS = 120_000;
 
 async function handle<T>(res: Response): Promise<T> {
   if (!res.ok) {
@@ -33,7 +35,11 @@ export const api = {
   parse: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
-    return fetch(`${BASE}/api/parse`, { method: "POST", body: fd }).then(handle<ParsedSheet>);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), PARSE_TIMEOUT_MS);
+    return fetch(`${BASE}/api/parse`, { method: "POST", body: fd, signal: ctrl.signal })
+      .finally(() => clearTimeout(timer))
+      .then(handle<ParsedSheet>);
   },
 
   classificar: (linhas: ParsedSheet["linhas"]) =>
