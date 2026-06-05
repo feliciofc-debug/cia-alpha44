@@ -259,10 +259,41 @@ function Landing({ onLogin, onSignup }: { onLogin: () => void; onSignup: () => v
 function Dashboard() {
   const { user, logout } = useAuth();
   const [meta, setMeta] = useState<Meta | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [erro, setErro] = useState("");
+  const [parsed, setParsed] = useState<Awaited<ReturnType<typeof api.parse>> | null>(null);
 
   useEffect(() => {
     api.meta().then(setMeta).catch(() => {});
   }, []);
+
+  async function processarArquivo(file: File) {
+    setErro("");
+    setParsed(null);
+    setUploading(true);
+    try {
+      const resultado = await api.parse(file);
+      setParsed(resultado);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao processar o arquivo.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) void processarArquivo(file);
+    e.target.value = "";
+  }
+
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) void processarArquivo(file);
+  }
 
   return (
     <div className="min-h-full bg-ink-900">
@@ -284,7 +315,17 @@ function Dashboard() {
       </header>
 
       <main className="container-cia py-12">
-        <div className="card mx-auto max-w-2xl p-10 text-center">
+        <div
+          className={`card mx-auto max-w-2xl p-10 text-center transition-colors ${
+            dragOver ? "border-brand-500/50 bg-brand-500/5" : ""
+          }`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={onDrop}
+        >
           <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-dashed border-brand-500/40 bg-brand-500/5 text-3xl">
             📄
           </div>
@@ -292,12 +333,46 @@ function Dashboard() {
           <p className="mt-2 text-sm text-slate-400">
             .xlsx ou .csv · qualquer idioma · detecção automática de colunas
           </p>
-          <label className="btn-primary mt-8 inline-flex cursor-pointer">
-            Selecionar arquivo
-            <input type="file" accept=".xlsx,.xls,.csv" className="hidden" disabled />
+          <label className={`btn-primary mt-8 inline-flex cursor-pointer ${uploading ? "pointer-events-none opacity-60" : ""}`}>
+            {uploading ? "Processando…" : "Selecionar arquivo"}
+            <input
+              type="file"
+              accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+              className="sr-only"
+              onChange={onFileChange}
+              disabled={uploading}
+            />
           </label>
+          {erro && <p className="mt-4 text-sm text-red-400">{erro}</p>}
+          {parsed && (
+            <div className="mt-8 rounded-xl border border-white/10 bg-white/5 p-4 text-left text-sm">
+              <p className="font-semibold text-white">
+                ✓ {parsed.arquivo ?? "Arquivo"} — {parsed.totalLinhas} linha(s) detectada(s)
+              </p>
+              <p className="mt-1 text-slate-400">
+                Aba: {parsed.abaUsada} · Colunas mapeadas: {parsed.colunas.length}
+              </p>
+              {parsed.avisos.length > 0 && (
+                <p className="mt-2 text-amber-400/90">{parsed.avisos.join(" · ")}</p>
+              )}
+              <ul className="mt-3 space-y-1 text-slate-300">
+                {parsed.linhas.slice(0, 5).map((l) => (
+                  <li key={l.__row} className="truncate">
+                    {l.descOriginal || "(sem descrição)"}
+                    {l.fobTotalUS != null ? ` · FOB US$ ${l.fobTotalUS}` : ""}
+                  </li>
+                ))}
+              </ul>
+              {parsed.linhas.length > 5 && (
+                <p className="mt-2 text-xs text-slate-500">+ {parsed.linhas.length - 5} itens…</p>
+              )}
+              <p className="mt-4 text-xs text-brand-300">
+                Próxima etapa: classificação IA + grid fiscal (em construção).
+              </p>
+            </div>
+          )}
           <p className="mt-6 text-xs text-slate-500">
-            Próxima etapa: grid de itens, resumo fiscal e exportação Excel/PDF.
+            Upload → parser automático → classificação NCM → engine fiscal → exportação.
             {meta && ` · ${meta.comexTotal.toLocaleString("pt-BR")} NCMs no benchmark`}
           </p>
         </div>
