@@ -1,0 +1,17 @@
+[Unit]
+Description=CIA Alpha 44 API (Fastify)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/cia-alpha44
+EnvironmentFile=/etc/cia-alpha44/api.env
+ExecStart=/usr/bin/npm run start:api
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
