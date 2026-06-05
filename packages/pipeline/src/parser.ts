@@ -44,8 +44,11 @@ export interface ResultadoParse {
 }
 
 const PADROES: { tipo: ColunaDetectada; re: RegExp }[] = [
-  { tipo: "descricao", re: /desc|description|品名|货物|product|item|nome|mercadoria/i },
-  { tipo: "qtd", re: /qty|quant|quantity|数量|qtd|pcs|unidade/i },
+  {
+    tipo: "descricao",
+    re: /desc|description|品名|货物|产品配置|配置|product\s*config|product|item\s*number|货号|nome|mercadoria/i,
+  },
+  { tipo: "qtd", re: /qty|quant|quantity|数量|装箱量|qtd|pcs|unidade/i },
   { tipo: "peso_bruto", re: /gross|bruto|毛重|gw\b/i },
   { tipo: "peso", re: /peso|weight|净重|nw\b|net|kg/i },
   { tipo: "fob", re: /fob|total.*usd|amount|valor.*us/i },
@@ -53,6 +56,9 @@ const PADROES: { tipo: ColunaDetectada; re: RegExp }[] = [
   { tipo: "ncm", re: /ncm|hs\s*code|tariff|税号/i },
   { tipo: "dimensoes", re: /dim|size|规格|measure/i },
 ];
+
+/** Ignora colunas de imagem/cor/tempo — não são itens. */
+const COLUNA_IGNORAR = /产品图片|product\s*image|^\s*颜色|colour|color|使用时间|usage\s*time|充电时间|charging/i;
 
 function detectarTipo(header: string): { tipo: ColunaDetectada; confianca: number } {
   const h = String(header).trim();
@@ -98,13 +104,21 @@ export function parsePlanilhaBuffer(
   const headerCells = (rows[headerRow] ?? []) as unknown[];
 
   const colunas: ColunaMapeada[] = headerCells.map((h, indice) => {
-    const { tipo, confianca } = detectarTipo(String(h ?? ""));
-    return { indice, header: String(h ?? `Col${indice}`), tipo, confianca };
+    const header = String(h ?? `Col${indice}`);
+    if (COLUNA_IGNORAR.test(header)) {
+      return { indice, header, tipo: "desconhecido" as ColunaDetectada, confianca: 0 };
+    }
+    const { tipo, confianca } = detectarTipo(header);
+    return { indice, header, tipo, confianca };
   });
 
   const idx = (t: ColunaDetectada) => colunas.find((c) => c.tipo === t)?.indice;
 
-  const iDesc = idx("descricao");
+  // Preferir 产品配置 sobre 货号 (SKU curto) quando ambos existem.
+  const iDesc =
+    colunas.find((c) => /产品配置|product\s*config/i.test(c.header))?.indice ??
+    idx("descricao");
+  const iSku = colunas.find((c) => /货号|item\s*number/i.test(c.header) && c.indice !== iDesc)?.indice;
   const iQtd = idx("qtd");
   const iPeso = idx("peso");
   const iPesoBruto = idx("peso_bruto");
@@ -121,8 +135,9 @@ export function parsePlanilhaBuffer(
     const row = rows[r] as unknown[] | undefined;
     if (!row) continue;
 
-    const descricao =
-      iDesc !== undefined ? String(row[iDesc] ?? "").trim() : "";
+    const parteDesc = iDesc !== undefined ? String(row[iDesc] ?? "").trim() : "";
+    const parteSku = iSku !== undefined ? String(row[iSku] ?? "").trim() : "";
+    const descricao = [parteSku, parteDesc].filter(Boolean).join(" — ") || parteDesc || parteSku;
     if (!descricao || descricao.length < 2) continue;
 
     const qtd = iQtd !== undefined ? num(row[iQtd]) : null;

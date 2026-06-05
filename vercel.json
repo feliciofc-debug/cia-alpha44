@@ -2,10 +2,13 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
   "installCommand": "npm ci",
-  "buildCommand": "npm run build:web",
+  "buildCommand": "VITE_API_URL= npm run build:web",
   "outputDirectory": "apps/web/dist",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
-  "env": {
-    "VITE_API_URL": "https://api2.amzofertas.com.br/cia"
-  }
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://api2.amzofertas.com.br/cia/api/:path*"
+    },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
