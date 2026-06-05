@@ -17,7 +17,10 @@ export { calibrarFobKg, calcFobKg, type CalibradorInput } from "./calibrador.js"
 export { analisarRisco, type RiscoInput } from "./risco.js";
 export {
   parsePlanilhaBuffer,
+  parseOcrTexto,
   parseSupplierFile,
+  parseSupplierOcrText,
+  textoOcrParaLinhas,
   type ResultadoParse,
   type ParsedSupplierFile,
   type LinhaFornecedor,

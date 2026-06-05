@@ -86,20 +86,25 @@ function encontrarHeader(rows: unknown[][]): number {
   return 0;
 }
 
-export function parsePlanilhaBuffer(
-  buffer: ArrayBuffer | Buffer,
-  nomeAba?: string,
-): ResultadoParse {
-  const wb = XLSX.read(buffer, { type: "buffer", cellDates: true });
-  const aba = nomeAba && wb.SheetNames.includes(nomeAba) ? nomeAba : wb.SheetNames[0]!;
-  const ws = wb.Sheets[aba]!;
-  const rows = XLSX.utils.sheet_to_json(ws, {
-    header: 1,
-    raw: true,
-    defval: null,
-  }) as unknown[][];
+/** Converte texto OCR (linhas) em matriz de células — tab, pipe ou espaços múltiplos. */
+export function textoOcrParaLinhas(texto: string): unknown[][] {
+  return texto
+    .split(/\r?\n/)
+    .map((linha) => linha.trim())
+    .filter((linha) => linha.length > 0)
+    .map((linha) => {
+      if (linha.includes("\t")) return linha.split("\t").map((c) => c.trim());
+      if (linha.includes("|")) return linha.split("|").map((c) => c.trim());
+      return linha.split(/\s{2,}/).map((c) => c.trim());
+    });
+}
 
-  const avisos: string[] = [];
+function parseRows(
+  rows: unknown[][],
+  aba: string,
+  avisosExtras: string[] = [],
+): ResultadoParse {
+  const avisos: string[] = [...avisosExtras];
   const headerRow = encontrarHeader(rows);
   const headerCells = (rows[headerRow] ?? []) as unknown[];
 
@@ -176,19 +181,30 @@ export function parsePlanilhaBuffer(
   return { aba, headerRow, colunas, linhas, avisos };
 }
 
-export interface ParsedSupplierFile {
-  abaUsada: string;
-  headerRowIndex: number;
-  colunas: { campo: ColunaDetectada; colIndex: number; header: string; confianca: number }[];
-  mapeamento: Record<string, number>;
-  linhas: LinhaCrua[];
-  totalLinhas: number;
-  avisos: string[];
+export function parsePlanilhaBuffer(
+  buffer: ArrayBuffer | Buffer,
+  nomeAba?: string,
+): ResultadoParse {
+  const wb = XLSX.read(buffer, { type: "buffer", cellDates: true });
+  const aba = nomeAba && wb.SheetNames.includes(nomeAba) ? nomeAba : wb.SheetNames[0]!;
+  const ws = wb.Sheets[aba]!;
+  const rows = XLSX.utils.sheet_to_json(ws, {
+    header: 1,
+    raw: true,
+    defval: null,
+  }) as unknown[][];
+  return parseRows(rows, aba);
 }
 
-/** Entrada da API `/api/parse` (buffer do upload). */
-export function parseSupplierFile(bytes: Uint8Array): ParsedSupplierFile {
-  const parsed = parsePlanilhaBuffer(Buffer.from(bytes));
+/** Texto extraído por OCR (PDF/imagem) → mesmo pipeline de colunas/linhas. */
+export function parseOcrTexto(texto: string, origem = "OCR"): ResultadoParse {
+  const rows = textoOcrParaLinhas(texto);
+  const avisos = ["Origem: OCR — revise o mapeamento se necessário."];
+  if (rows.length === 0) avisos.push("OCR não gerou linhas legíveis.");
+  return parseRows(rows, origem, avisos);
+}
+
+function resultadoParaSupplier(parsed: ResultadoParse): ParsedSupplierFile {
   const mapeamento: Record<string, number> = {};
   for (const c of parsed.colunas) {
     if (c.tipo !== "desconhecido") mapeamento[c.tipo] = c.indice;
@@ -218,4 +234,24 @@ export function parseSupplierFile(bytes: Uint8Array): ParsedSupplierFile {
     totalLinhas: linhas.length,
     avisos: parsed.avisos,
   };
+}
+
+export interface ParsedSupplierFile {
+  abaUsada: string;
+  headerRowIndex: number;
+  colunas: { campo: ColunaDetectada; colIndex: number; header: string; confianca: number }[];
+  mapeamento: Record<string, number>;
+  linhas: LinhaCrua[];
+  totalLinhas: number;
+  avisos: string[];
+}
+
+/** Planilha Excel/CSV (buffer do upload). */
+export function parseSupplierFile(bytes: Uint8Array): ParsedSupplierFile {
+  return resultadoParaSupplier(parsePlanilhaBuffer(Buffer.from(bytes)));
+}
+
+/** Texto OCR → estrutura de cotação. */
+export function parseSupplierOcrText(texto: string, origem?: string): ParsedSupplierFile {
+  return resultadoParaSupplier(parseOcrTexto(texto, origem));
 }

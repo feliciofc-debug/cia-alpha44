@@ -30,6 +30,8 @@ async function handle<T>(res: Response): Promise<T> {
 export interface Meta {
   provider: string;
   llmDisponivel: boolean;
+  ocrProvider?: string;
+  ocrDisponivel?: boolean;
   comexTotal: number;
   benefFiscal: string;
 }

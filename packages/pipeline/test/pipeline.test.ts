@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { lookupBenchmark, calibrarFobKg, analisarRisco, normalizarNcm } from "../src/index.js";
+import {
+  lookupBenchmark,
+  calibrarFobKg,
+  analisarRisco,
+  normalizarNcm,
+  parseSupplierOcrText,
+} from "../src/index.js";
 
 describe("Benchmark ComexStat", () => {
   it("encontra NCM da planilha 66 (8204.20.00)", () => {
@@ -61,5 +67,18 @@ describe("Análise de risco", () => {
     expect(["CINZA_VALORACAO", "VERMELHO_TECNICO", "AMARELO_TECNICO"]).toContain(
       risco.canal,
     );
+  });
+});
+
+describe("Parser OCR", () => {
+  it("converte texto tabulado em linhas de item", () => {
+    const texto = [
+      "货号\t产品配置\tFOB USD",
+      "C2\t空心杯无人机\t120",
+      "C7\t四轴飞行器\t85",
+    ].join("\n");
+    const r = parseSupplierOcrText(texto, "teste.pdf");
+    expect(r.totalLinhas).toBeGreaterThanOrEqual(2);
+    expect(r.linhas[0]?.descOriginal).toContain("C2");
   });
 });

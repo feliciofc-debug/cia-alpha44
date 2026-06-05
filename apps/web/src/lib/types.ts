@@ -154,6 +154,8 @@ export interface ResultadoCotacao {
 
 export interface ParsedSheet {
   arquivo?: string;
+  fonte?: "planilha" | "ocr";
+  ocrPaginas?: number;
   abaUsada: string;
   headerRowIndex: number;
   colunas: { campo: string; colIndex: number; header: string; confianca: number }[];

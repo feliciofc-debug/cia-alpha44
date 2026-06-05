@@ -382,13 +382,13 @@ function Dashboard() {
           </div>
           <h2 className="text-xl font-bold text-white">Arraste a planilha do fornecedor</h2>
           <p className="mt-2 text-sm text-slate-400">
-            .xlsx ou .csv · qualquer idioma · detecção automática de colunas
+            .xlsx · .csv · .pdf · imagem — qualquer idioma (OCR + parser)
           </p>
           <label className={`btn-primary mt-8 inline-flex cursor-pointer ${uploading ? "pointer-events-none opacity-60" : ""}`}>
             {uploading ? "Processando…" : "Selecionar arquivo"}
             <input
               type="file"
-              accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+              accept=".xlsx,.xls,.csv,.pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/*,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
               className="sr-only"
               onChange={onFileChange}
               disabled={uploading}
@@ -401,7 +401,8 @@ function Dashboard() {
                 ✓ {parsed.arquivo ?? "Arquivo"} — {parsed.totalLinhas} linha(s) detectada(s)
               </p>
               <p className="mt-1 text-slate-400">
-                Aba: {parsed.abaUsada} · Colunas mapeadas: {parsed.colunas.length}
+                {parsed.fonte === "ocr" ? `OCR · ${parsed.ocrPaginas ?? 1} página(s)` : `Aba: ${parsed.abaUsada}`}
+                {" · "}Colunas mapeadas: {parsed.colunas.length}
               </p>
               {parsed.avisos.length > 0 && (
                 <p className="mt-2 text-amber-400/90">{parsed.avisos.join(" · ")}</p>

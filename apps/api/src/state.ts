@@ -11,12 +11,14 @@ import {
 } from "@cia/pipeline";
 import { escolherProvider, comFallback, type LlmProvider } from "./llm/index.js";
 import { criarMockProvider } from "./llm/mock.js";
+import { escolherOcrProvider, type OcrProvider } from "./ocr/index.js";
 
 export interface AppState {
   comexSeed: ComexEntry[];
   benchmarkIndex: BenchmarkIndex;
   tecSource: AliquotaSource;
   provider: LlmProvider;
+  ocr: OcrProvider;
 }
 
 let state: AppState | null = null;
@@ -29,6 +31,7 @@ export function getState(): AppState {
   const tecSource = criarTecSource(tec);
   const mock = criarMockProvider(comex.itens);
   const provider = comFallback(escolherProvider(comex.itens), mock);
-  state = { comexSeed: comex.itens, benchmarkIndex, tecSource, provider };
+  const ocr = escolherOcrProvider();
+  state = { comexSeed: comex.itens, benchmarkIndex, tecSource, provider, ocr };
   return state;
 }

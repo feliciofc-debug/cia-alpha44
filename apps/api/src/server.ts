@@ -5,10 +5,10 @@ import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import { z } from "zod";
 import { cotacaoSchema } from "@cia/shared";
-import { parseSupplierFile } from "@cia/pipeline";
 import { getState } from "./state.js";
 import { buscarCambioPtax } from "./services/cambio.js";
 import { calcularCotacao, montarItens } from "./services/cotacao.js";
+import { ingerirArquivo } from "./services/ingest.js";
 
 const PORT = Number(process.env.PORT ?? 3333);
 const HOST = process.env.HOST ?? "0.0.0.0";
@@ -32,6 +32,8 @@ export async function buildServer() {
     return {
       provider: s.provider.nome,
       llmDisponivel: s.provider.disponivel,
+      ocrProvider: s.ocr.nome,
+      ocrDisponivel: s.ocr.disponivel,
       comexTotal: s.comexSeed.length,
       benefFiscal: "ALAGOAS",
     };
@@ -42,13 +44,19 @@ export async function buildServer() {
     return buscarCambioPtax(moeda.toUpperCase());
   });
 
-  // Upload da planilha do fornecedor → detecção de colunas + linhas cruas.
+  // Upload: planilha (.xlsx/.csv) ou PDF/imagem (OCR) → linhas para cotação.
   app.post("/api/parse", async (req, reply) => {
     const file = await req.file();
-    if (!file) return reply.status(400).send({ erro: "Envie um arquivo .xlsx/.csv no campo 'file'." });
-    const buf = await file.toBuffer();
-    const parsed = parseSupplierFile(new Uint8Array(buf));
-    return { arquivo: file.filename, ...parsed };
+    if (!file) {
+      return reply.status(400).send({ erro: "Envie um arquivo no campo 'file' (.xlsx, .csv, .pdf ou imagem)." });
+    }
+    try {
+      const buf = await file.toBuffer();
+      return await ingerirArquivo(file.filename, new Uint8Array(buf), getState().ocr);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Falha ao processar arquivo.";
+      return reply.status(422).send({ erro: msg });
+    }
   });
 
   // Linhas cruas → itens de domínio (tradução + NCM + DUIMP via IA, alíquotas via TEC).
