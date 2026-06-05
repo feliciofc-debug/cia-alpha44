@@ -1,6 +1,31 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "./auth/auth.tsx";
-import { api, type Meta } from "./lib/api.ts";
+import { api, type AnaliseCompleta, type Meta } from "./lib/api.ts";
+import { brl, fmtNcm } from "./lib/format.ts";
+import type { Canal, Item } from "./lib/types.ts";
+
+const CANAL_LABEL: Record<Canal, string> = {
+  VERDE_PROVAVEL: "Verde",
+  AMARELO_TECNICO: "Amarelo",
+  VERMELHO_TECNICO: "Vermelho",
+  CINZA_VALORACAO: "Cinza",
+};
+
+const CANAL_STYLE: Record<Canal, string> = {
+  VERDE_PROVAVEL: "bg-emerald-500/20 text-emerald-300",
+  AMARELO_TECNICO: "bg-amber-500/20 text-amber-300",
+  VERMELHO_TECNICO: "bg-red-500/20 text-red-300",
+  CINZA_VALORACAO: "bg-slate-500/20 text-slate-300",
+};
+
+function resumoCanais(itens: Item[]) {
+  const m: Record<string, number> = {};
+  for (const it of itens) {
+    const c = it.risco?.canal ?? "AMARELO_TECNICO";
+    m[c] = (m[c] ?? 0) + 1;
+  }
+  return m;
+}
 
 const FEATURES = [
   {
@@ -263,6 +288,8 @@ function Dashboard() {
   const [dragOver, setDragOver] = useState(false);
   const [erro, setErro] = useState("");
   const [parsed, setParsed] = useState<Awaited<ReturnType<typeof api.parse>> | null>(null);
+  const [analisando, setAnalisando] = useState(false);
+  const [analise, setAnalise] = useState<AnaliseCompleta | null>(null);
 
   useEffect(() => {
     api.meta().then(setMeta).catch(() => {});
@@ -271,6 +298,7 @@ function Dashboard() {
   async function processarArquivo(file: File) {
     setErro("");
     setParsed(null);
+    setAnalise(null);
     setUploading(true);
     try {
       const resultado = await api.parse(file);
@@ -295,6 +323,29 @@ function Dashboard() {
     if (file) void processarArquivo(file);
   }
 
+  async function iniciarAnalise() {
+    if (!parsed?.linhas.length) return;
+    setErro("");
+    setAnalisando(true);
+    setAnalise(null);
+    try {
+      const res = await api.analisar(parsed.linhas);
+      setAnalise(res);
+    } catch (e) {
+      setErro(
+        e instanceof Error
+          ? e.name === "AbortError"
+            ? "Análise demorou demais — tente com menos linhas ou tente novamente."
+            : e.message
+          : "Falha na análise IA.",
+      );
+    } finally {
+      setAnalisando(false);
+    }
+  }
+
+  const canais = analise ? resumoCanais(analise.itens) : null;
+
   return (
     <div className="min-h-full bg-ink-900">
       <header className="border-b border-white/5">
@@ -316,7 +367,7 @@ function Dashboard() {
 
       <main className="container-cia py-12">
         <div
-          className={`card mx-auto max-w-2xl p-10 text-center transition-colors ${
+          className={`card mx-auto max-w-4xl p-10 text-center transition-colors ${
             dragOver ? "border-brand-500/50 bg-brand-500/5" : ""
           }`}
           onDragOver={(e) => {
@@ -366,9 +417,82 @@ function Dashboard() {
               {parsed.linhas.length > 5 && (
                 <p className="mt-2 text-xs text-slate-500">+ {parsed.linhas.length - 5} itens…</p>
               )}
-              <p className="mt-4 text-xs text-brand-300">
-                Próxima etapa: classificação IA + grid fiscal (em construção).
-              </p>
+              {!analise && (
+                <button
+                  type="button"
+                  className="btn-primary mt-6 w-full"
+                  disabled={analisando}
+                  onClick={() => void iniciarAnalise()}
+                >
+                  {analisando
+                    ? `Analisando ${parsed.totalLinhas} itens com IA… (pode levar alguns minutos)`
+                    : `Analisar com IA (${parsed.totalLinhas} itens)`}
+                </button>
+              )}
+            </div>
+          )}
+
+          {analise && (
+            <div className="mt-8 space-y-6 text-left">
+              <div className="rounded-xl border border-brand-500/30 bg-brand-500/10 p-4">
+                <p className="font-semibold text-white">Análise concluída</p>
+                <p className="mt-1 text-sm text-slate-300">
+                  Provedor: {analise.provider} · {analise.itens.length} itens classificados
+                </p>
+                {analise.avisoFiscal && (
+                  <p className="mt-2 text-sm text-amber-300">{analise.avisoFiscal}</p>
+                )}
+                {analise.resultado && (
+                  <p className="mt-2 text-lg font-bold text-white">
+                    Total estimado: {brl(analise.resultado.totalBRL)}
+                  </p>
+                )}
+              </div>
+
+              {canais && (
+                <div className="flex flex-wrap gap-2">
+                  {(Object.entries(canais) as [Canal, number][]).map(([canal, qtd]) => (
+                    <span
+                      key={canal}
+                      className={`rounded-full px-3 py-1 text-xs font-medium ${CANAL_STYLE[canal]}`}
+                    >
+                      {CANAL_LABEL[canal]}: {qtd}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="max-h-96 overflow-auto rounded-xl border border-white/10">
+                <table className="w-full text-left text-xs">
+                  <thead className="sticky top-0 bg-ink-800 text-slate-400">
+                    <tr>
+                      <th className="p-2">Descrição (PT)</th>
+                      <th className="p-2">NCM</th>
+                      <th className="p-2">Canal</th>
+                      <th className="p-2">Score</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {analise.itens.map((it, i) => (
+                      <tr key={i} className="border-t border-white/5 text-slate-300">
+                        <td className="max-w-xs p-2">
+                          <div className="truncate font-medium text-white">{it.descPt || it.descOriginal}</div>
+                          <div className="truncate text-slate-500">{it.descDuimp.slice(0, 80)}</div>
+                        </td>
+                        <td className="p-2 whitespace-nowrap">{fmtNcm(it.ncm || "00000000")}</td>
+                        <td className="p-2">
+                          {it.risco && (
+                            <span className={`rounded px-2 py-0.5 ${CANAL_STYLE[it.risco.canal]}`}>
+                              {CANAL_LABEL[it.risco.canal]}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-2">{it.risco?.score ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
           <p className="mt-6 text-xs text-slate-500">

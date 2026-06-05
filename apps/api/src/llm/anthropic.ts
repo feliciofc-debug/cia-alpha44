@@ -17,7 +17,7 @@ export function criarAnthropicProvider(apiKey: string, model = process.env.ANTHR
         },
         body: JSON.stringify({
           model,
-          max_tokens: 4096,
+          max_tokens: 8192,
           system: SYSTEM_PROMPT,
           messages: [{ role: "user", content: buildUserPrompt(itens) }],
         }),

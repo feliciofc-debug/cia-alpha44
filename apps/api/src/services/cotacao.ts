@@ -11,11 +11,25 @@ import {
 import type { Cotacao, Item } from "@cia/shared";
 import type { AppState } from "../state.js";
 
+const CLASSIFY_LOTE = 12;
+
+/** Classifica em lotes para não estourar tokens/tempo da IA em planilhas grandes. */
+async function classificarEmLotes(
+  state: AppState,
+  linhas: LinhaCrua[],
+): Promise<Awaited<ReturnType<AppState["provider"]["classify"]>>> {
+  const inputs = linhas.map((l) => ({ descOriginal: l.descOriginal, ncmInformado: l.ncm }));
+  const saida: Awaited<ReturnType<AppState["provider"]["classify"]>> = [];
+  for (let i = 0; i < inputs.length; i += CLASSIFY_LOTE) {
+    const parte = await state.provider.classify(inputs.slice(i, i + CLASSIFY_LOTE));
+    saida.push(...parte);
+  }
+  return saida;
+}
+
 /** Converte linhas cruas do parser em itens de domínio (tradução+NCM via IA, alíquotas via TEC). */
 export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise<{ itens: Item[]; provider: string }> {
-  const classificados = await state.provider.classify(
-    linhas.map((l) => ({ descOriginal: l.descOriginal, ncmInformado: l.ncm })),
-  );
+  const classificados = await classificarEmLotes(state, linhas);
 
   const itens: Item[] = linhas.map((l, i) => {
     const c = classificados[i];
