@@ -15,6 +15,15 @@ export interface ComexStatEntry {
   amostra: number;
 }
 
+/** Alias usado pela API e pelo mock LLM. */
+export type ComexEntry = ComexStatEntry;
+
+export interface BenchmarkIndex {
+  comex: Map<string, ComexStatEntry>;
+  historico: Map<string, HistoricoEntry>;
+  contexto: string;
+}
+
 export interface ComexSeed {
   fonte: string;
   contexto: string;
@@ -69,10 +78,29 @@ export function calcTetoHeuristico(mediaFobKg: number, amostra: number): number 
   return mediaFobKg * fator;
 }
 
-export function lookupBenchmark(ncm: string): Benchmark {
-  const key = normalizarNcm(ncm);
+/** Monta índice em memória a partir do seed carregado (API). */
+export function buildBenchmarkIndex(
+  itens: ComexStatEntry[],
+  contexto = comexstatData.contexto,
+): BenchmarkIndex {
+  const comex = new Map<string, ComexStatEntry>();
+  for (const row of itens) {
+    comex.set(normalizarNcm(row.ncm), row);
+  }
+  return {
+    comex,
+    historico: new Map(historicoIndex),
+    contexto,
+  };
+}
 
-  const hist = historicoIndex.get(key);
+function lookupFromMaps(
+  key: string,
+  comex: Map<string, ComexStatEntry>,
+  historico: Map<string, HistoricoEntry>,
+  contexto: string,
+): Benchmark {
+  const hist = historico.get(key);
   if (hist && hist.fobKg > 0) {
     const piso = calcPisoDefensavel(hist.fobKg, hist.amostra);
     const teto = calcTetoHeuristico(hist.fobKg, hist.amostra);
@@ -86,7 +114,7 @@ export function lookupBenchmark(ncm: string): Benchmark {
     };
   }
 
-  const cs = comexstatIndex.get(key);
+  const cs = comex.get(key);
   if (cs && cs.fobKg > 0) {
     const piso = calcPisoDefensavel(cs.fobKg, cs.amostra);
     const teto = calcTetoHeuristico(cs.fobKg, cs.amostra);
@@ -96,7 +124,7 @@ export function lookupBenchmark(ncm: string): Benchmark {
       pisoDefensavel: piso,
       teto,
       amostra: cs.amostra,
-      nota: `ComexStat — ${comexstatData.contexto} · ${cs.amostra} DI(s) · média US$ ${cs.fobKg.toFixed(4)}/kg`,
+      nota: `ComexStat — ${contexto} · ${cs.amostra} DI(s) · média US$ ${cs.fobKg.toFixed(4)}/kg`,
     };
   }
 
@@ -108,6 +136,23 @@ export function lookupBenchmark(ncm: string): Benchmark {
     amostra: 0,
     nota: `Sem benchmark carregado para NCM ${formatNcm(key)} — calibragem por classe/heurística`,
   };
+}
+
+export function lookupBenchmark(index: BenchmarkIndex, ncm: string): Benchmark;
+export function lookupBenchmark(ncm: string): Benchmark;
+export function lookupBenchmark(
+  indexOrNcm: BenchmarkIndex | string,
+  ncm?: string,
+): Benchmark {
+  if (typeof indexOrNcm === "string") {
+    return lookupFromMaps(
+      normalizarNcm(indexOrNcm),
+      comexstatIndex,
+      historicoIndex,
+      comexstatData.contexto,
+    );
+  }
+  return lookupFromMaps(normalizarNcm(ncm ?? ""), indexOrNcm.comex, indexOrNcm.historico, indexOrNcm.contexto);
 }
 
 export function getComexStatStats(): { total: number; contexto: string } {

@@ -1,0 +1,35 @@
+# Postgres dedicado — CIA / Alpha 44
+# Uso na VPS: copie .env.example → .env, defina POSTGRES_PASSWORD, depois:
+#   docker compose up -d
+#
+# Segurança: porta 5432 só em 127.0.0.1 (túnel SSH do dev/CI; não expor na internet).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cia-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cia_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no arquivo .env}
+      POSTGRES_DB: ${POSTGRES_DB:-cia_alpha44}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - cia_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cia_app} -d ${POSTGRES_DB:-cia_alpha44}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - cia-net
+
+volumes:
+  cia_pg_data:
+    name: cia_pg_data
+
+networks:
+  cia-net:
+    name: cia-net

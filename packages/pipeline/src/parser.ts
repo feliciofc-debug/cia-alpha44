@@ -3,6 +3,7 @@
  */
 
 import * as XLSX from "xlsx";
+import type { LinhaCrua } from "./linha.js";
 
 export type ColunaDetectada =
   | "descricao"
@@ -158,4 +159,48 @@ export function parsePlanilhaBuffer(
   }
 
   return { aba, headerRow, colunas, linhas, avisos };
+}
+
+export interface ParsedSupplierFile {
+  abaUsada: string;
+  headerRowIndex: number;
+  colunas: { campo: ColunaDetectada; colIndex: number; header: string; confianca: number }[];
+  mapeamento: Record<string, number>;
+  linhas: LinhaCrua[];
+  totalLinhas: number;
+  avisos: string[];
+}
+
+/** Entrada da API `/api/parse` (buffer do upload). */
+export function parseSupplierFile(bytes: Uint8Array): ParsedSupplierFile {
+  const parsed = parsePlanilhaBuffer(Buffer.from(bytes));
+  const mapeamento: Record<string, number> = {};
+  for (const c of parsed.colunas) {
+    if (c.tipo !== "desconhecido") mapeamento[c.tipo] = c.indice;
+  }
+  const linhas: LinhaCrua[] = parsed.linhas.map((l) => ({
+    __row: l.linha,
+    descOriginal: l.descricao,
+    ncm: l.ncm,
+    qtd: l.qtd,
+    pesoBrutoKg: l.pesoBrutoKg,
+    pesoLiqKg: l.pesoLiqKg,
+    fobUnitarioUS: l.precoUnitario,
+    fobTotalUS: l.fobTotalUS,
+    dimensoes: null,
+  }));
+  return {
+    abaUsada: parsed.aba,
+    headerRowIndex: parsed.headerRow,
+    colunas: parsed.colunas.map((c) => ({
+      campo: c.tipo,
+      colIndex: c.indice,
+      header: c.header,
+      confianca: c.confianca,
+    })),
+    mapeamento,
+    linhas,
+    totalLinhas: linhas.length,
+    avisos: parsed.avisos,
+  };
 }

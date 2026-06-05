@@ -8,10 +8,19 @@
     "packages/*",
     "apps/*"
   ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "test": "npm run test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
-    "engine:test": "npm run test -w @cia/fiscal-engine"
+    "build:api": "npm run build -w @cia/shared -w @cia/fiscal-engine -w @cia/pipeline -w @cia/db -w @cia/api",
+    "build:web": "npm run build -w @cia/web",
+    "start:api": "npm run start -w @cia/api",
+    "engine:test": "npm run test -w @cia/fiscal-engine",
+    "db:generate": "npm run db:generate -w @cia/db",
+    "db:migrate:deploy": "npm run db:migrate:deploy -w @cia/db",
+    "db:seed": "npm run db:seed -w @cia/db"
   },
   "devDependencies": {
     "typescript": "^5.6.3",

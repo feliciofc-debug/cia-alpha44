@@ -5,10 +5,12 @@
 import type { Benchmark, Calibracao, Canal, Risco } from "@cia/shared";
 
 export interface RiscoInput {
-  ncm: string;
-  descPt: string;
+  ncm?: string;
+  descPt?: string;
   calibracao: Calibracao;
   benchmark: Benchmark;
+  /** FOB/KG final usado na análise (API). */
+  fobKgFinal?: number | null;
   anuencia?: string[];
   antidumping?: boolean;
   pesoLiqKg?: number;

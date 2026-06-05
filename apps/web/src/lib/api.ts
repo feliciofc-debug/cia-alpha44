@@ -1,6 +1,7 @@
 import type { Cotacao, Item, ParsedSheet, ResultadoCotacao } from "./types";
 
-const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:3333";
+/** Vazio = usa proxy do Vite (`/api` → localhost:3333). */
+const BASE = (import.meta.env.VITE_API_URL as string) || "";
 
 async function handle<T>(res: Response): Promise<T> {
   if (!res.ok) {

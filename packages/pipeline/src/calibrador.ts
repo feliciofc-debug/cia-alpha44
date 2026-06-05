@@ -7,16 +7,19 @@
 import type { Benchmark, Calibracao } from "@cia/shared";
 
 export interface CalibradorInput {
-  fobKgInformado: number | null;
+  /** Alias aceito pela API (`fobKgOriginal`). */
+  fobKgInformado?: number | null;
+  fobKgOriginal?: number | null;
   fobTotalUS?: number | null;
-  pesoLiqKg: number;
+  pesoLiqKg?: number;
   benchmark: Benchmark;
   /** Menor preço B2B internacional informado (opcional). */
   menorPrecoB2BKg?: number | null;
 }
 
 export function calcFobKg(input: CalibradorInput): number {
-  const { fobKgInformado, fobTotalUS, pesoLiqKg } = input;
+  const fobKgInformado = input.fobKgInformado ?? input.fobKgOriginal ?? null;
+  const { fobTotalUS, pesoLiqKg = 0 } = input;
   if (fobKgInformado !== null && fobKgInformado > 0) return fobKgInformado;
   if (fobTotalUS && fobTotalUS > 0 && pesoLiqKg > 0) return fobTotalUS / pesoLiqKg;
   return 0;

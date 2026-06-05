@@ -13,9 +13,16 @@ import { calcularCotacao, montarItens } from "./services/cotacao.js";
 const PORT = Number(process.env.PORT ?? 3333);
 const HOST = process.env.HOST ?? "0.0.0.0";
 
+/** Produção (Render): WEB_ORIGIN=https://app.seudominio.com.br — aceita várias origens separadas por vírgula. */
+function corsOrigins(): boolean | string[] {
+  const raw = process.env.WEB_ORIGIN?.trim();
+  if (!raw) return true;
+  return raw.split(",").map((o) => o.trim()).filter(Boolean);
+}
+
 export async function buildServer() {
   const app = Fastify({ logger: true });
-  await app.register(cors, { origin: true });
+  await app.register(cors, { origin: corsOrigins() });
   await app.register(multipart, { limits: { fileSize: 25 * 1024 * 1024 } });
 
   app.get("/api/health", async () => ({ ok: true, ts: new Date().toISOString() }));

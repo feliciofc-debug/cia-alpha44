@@ -73,17 +73,20 @@ npm run engine:test    # roda os testes do motor fiscal (9 testes)
 npm run build          # build de todos os pacotes
 ```
 
-## Deploy (quando for publicar — te aviso antes)
+## Ecossistema (produção)
 
-| Serviço | Para quê | Quando pedir |
-|---|---|---|
-| **GitHub** | backup + histórico fora do PC + CI | antes do primeiro deploy |
-| **Neon** | Postgres gerenciado (cotações, NCM cache) | ao ligar Prisma/API |
-| **Render** ou **Railway** | API Node (Fastify) 24/7 | quando a API estiver pronta |
-| **Vercel** | site React (frontend) | quando o frontend estiver pronto |
-| **Anthropic / OpenAI** | LLM (tradução + NCM) | chave do **cliente** no painel |
+Stack oficial — igual aos seus outros projetos:
 
-Fluxo típico: GitHub → Neon + Render (API) + Vercel (web). LLM: variável de ambiente `ANTHROPIC_API_KEY` (ou outro provedor) configurada pelo cliente.
+| Serviço | Papel |
+|---|---|
+| **GitHub** | código + CI (`.github/workflows/ci.yml`) |
+| **Render** | API Fastify + Postgres (`render.yaml`) |
+| **Vercel** | site React + domínio apresentável (`vercel.json`) |
+| **Anthropic** | LLM — chave no painel Render (`ANTHROPIC_API_KEY`) |
+
+Guia completo: **[docs/ECOSYSTEM.md](docs/ECOSYSTEM.md)** (Blueprint Render, domínios, checklist go-live).
+
+VPS local opcional só para dev/túnel; produção não depende dela.
 
 ## Decisões de produto
 
