@@ -20,7 +20,9 @@ import {
 import { ingerirArquivo } from "./services/ingest.js";
 import { listarClientesDashboard } from "./services/dashboard-clientes.js";
 import { obterDashboardKpis } from "./services/dashboard-kpis.js";
+import { obterRelatorioFaturamento } from "./services/dashboard-relatorio.js";
 import { obterSeriesMensais } from "./services/dashboard-series.js";
+import { gerarPdfRelatorioFaturamento } from "./services/pdf-relatorio-faturamento.js";
 import { gerarPdfCotacao, gerarPdfFromPayload } from "./services/pdf-cotacao.js";
 
 const PORT = Number(process.env.PORT ?? 3333);
@@ -123,6 +125,41 @@ export async function buildServer() {
       return await listarClientesDashboard(q);
     } catch (e) {
       return persistenciaErro(reply, e);
+    }
+  });
+
+  app.get("/api/dashboard/relatorio", async (req, reply) => {
+    try {
+      const q = req.query as { ano?: string; mes?: string };
+      const ano = Number(q.ano) || new Date().getFullYear();
+      const mes = q.mes != null && q.mes !== "" ? Number(q.mes) : undefined;
+      return await obterRelatorioFaturamento({ ano, mes });
+    } catch (e) {
+      if (e instanceof Error && (e.message === "Ano inválido." || e.message === "Mês inválido.")) {
+        return reply.status(400).send({ erro: e.message });
+      }
+      return persistenciaErro(reply, e);
+    }
+  });
+
+  app.get("/api/dashboard/relatorio/pdf", async (req, reply) => {
+    try {
+      const q = req.query as { ano?: string; mes?: string };
+      const ano = Number(q.ano) || new Date().getFullYear();
+      const mes = q.mes != null && q.mes !== "" ? Number(q.mes) : undefined;
+      const rel = await obterRelatorioFaturamento({ ano, mes });
+      const buf = await gerarPdfRelatorioFaturamento(rel);
+      const slug = mes != null ? `${ano}-${String(mes).padStart(2, "0")}` : String(ano);
+      return reply
+        .header("Content-Type", "application/pdf")
+        .header("Content-Disposition", `attachment; filename="cia-faturamento-${slug}.pdf"`)
+        .send(buf);
+    } catch (e) {
+      if (e instanceof Error && (e.message === "Ano inválido." || e.message === "Mês inválido.")) {
+        return reply.status(400).send({ erro: e.message });
+      }
+      const msg = e instanceof Error ? e.message : "Falha ao gerar relatório.";
+      return reply.status(422).send({ erro: msg });
     }
   });
 

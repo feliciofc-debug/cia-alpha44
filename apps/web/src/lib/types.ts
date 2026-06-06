@@ -239,6 +239,44 @@ export interface ClienteResumo {
   destinos: string[];
 }
 
+export interface RelatorioProcesso {
+  id: string;
+  cliente: string;
+  destino: string;
+  criadoEm: string;
+  totalBRL: number;
+  lucroTradeBRL: number;
+  lucroLiquidoBRL: number;
+}
+
+export interface RelatorioMes {
+  mes: string;
+  label: string;
+  mesNum: number;
+  processos: number;
+  volumeBRL: number;
+  lucroTradeBRL: number;
+  lucroLiquidoBRL: number;
+}
+
+export interface RelatorioFaturamento {
+  tipo: "mensal" | "anual";
+  ano: number;
+  mes?: number;
+  periodoLabel: string;
+  empresa: string;
+  geradoEm: string;
+  meses: RelatorioMes[];
+  totais: {
+    processos: number;
+    volumeBRL: number;
+    lucroTradeBRL: number;
+    lucroLiquidoBRL: number;
+    ticketMedioBRL: number;
+  };
+  processos: RelatorioProcesso[];
+}
+
 export interface DashboardKpis {
   totalCotacoes: number;
   cotacoesHoje: number;

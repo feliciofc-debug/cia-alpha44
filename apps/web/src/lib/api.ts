@@ -7,6 +7,7 @@ import type {
   ClienteResumo,
   DashboardKpis,
   DashboardSeries,
+  RelatorioFaturamento,
   Item,
   ParsedSheet,
   ResultadoCotacao,
@@ -152,6 +153,20 @@ export const api = {
   dashboardClientes: (q?: string) => {
     const qs = q?.trim() ? `?q=${encodeURIComponent(q.trim())}` : "";
     return fetch(`${BASE}/api/dashboard/clientes${qs}`).then(handle<{ total: number; clientes: ClienteResumo[] }>);
+  },
+
+  relatorioFaturamento: (ano: number, mes?: number) => {
+    const params = new URLSearchParams({ ano: String(ano) });
+    if (mes != null) params.set("mes", String(mes));
+    return fetch(`${BASE}/api/dashboard/relatorio?${params}`).then(handle<RelatorioFaturamento>);
+  },
+
+  baixarRelatorioFaturamentoPdf: async (ano: number, mes?: number) => {
+    const params = new URLSearchParams({ ano: String(ano) });
+    if (mes != null) params.set("mes", String(mes));
+    const res = await fetch(`${BASE}/api/dashboard/relatorio/pdf?${params}`);
+    const slug = mes != null ? `${ano}-${String(mes).padStart(2, "0")}` : String(ano);
+    return api.baixarPdfBlob(res, `cia-faturamento-${slug}.pdf`);
   },
 
   listarCotacoes: (cliente?: string) => {

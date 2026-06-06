@@ -1,4 +1,5 @@
 import { GraficosProducao } from "./graficos-producao.tsx";
+import { RelatorioFaturamentoPainel } from "./relatorio-faturamento.tsx";
 import { brl, pct } from "./lib/format.ts";
 import type { DashboardKpis, DashboardSeries } from "./lib/types.ts";
 
@@ -84,6 +85,10 @@ export function PainelKpisView({
       </div>
 
       <GraficosProducao series={series} />
+
+      <div className="rounded-xl border border-white/10 bg-ink-900/40 p-4">
+        <RelatorioFaturamentoPainel />
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-white/10 bg-ink-900/40 p-4">
