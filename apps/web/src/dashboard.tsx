@@ -78,6 +78,19 @@ function ResumoFinanceiroPainel({
         </div>
       </div>
 
+      <p className="rounded-lg border border-white/10 bg-ink-900/40 px-4 py-3 text-center text-sm text-slate-300">
+        <span className="text-slate-500">{brl(financeiro.custoImportacaoBRL)}</span>
+        <span className="mx-2 text-slate-600">+</span>
+        <span className="text-amber-400/90">{brl(financeiro.impostosSaidaBRL)}</span>
+        <span className="mx-2 text-slate-600">+</span>
+        <span className="text-emerald-400">{brl(financeiro.markupBRL)}</span>
+        <span className="mx-2 text-slate-600">=</span>
+        <span className="font-semibold text-white">{brl(financeiro.totalOrcamentoBRL)}</span>
+        <span className="mt-1 block text-xs text-slate-500">
+          Custo import. + Imp. venda + Lucro trade
+        </span>
+      </p>
+
       {resultado && (
         <details className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
           <summary className="cursor-pointer font-medium text-slate-300">Detalhe fiscal (entrada + saída)</summary>
@@ -453,6 +466,11 @@ export function Dashboard() {
               </div>
             ) : (
               <div className="overflow-x-auto">
+                <p className="border-b border-white/5 px-6 py-2 text-xs text-slate-500">
+                  Orçamento = <span className="text-slate-400">Custo import.</span> +{" "}
+                  <span className="text-amber-500/80">Imp. venda</span> +{" "}
+                  <span className="text-emerald-500/80">Lucro trade</span>
+                </p>
                 <table className="w-full text-left text-sm">
                   <thead className="bg-ink-800/80 text-xs uppercase tracking-wide text-slate-500">
                     <tr>
@@ -460,6 +478,7 @@ export function Dashboard() {
                       <th className="px-4 py-3">Data</th>
                       <th className="px-4 py-3">Itens</th>
                       <th className="px-4 py-3">Custo import.</th>
+                      <th className="px-4 py-3">Imp. venda</th>
                       <th className="px-4 py-3">Lucro trade</th>
                       <th className="px-4 py-3">Orçamento</th>
                       <th className="px-4 py-3">Canal</th>
@@ -474,6 +493,9 @@ export function Dashboard() {
                         <td className="px-4 py-3 text-slate-300">{c.totalItens}</td>
                         <td className="px-4 py-3 text-slate-300">
                           {c.custoImportacaoBRL != null ? brl(c.custoImportacaoBRL) : "—"}
+                        </td>
+                        <td className="px-4 py-3 text-amber-200/80">
+                          {c.impostosSaidaBRL != null ? brl(c.impostosSaidaBRL) : "—"}
                         </td>
                         <td className="px-4 py-3 font-medium text-emerald-300">
                           {c.markupBRL != null ? (
