@@ -12,6 +12,7 @@ import {
   atualizarCotacao,
   buscarCotacao,
   duplicarCotacao,
+  excluirCotacao,
   listarCotacoes,
   PersistenciaIndisponivelError,
   salvarCotacao,
@@ -243,6 +244,17 @@ export async function buildServer() {
       const dup = await duplicarCotacao(id, getState(), body.data);
       if (!dup) return reply.status(404).send({ erro: "Cotação não encontrada." });
       return dup;
+    } catch (e) {
+      return persistenciaErro(reply, e);
+    }
+  });
+
+  app.delete("/api/cotacoes/:id", async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string };
+      const ok = await excluirCotacao(id);
+      if (!ok) return reply.status(404).send({ erro: "Cotação não encontrada." });
+      return { ok: true };
     } catch (e) {
       return persistenciaErro(reply, e);
     }

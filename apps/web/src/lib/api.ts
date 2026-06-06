@@ -180,6 +180,9 @@ export const api = {
       body: JSON.stringify(opts ?? {}),
     }).then(handle<CotacaoSalva>),
 
+  excluirCotacao: (id: string) =>
+    fetch(`${BASE}/api/cotacoes/${id}`, { method: "DELETE" }).then(handle<{ ok: true }>),
+
   calcular: (cotacao: Cotacao) =>
     fetch(`${BASE}/api/calcular`, {
       method: "POST",

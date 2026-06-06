@@ -31,6 +31,23 @@ const FEATURES = [
   },
 ];
 
+function IconOlhoAberto() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function IconOlhoFechado() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M10.7 10.7a3 3 0 0 0 4.2 4.2M9.9 5.1A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a18.2 18.2 0 0 1-3.2 4.5M6.1 6.1C3.5 8 2 12 2 12a18.2 18.2 0 0 0 5.1 5.9M3 3l18 18" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function LoginModal({
   onClose,
   mode,
@@ -44,6 +61,7 @@ function LoginModal({
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erro, setErro] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -98,15 +116,30 @@ function LoginModal({
             />
           </div>
           <div>
-            <label className="label">Senha</label>
-            <input
-              className="input"
-              type="password"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              required
-              placeholder="••••••••"
-            />
+            <label className="label" htmlFor="auth-senha">
+              Senha
+            </label>
+            <div className="relative">
+              <input
+                id="auth-senha"
+                className="input pr-10"
+                type={mostrarSenha ? "text" : "password"}
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                required
+                placeholder="••••••••"
+                autoComplete={mode === "login" ? "current-password" : "new-password"}
+              />
+              <button
+                type="button"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 transition hover:text-white"
+                onClick={() => setMostrarSenha((v) => !v)}
+                aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+                tabIndex={-1}
+              >
+                {mostrarSenha ? <IconOlhoFechado /> : <IconOlhoAberto />}
+              </button>
+            </div>
           </div>
           {erro && <p className="text-sm text-red-400">{erro}</p>}
           {mode === "login" && (

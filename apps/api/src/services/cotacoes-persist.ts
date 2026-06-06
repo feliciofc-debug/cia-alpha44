@@ -462,3 +462,13 @@ export async function atualizarCotacao(id: string, state: AppState, opts: Atuali
 export async function atualizarFiscalCotacao(id: string, state: AppState, opts: AtualizarCotacaoInput) {
   return atualizarCotacao(id, state, opts);
 }
+
+export async function excluirCotacao(id: string): Promise<boolean> {
+  if (!dbAtivo()) throw new PersistenciaIndisponivelError();
+
+  const row = await prisma.cotacao.findUnique({ where: { id }, select: { id: true } });
+  if (!row) return false;
+
+  await prisma.cotacao.delete({ where: { id } });
+  return true;
+}

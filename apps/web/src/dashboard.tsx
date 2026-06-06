@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "./auth/auth.tsx";
 import { api, type AnaliseCompleta, type Meta } from "./lib/api.ts";
-import { brl, fmtNcm, pct } from "./lib/format.ts";
+import { brl, fmtNcm, pct, usdKg } from "./lib/format.ts";
 import { extrairResumoFinanceiro, type ResumoFinanceiro } from "./lib/financeiro.ts";
 import {
   aplicarEditorNaCotacao,
@@ -39,6 +39,28 @@ function resumoCanais(itens: Item[]) {
     m[c] = (m[c] ?? 0) + 1;
   }
   return m;
+}
+
+function fobKgItem(it: Item) {
+  if (it.calibracao) {
+    return {
+      principal: it.calibracao.fobKgCalibrado,
+      original: it.calibracao.fobKgOriginal,
+      ajustado: it.calibracao.ajustado,
+    };
+  }
+  if (it.pesoLiqKg > 0 && it.fobTotalUS > 0) {
+    return { principal: it.fobTotalUS / it.pesoLiqKg, original: null, ajustado: false };
+  }
+  return { principal: null, original: null, ajustado: false };
+}
+
+function IconLixeira() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 function fmtData(iso: string) {
@@ -219,27 +241,62 @@ function AnalisePainel({
               <th className="p-2">Descrição (PT)</th>
               <th className="p-2">NCM</th>
               <th className="p-2">FOB US$</th>
+              <th className="p-2">FOB US$/kg</th>
+              <th className="p-2">Benchmark</th>
               <th className="p-2">Canal</th>
             </tr>
           </thead>
           <tbody>
-            {itens.map((it, i) => (
-              <tr key={i} className="border-t border-white/5 text-slate-300">
-                <td className="max-w-xs p-2">
-                  <div className="truncate font-medium text-white">{it.descPt || it.descOriginal}</div>
-                  <div className="truncate text-slate-500">{it.descDuimp.slice(0, 80)}</div>
-                </td>
-                <td className="p-2 whitespace-nowrap">{fmtNcm(it.ncm || "00000000")}</td>
-                <td className="p-2 whitespace-nowrap">{it.fobTotalUS > 0 ? it.fobTotalUS.toFixed(2) : "—"}</td>
-                <td className="p-2">
-                  {it.risco && (
-                    <span className={`rounded px-2 py-0.5 ${CANAL_STYLE[it.risco.canal]}`}>
-                      {CANAL_LABEL[it.risco.canal]}
-                    </span>
-                  )}
-                </td>
-              </tr>
-            ))}
+            {itens.map((it, i) => {
+              const fobKg = fobKgItem(it);
+              return (
+                <tr key={i} className="border-t border-white/5 text-slate-300">
+                  <td className="max-w-xs p-2">
+                    <div className="truncate font-medium text-white">{it.descPt || it.descOriginal}</div>
+                    <div className="truncate text-slate-500">{it.descDuimp.slice(0, 80)}</div>
+                  </td>
+                  <td className="p-2 whitespace-nowrap">{fmtNcm(it.ncm || "00000000")}</td>
+                  <td className="p-2 whitespace-nowrap">{it.fobTotalUS > 0 ? it.fobTotalUS.toFixed(2) : "—"}</td>
+                  <td className="p-2 whitespace-nowrap">
+                    {fobKg.principal != null ? (
+                      <>
+                        <span className={fobKg.ajustado ? "font-medium text-amber-300" : ""}>{usdKg(fobKg.principal)}</span>
+                        {fobKg.ajustado && fobKg.original != null && (
+                          <span className="block text-[10px] text-slate-500">orig. {usdKg(fobKg.original)}</span>
+                        )}
+                        {it.pesoLiqKg > 0 && (
+                          <span className="block text-[10px] text-slate-500">{it.pesoLiqKg.toLocaleString("pt-BR")} kg</span>
+                        )}
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="p-2 whitespace-nowrap">
+                    {it.benchmark?.mediaFobKg != null ? (
+                      <>
+                        <span className="text-slate-300">{usdKg(it.benchmark.mediaFobKg)}</span>
+                        <span className="block text-[10px] text-slate-500">{it.benchmark.fonte}</span>
+                        {it.calibracao?.desvioBenchmarkPct != null && (
+                          <span className="block text-[10px] text-slate-500">
+                            desvio {it.calibracao.desvioBenchmarkPct.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-slate-500">sem base</span>
+                    )}
+                  </td>
+                  <td className="p-2">
+                    {it.risco && (
+                      <span className={`rounded px-2 py-0.5 ${CANAL_STYLE[it.risco.canal]}`}>
+                        {CANAL_LABEL[it.risco.canal]}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -320,6 +377,7 @@ export function Dashboard() {
   const [detalhe, setDetalhe] = useState<CotacaoSalva | null>(null);
   const [dupAlvo, setDupAlvo] = useState<CotacaoResumo | null>(null);
   const [duplicando, setDuplicando] = useState(false);
+  const [excluindoId, setExcluindoId] = useState<string | null>(null);
   const [editorDraft, setEditorDraft] = useState<EditorDraft | null>(null);
   const [aplicandoEditor, setAplicandoEditor] = useState(false);
   const [pdfBaixando, setPdfBaixando] = useState<"cliente" | "trade" | null>(null);
@@ -544,6 +602,31 @@ export function Dashboard() {
     }
   }
 
+  async function excluirCotacao(c: CotacaoResumo) {
+    const msg = `Excluir a cotação de "${c.cliente}"?\n\nEsta ação não pode ser desfeita.`;
+    if (!window.confirm(msg)) return;
+
+    setExcluindoId(c.id);
+    setErro("");
+    try {
+      await api.excluirCotacao(c.id);
+      if (detalhe?.id === c.id) {
+        setDetalhe(null);
+        setEditorDraft(null);
+        setView("lista");
+      }
+      await Promise.all([
+        carregarLista(filtroAtivo || undefined),
+        carregarPainel(),
+        carregarClientes(busca.trim() || undefined),
+      ]);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao excluir cotação.");
+    } finally {
+      setExcluindoId(null);
+    }
+  }
+
   const navAtivo: NavItem = view === "detalhe" ? "lista" : view;
 
   return (
@@ -625,7 +708,8 @@ export function Dashboard() {
                 <table className="w-full text-left text-sm">
                   <thead className="bg-ink-800/80 text-xs uppercase tracking-wide text-slate-500">
                     <tr>
-                      <th className="px-6 py-3">Cliente</th>
+                      <th className="w-10 px-3 py-3" aria-label="Excluir" />
+                      <th className="px-4 py-3">Cliente</th>
                       <th className="px-4 py-3">Data</th>
                       <th className="px-4 py-3">Itens</th>
                       <th className="px-4 py-3">Destino</th>
@@ -640,7 +724,19 @@ export function Dashboard() {
                   <tbody>
                     {lista.map((c) => (
                       <tr key={c.id} className="border-t border-white/5 hover:bg-white/[0.02]">
-                        <td className="px-6 py-3 font-medium text-white">{c.cliente}</td>
+                        <td className="px-3 py-3">
+                          <button
+                            type="button"
+                            className="rounded p-1.5 text-slate-500 transition hover:bg-red-500/10 hover:text-red-400 disabled:opacity-40"
+                            title="Excluir cotação"
+                            aria-label={`Excluir cotação de ${c.cliente}`}
+                            disabled={excluindoId === c.id}
+                            onClick={() => void excluirCotacao(c)}
+                          >
+                            <IconLixeira />
+                          </button>
+                        </td>
+                        <td className="px-4 py-3 font-medium text-white">{c.cliente}</td>
                         <td className="px-4 py-3 text-slate-400 whitespace-nowrap">{fmtData(c.criadoEm)}</td>
                         <td className="px-4 py-3 text-slate-300">{c.totalItens}</td>
                         <td className="px-4 py-3 text-slate-300 whitespace-nowrap">

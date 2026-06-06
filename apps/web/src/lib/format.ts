@@ -8,6 +8,11 @@ export const usd = (n: number | null | undefined) =>
     ? "—"
     : n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
 
+export const usdKg = (n: number | null | undefined, casas = 4) =>
+  n == null
+    ? "—"
+    : `US$ ${n.toLocaleString("en-US", { minimumFractionDigits: casas, maximumFractionDigits: casas })}/kg`;
+
 export const num = (n: number | null | undefined, casas = 2) =>
   n == null ? "—" : n.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas });
 
