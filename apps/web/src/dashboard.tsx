@@ -53,11 +53,16 @@ function ResumoFinanceiroPainel({
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border border-white/10 bg-ink-900/50 p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Custo da operação</p>
-          <p className="mt-1 text-xl font-bold text-slate-200">{brl(financeiro.custoOperacionalBRL)}</p>
-          <p className="mt-1 text-xs text-slate-500">Impostos + taxas (sem margem trade)</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Custo importação</p>
+          <p className="mt-1 text-xl font-bold text-slate-200">{brl(financeiro.custoImportacaoBRL)}</p>
+          <p className="mt-1 text-xs text-slate-500">Fixo — nacionalização (não muda com markup)</p>
+        </div>
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-amber-400/90">Impostos venda</p>
+          <p className="mt-1 text-xl font-bold text-amber-200/90">{brl(financeiro.impostosSaidaBRL)}</p>
+          <p className="mt-1 text-xs text-slate-500">ICMS + DIFs — variam com a margem</p>
         </div>
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-emerald-400">Lucro da trade</p>
@@ -69,7 +74,7 @@ function ResumoFinanceiroPainel({
         <div className="rounded-xl border border-brand-500/30 bg-brand-500/10 p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-brand-300">Total orçamento</p>
           <p className="mt-1 text-xl font-bold text-white">{brl(financeiro.totalOrcamentoBRL)}</p>
-          <p className="mt-1 text-xs text-slate-400">Custo + margem trade</p>
+          <p className="mt-1 text-xs text-slate-400">Importação + impostos venda + margem</p>
         </div>
       </div>
 
@@ -454,7 +459,7 @@ export function Dashboard() {
                       <th className="px-6 py-3">Cliente</th>
                       <th className="px-4 py-3">Data</th>
                       <th className="px-4 py-3">Itens</th>
-                      <th className="px-4 py-3">Custo op.</th>
+                      <th className="px-4 py-3">Custo import.</th>
                       <th className="px-4 py-3">Lucro trade</th>
                       <th className="px-4 py-3">Orçamento</th>
                       <th className="px-4 py-3">Canal</th>
@@ -467,8 +472,8 @@ export function Dashboard() {
                         <td className="px-6 py-3 font-medium text-white">{c.cliente}</td>
                         <td className="px-4 py-3 text-slate-400 whitespace-nowrap">{fmtData(c.criadoEm)}</td>
                         <td className="px-4 py-3 text-slate-300">{c.totalItens}</td>
-                        <td className="px-4 py-3 text-slate-400">
-                          {c.custoOperacionalBRL != null ? brl(c.custoOperacionalBRL) : "—"}
+                        <td className="px-4 py-3 text-slate-300">
+                          {c.custoImportacaoBRL != null ? brl(c.custoImportacaoBRL) : "—"}
                         </td>
                         <td className="px-4 py-3 font-medium text-emerald-300">
                           {c.markupBRL != null ? (
@@ -528,7 +533,9 @@ export function Dashboard() {
                       markupPct: detalhe.cotacao.params.markupPct,
                       markupBRL: detalhe.financeiro?.markupBRL ?? null,
                       lucroLiquidoTradeBRL: detalhe.financeiro?.lucroLiquidoTradeBRL ?? null,
-                      custoOperacionalBRL: detalhe.financeiro?.custoOperacionalBRL ?? null,
+                      custoImportacaoBRL: detalhe.financeiro?.custoImportacaoBRL ?? null,
+                      impostosSaidaBRL: detalhe.financeiro?.impostosSaidaBRL ?? null,
+                      custoOperacionalBRL: detalhe.financeiro?.custoImportacaoBRL ?? null,
                       totalItens: detalhe.itens.length,
                       criadoEm: detalhe.criadoEm,
                     })

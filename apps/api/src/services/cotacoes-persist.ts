@@ -290,7 +290,9 @@ export async function listarCotacoes(opts?: { cliente?: string; limite?: number 
         markupPct,
         markupBRL: financeiro?.markupBRL ?? null,
         lucroLiquidoTradeBRL: financeiro?.lucroLiquidoTradeBRL ?? null,
-        custoOperacionalBRL: financeiro?.custoOperacionalBRL ?? null,
+        custoImportacaoBRL: financeiro?.custoImportacaoBRL ?? null,
+        impostosSaidaBRL: financeiro?.impostosSaidaBRL ?? null,
+        custoOperacionalBRL: financeiro?.custoImportacaoBRL ?? null,
         totalItens: r._count.itens,
         criadoEm: r.criadoEm.toISOString(),
       };

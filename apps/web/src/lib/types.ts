@@ -168,6 +168,8 @@ export interface ParsedSheet {
 export type CotacaoStatus = "RASCUNHO" | "CALCULADA" | "ARQUIVADA";
 
 export interface ResumoFinanceiro {
+  custoImportacaoBRL: number;
+  impostosSaidaBRL: number;
   custoOperacionalBRL: number;
   markupBRL: number;
   markupPct: number;
@@ -187,6 +189,8 @@ export interface CotacaoResumo {
   markupPct: number;
   markupBRL: number | null;
   lucroLiquidoTradeBRL: number | null;
+  custoImportacaoBRL: number | null;
+  impostosSaidaBRL: number | null;
   custoOperacionalBRL: number | null;
   totalItens: number;
   criadoEm: string;

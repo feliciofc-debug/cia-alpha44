@@ -1,6 +1,8 @@
 import type { ResultadoCotacao } from "@cia/fiscal-engine";
 
 export interface ResumoFinanceiro {
+  custoImportacaoBRL: number;
+  impostosSaidaBRL: number;
   custoOperacionalBRL: number;
   markupBRL: number;
   markupPct: number;
@@ -18,19 +20,22 @@ export function extrairResumoFinanceiro(
   if (!resultado) return null;
 
   const markupBRL = resultado.saida.markup;
-  const totalOrcamentoBRL = resultado.totalBRL;
-  const custoOperacionalBRL = totalOrcamentoBRL - markupBRL;
-  const csllBRL = resultado.saida.csll;
-  const irrfBRL = resultado.saida.irrf;
+  const impostosSaidaBRL = resultado.saida.impostosSaidaTotal;
+  const custoImportacaoBRL =
+    resultado.entrada.impostosEntradaTotal +
+    resultado.entrada.antidumpingBRL +
+    resultado.saida.taxasLocaisTotalBRL;
 
   return {
-    custoOperacionalBRL,
+    custoImportacaoBRL,
+    impostosSaidaBRL,
+    custoOperacionalBRL: custoImportacaoBRL,
     markupBRL,
     markupPct,
-    csllBRL,
-    irrfBRL,
-    lucroLiquidoTradeBRL: markupBRL - csllBRL - irrfBRL,
-    totalOrcamentoBRL,
-    margemSobreCustoPct: custoOperacionalBRL > 0 ? markupBRL / custoOperacionalBRL : 0,
+    csllBRL: resultado.saida.csll,
+    irrfBRL: resultado.saida.irrf,
+    lucroLiquidoTradeBRL: markupBRL - resultado.saida.csll - resultado.saida.irrf,
+    totalOrcamentoBRL: resultado.totalBRL,
+    margemSobreCustoPct: custoImportacaoBRL > 0 ? markupBRL / custoImportacaoBRL : 0,
   };
 }
