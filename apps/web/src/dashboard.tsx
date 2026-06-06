@@ -3,8 +3,14 @@ import { useAuth } from "./auth/auth.tsx";
 import { api, type AnaliseCompleta, type Meta } from "./lib/api.ts";
 import { brl, fmtNcm, pct } from "./lib/format.ts";
 import { extrairResumoFinanceiro, type ResumoFinanceiro } from "./lib/financeiro.ts";
-import { icmsSaidaParaDestino, UFS_BRASIL, UF_NOMES, type UfBrasil } from "./lib/icms-uf.ts";
+import {
+  aplicarEditorNaCotacao,
+  editorFromCotacao,
+  payloadAtualizar,
+  type EditorDraft,
+} from "./lib/editor-cotacao.ts";
 import type { Canal, CotacaoResumo, CotacaoSalva, Item, ResultadoCotacao } from "./lib/types.ts";
+import { PainelEditorCotacao } from "./painel-editor.tsx";
 
 type View = "lista" | "nova" | "detalhe";
 
@@ -130,83 +136,24 @@ function ResumoFinanceiroPainel({
   );
 }
 
-function PainelFiscalUf({
-  origem,
-  destino,
-  benefFiscal,
-  icmsSaida,
-  onOrigemChange,
-  onDestinoChange,
-  onAplicar,
-  aplicando,
-}: {
-  origem: string;
-  destino: string;
-  benefFiscal: string;
-  icmsSaida: number;
-  onOrigemChange: (uf: string) => void;
-  onDestinoChange: (uf: string) => void;
-  onAplicar: () => void;
-  aplicando?: boolean;
-}) {
-  const ufOpts = (UFS_BRASIL as readonly UfBrasil[]).map((sigla) => (
-    <option key={sigla} value={sigla}>
-      {sigla} — {UF_NOMES[sigla]}
-    </option>
-  ));
-
-  return (
-    <div className="rounded-xl border-2 border-brand-500/40 bg-brand-500/5 p-4">
-      <p className="text-sm font-bold text-white">Origem e destino (UF)</p>
-      <p className="mt-1 text-xs text-slate-400">
-        Mude o <span className="text-brand-300">estado de destino</span> e clique em recalcular — o ICMS de venda
-        ({pct(icmsSaida)}) e o orçamento atualizam. Benefício fiscal: {benefFiscal}.
-      </p>
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <div>
-          <label className="label">Origem (UF)</label>
-          <select className="input" value={origem} onChange={(e) => onOrigemChange(e.target.value)}>
-            {ufOpts}
-          </select>
-        </div>
-        <div>
-          <label className="label">Destino (UF)</label>
-          <select className="input" value={destino} onChange={(e) => onDestinoChange(e.target.value)}>
-            {ufOpts}
-          </select>
-        </div>
-        <div className="flex items-end">
-          <button type="button" className="btn-primary w-full" disabled={aplicando} onClick={onAplicar}>
-            {aplicando ? "Recalculando…" : "Aplicar e recalcular"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function AnalisePainel({
   analise,
-  cliente,
-  onClienteChange,
   onSalvar,
   salvando,
   salvaId,
-  fiscalDraft,
-  onFiscalDraftChange,
-  onAplicarFiscal,
-  aplicandoFiscal,
+  editorDraft,
+  onEditorChange,
+  onAplicarEditor,
+  aplicandoEditor,
 }: {
   analise: AnaliseView;
-  cliente?: string;
-  onClienteChange?: (v: string) => void;
   onSalvar?: () => void;
   salvando?: boolean;
   salvaId?: string | null;
-  fiscalDraft?: { origem: string; destino: string };
-  onFiscalDraftChange?: (f: { origem: string; destino: string }) => void;
-  onAplicarFiscal?: () => void;
-  aplicandoFiscal?: boolean;
+  editorDraft?: EditorDraft;
+  onEditorChange?: (d: EditorDraft) => void;
+  onAplicarEditor?: () => void;
+  aplicandoEditor?: boolean;
 }) {
   const itens = analise.itens;
   const provider = (analise as { provider?: string | null }).provider ?? "—";
@@ -215,23 +162,15 @@ function AnalisePainel({
     "financeiro" in analise && analise.financeiro
       ? analise.financeiro
       : extrairResumoFinanceiro(analise.resultado, analise.cotacao.params.markupPct);
-  const fiscal = fiscalDraft ?? {
-    origem: analise.cotacao.origem,
-    destino: analise.cotacao.destino,
-  };
-
   return (
     <div className="space-y-6 text-left">
-      {onFiscalDraftChange && onAplicarFiscal && (
-        <PainelFiscalUf
-          origem={fiscal.origem}
-          destino={fiscal.destino}
-          benefFiscal={analise.cotacao.benefFiscal}
-          icmsSaida={icmsSaidaParaDestino(fiscal.destino, analise.cotacao.benefFiscal)}
-          onOrigemChange={(uf) => onFiscalDraftChange({ ...fiscal, origem: uf })}
-          onDestinoChange={(uf) => onFiscalDraftChange({ ...fiscal, destino: uf })}
-          onAplicar={onAplicarFiscal}
-          aplicando={aplicandoFiscal}
+      {editorDraft && onEditorChange && onAplicarEditor && (
+        <PainelEditorCotacao
+          draft={editorDraft}
+          onChange={onEditorChange}
+          onAplicar={onAplicarEditor}
+          aplicando={aplicandoEditor}
+          modo={salvaId ? "salva" : "analise"}
         />
       )}
 
@@ -241,8 +180,9 @@ function AnalisePainel({
           {salvaId && <span className="ml-2 text-xs font-normal text-slate-400">#{salvaId.slice(0, 8)}</span>}
         </p>
         <p className="mt-1 text-sm text-slate-300">
-          Provedor: {provider} · {itens.length} itens · rota {analise.cotacao.origem} → {analise.cotacao.destino} ·
-          ICMS {pct(analise.cotacao.params.icmsSaida)}
+          Provedor: {provider} · {itens.length} itens · {analise.cotacao.empresaTrade || "—"} →{" "}
+          {analise.cotacao.cliente} · rota {analise.cotacao.origem} → {analise.cotacao.destino} · ICMS{" "}
+          {pct(analise.cotacao.params.icmsSaida)}
         </p>
         {analise.avisoFiscal && <p className="mt-2 text-sm text-amber-300">{analise.avisoFiscal}</p>}
       </div>
@@ -250,19 +190,13 @@ function AnalisePainel({
       <ResumoFinanceiroPainel financeiro={financeiro} resultado={analise.resultado} />
 
       {!salvaId && onSalvar && (
-        <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4 sm:flex-row sm:items-end">
-          <div className="flex-1">
-            <label className="label">Cliente / processo</label>
-            <input
-              className="input"
-              value={cliente ?? ""}
-              onChange={(e) => onClienteChange?.(e.target.value)}
-              placeholder="Ex.: Luminárias China — Mar/2026"
-            />
-          </div>
-          <button type="button" className="btn-primary shrink-0" disabled={salvando} onClick={onSalvar}>
+        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+          <button type="button" className="btn-primary w-full" disabled={salvando} onClick={onSalvar}>
             {salvando ? "Salvando…" : "Salvar cotação"}
           </button>
+          <p className="mt-2 text-center text-xs text-slate-500">
+            Empresa, cliente e parâmetros do editor acima serão gravados.
+          </p>
         </div>
       )}
 
@@ -380,8 +314,8 @@ export function Dashboard() {
   const [detalhe, setDetalhe] = useState<CotacaoSalva | null>(null);
   const [dupAlvo, setDupAlvo] = useState<CotacaoResumo | null>(null);
   const [duplicando, setDuplicando] = useState(false);
-  const [fiscalDraft, setFiscalDraft] = useState<{ origem: string; destino: string } | null>(null);
-  const [aplicandoFiscal, setAplicandoFiscal] = useState(false);
+  const [editorDraft, setEditorDraft] = useState<EditorDraft | null>(null);
+  const [aplicandoEditor, setAplicandoEditor] = useState(false);
 
   const carregarLista = useCallback(async () => {
     setListaLoading(true);
@@ -409,7 +343,7 @@ export function Dashboard() {
     setSalvaId(null);
     setCliente("");
     setDetalhe(null);
-    setFiscalDraft(null);
+    setEditorDraft(null);
   }
 
   async function abrirCotacao(id: string) {
@@ -417,59 +351,42 @@ export function Dashboard() {
     try {
       const c = await api.buscarCotacao(id);
       setDetalhe(c);
-      setFiscalDraft({ origem: c.cotacao.origem, destino: c.cotacao.destino });
+      setEditorDraft(editorFromCotacao(c.cotacao));
       setView("detalhe");
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Falha ao abrir cotação.");
     }
   }
 
-  useEffect(() => {
-    if (analise) {
-      setFiscalDraft({ origem: analise.cotacao.origem, destino: analise.cotacao.destino });
-    }
-  }, [analise?.cotacao.origem, analise?.cotacao.destino, analise]);
-
-  async function aplicarFiscalAnalise() {
-    if (!analise || !fiscalDraft) return;
-    setAplicandoFiscal(true);
+  async function aplicarEditorAnalise() {
+    if (!analise || !editorDraft) return;
+    setAplicandoEditor(true);
     setErro("");
     try {
-      const benefFiscal = analise.cotacao.benefFiscal;
-      const cotacao = {
-        ...analise.cotacao,
-        origem: fiscalDraft.origem,
-        destino: fiscalDraft.destino,
-        params: {
-          ...analise.cotacao.params,
-          icmsSaida: icmsSaidaParaDestino(fiscalDraft.destino, benefFiscal),
-        },
-      };
+      const cotacao = aplicarEditorNaCotacao(analise.cotacao, editorDraft);
       const { resultado, itens } = await api.calcular(cotacao);
       setAnalise({ ...analise, cotacao, resultado, itens });
+      setCliente(editorDraft.cliente);
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Falha ao recalcular.");
     } finally {
-      setAplicandoFiscal(false);
+      setAplicandoEditor(false);
     }
   }
 
-  async function aplicarFiscalDetalhe() {
-    if (!detalhe || !fiscalDraft) return;
-    setAplicandoFiscal(true);
+  async function aplicarEditorDetalhe() {
+    if (!detalhe || !editorDraft) return;
+    setAplicandoEditor(true);
     setErro("");
     try {
-      const atualizada = await api.atualizarFiscal(detalhe.id, {
-        origem: fiscalDraft.origem,
-        destino: fiscalDraft.destino,
-      });
+      const atualizada = await api.atualizarCotacao(detalhe.id, payloadAtualizar(editorDraft));
       setDetalhe(atualizada);
-      setFiscalDraft({ origem: atualizada.cotacao.origem, destino: atualizada.cotacao.destino });
+      setEditorDraft(editorFromCotacao(atualizada.cotacao));
       await carregarLista();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : "Falha ao atualizar fiscal.");
+      setErro(e instanceof Error ? e.message : "Falha ao atualizar cotação.");
     } finally {
-      setAplicandoFiscal(false);
+      setAplicandoEditor(false);
     }
   }
 
@@ -500,6 +417,7 @@ export function Dashboard() {
     try {
       const res = await api.analisar(parsed.linhas);
       setAnalise(res);
+      setEditorDraft(editorFromCotacao(res.cotacao, cliente));
     } catch (e) {
       setErro(
         e instanceof Error
@@ -518,7 +436,8 @@ export function Dashboard() {
     setSalvando(true);
     setErro("");
     try {
-      const cotacao = { ...analise.cotacao, cliente: cliente.trim() || "Sem cliente" };
+      const draft = editorDraft ?? editorFromCotacao(analise.cotacao, cliente);
+      const cotacao = aplicarEditorNaCotacao(analise.cotacao, draft);
       const salva = await api.salvarCotacao({
         cotacao,
         itens: analise.itens,
@@ -740,10 +659,10 @@ export function Dashboard() {
               <AnalisePainel
                 analise={detalhe}
                 salvaId={detalhe.id}
-                fiscalDraft={fiscalDraft ?? undefined}
-                onFiscalDraftChange={setFiscalDraft}
-                onAplicarFiscal={() => void aplicarFiscalDetalhe()}
-                aplicandoFiscal={aplicandoFiscal}
+                editorDraft={editorDraft ?? undefined}
+                onEditorChange={setEditorDraft}
+                onAplicarEditor={() => void aplicarEditorDetalhe()}
+                aplicandoEditor={aplicandoEditor}
               />
             </div>
           </div>
@@ -808,15 +727,16 @@ export function Dashboard() {
               <div className="mt-8">
                 <AnalisePainel
                   analise={analise}
-                  cliente={cliente}
-                  onClienteChange={setCliente}
                   onSalvar={() => void salvarAnalise()}
                   salvando={salvando}
                   salvaId={salvaId}
-                  fiscalDraft={fiscalDraft ?? undefined}
-                  onFiscalDraftChange={setFiscalDraft}
-                  onAplicarFiscal={() => void aplicarFiscalAnalise()}
-                  aplicandoFiscal={aplicandoFiscal}
+                  editorDraft={editorDraft ?? undefined}
+                  onEditorChange={(d) => {
+                    setEditorDraft(d);
+                    setCliente(d.cliente);
+                  }}
+                  onAplicarEditor={() => void aplicarEditorAnalise()}
+                  aplicandoEditor={aplicandoEditor}
                 />
                 {salvaId && (
                   <button type="button" className="btn-ghost mt-4 w-full" onClick={() => void abrirCotacao(salvaId)}>

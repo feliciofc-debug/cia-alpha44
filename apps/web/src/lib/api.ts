@@ -1,3 +1,4 @@
+import { DESPESAS_PADRAO } from "./despesas.ts";
 import { icmsSaidaParaDestino } from "./icms-uf.ts";
 import type {
   Cotacao,
@@ -93,6 +94,7 @@ export const api = {
     const origem = "RJ";
     const destino = "SP";
     const cotacao: Cotacao = {
+      empresaTrade: "Alpha 44",
       cliente: "Análise importação",
       benefFiscal,
       moeda: "US$",
@@ -106,7 +108,7 @@ export const api = {
       origem,
       destino,
       itens,
-      despesas: [],
+      despesas: DESPESAS_PADRAO.map((d) => ({ ...d })),
       params: {
         markupPct: 0.06,
         pisSaida: 0.0165,
@@ -172,10 +174,15 @@ export const api = {
       body: JSON.stringify(cotacao),
     }).then(handle<{ resultado: ResultadoCotacao; itens: Item[] }>),
 
-  atualizarFiscal: (
-    id: string,
-    opts: { origem?: string; destino?: string; benefFiscal?: string; markupPct?: number },
-  ) =>
+  atualizarCotacao: (id: string, opts: Record<string, unknown>) =>
+    fetch(`${BASE}/api/cotacoes/${id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(opts),
+    }).then(handle<CotacaoSalva>),
+
+  /** @deprecated use atualizarCotacao */
+  atualizarFiscal: (id: string, opts: Record<string, unknown>) =>
     fetch(`${BASE}/api/cotacoes/${id}/fiscal`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },

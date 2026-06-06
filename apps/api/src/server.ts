@@ -9,7 +9,7 @@ import { getState } from "./state.js";
 import { buscarCambioPtax } from "./services/cambio.js";
 import { calcularCotacao, montarItens } from "./services/cotacao.js";
 import {
-  atualizarFiscalCotacao,
+  atualizarCotacao,
   buscarCotacao,
   duplicarCotacao,
   listarCotacoes,
@@ -133,24 +133,56 @@ export async function buildServer() {
     }
   });
 
-  app.patch("/api/cotacoes/:id/fiscal", async (req, reply) => {
-    const body = z
+  const despesaBody = z.object({
+    nome: z.string(),
+    valorBRL: z.number(),
+    entraBaseSaida: z.boolean().default(true),
+    entraBaseNota: z.boolean().default(true),
+  });
+
+  const atualizarCotacaoBody = z.object({
+    origem: z.string().optional(),
+    destino: z.string().optional(),
+    benefFiscal: z.enum(["ALAGOAS", "NENHUM"]).optional(),
+    empresaTrade: z.string().optional(),
+    cliente: z.string().optional(),
+    markupPct: z.number().min(0).max(1).optional(),
+    despesas: z.array(despesaBody).optional(),
+    icmsAuto: z.boolean().optional(),
+    params: z
       .object({
-        origem: z.string().optional(),
-        destino: z.string().optional(),
-        benefFiscal: z.string().optional(),
-        markupPct: z.number().min(0).max(1).optional(),
+        pisSaida: z.number().min(0).max(1).optional(),
+        cofinsSaida: z.number().min(0).max(1).optional(),
+        icmsSaida: z.number().min(0).max(1).optional(),
+        csllSobreMarkup: z.number().min(0).max(1).optional(),
+        irrfAliq: z.number().min(0).max(1).optional(),
+        irrfBaseNotaPct: z.number().min(0).max(1).optional(),
       })
-      .safeParse(req.body ?? {});
-    if (!body.success) return reply.status(400).send({ erro: "Body inválido", detalhe: body.error.flatten() });
+      .optional(),
+  });
+
+  async function handleAtualizarCotacao(id: string, body: z.infer<typeof atualizarCotacaoBody>, reply: import("fastify").FastifyReply) {
     try {
-      const { id } = req.params as { id: string };
-      const atualizada = await atualizarFiscalCotacao(id, getState(), body.data);
+      const atualizada = await atualizarCotacao(id, getState(), body);
       if (!atualizada) return reply.status(404).send({ erro: "Cotação não encontrada." });
       return atualizada;
     } catch (e) {
       return persistenciaErro(reply, e);
     }
+  }
+
+  app.patch("/api/cotacoes/:id", async (req, reply) => {
+    const parsed = atualizarCotacaoBody.safeParse(req.body ?? {});
+    if (!parsed.success) return reply.status(400).send({ erro: "Body inválido", detalhe: parsed.error.flatten() });
+    const { id } = req.params as { id: string };
+    return handleAtualizarCotacao(id, parsed.data, reply);
+  });
+
+  app.patch("/api/cotacoes/:id/fiscal", async (req, reply) => {
+    const parsed = atualizarCotacaoBody.safeParse(req.body ?? {});
+    if (!parsed.success) return reply.status(400).send({ erro: "Body inválido", detalhe: parsed.error.flatten() });
+    const { id } = req.params as { id: string };
+    return handleAtualizarCotacao(id, parsed.data, reply);
   });
 
   app.post("/api/cotacoes/:id/duplicar", async (req, reply) => {

@@ -2,7 +2,14 @@
 
 import { prisma, type CanalAduaneiro, type Cotacao as CotacaoRow } from "@cia/db";
 import type { ResultadoCotacao } from "@cia/fiscal-engine";
-import { icmsSaidaParaDestino, normalizarUf, type Cotacao, type Item } from "@cia/shared";
+import {
+  icmsSaidaParaDestino,
+  normalizarUf,
+  type Cotacao,
+  type Despesa,
+  type Item,
+  type ParamsSaida,
+} from "@cia/shared";
 import type { Prisma } from "@prisma/client";
 import { extrairResumoFinanceiro } from "../lib/financeiro.js";
 import { calcularCotacao } from "./cotacao.js";
@@ -133,8 +140,9 @@ export function mapRowParaDominio(row: CotacaoComRelacoes): {
 
   const cotacao: Cotacao = {
     id: row.id,
+    empresaTrade: row.empresaTrade ?? "",
     cliente: row.cliente,
-    benefFiscal: row.benefFiscal,
+    benefFiscal: row.benefFiscal as Cotacao["benefFiscal"],
     moeda: row.moeda,
     cambio: num(row.cambio),
     freteTotalUS: num(row.freteTotalUS),
@@ -176,6 +184,7 @@ export async function salvarCotacao(input: SalvarCotacaoInput) {
   const row = await prisma.cotacao.create({
     data: {
       tenantId: tid,
+      empresaTrade: cotacao.empresaTrade?.trim() || "",
       cliente: cotacao.cliente?.trim() || "Sem cliente",
       benefFiscal: cotacao.benefFiscal,
       moeda: cotacao.moeda,
@@ -351,14 +360,34 @@ export async function duplicarCotacao(
   return salvarCotacao({ cotacao: nova, itens, resultado });
 }
 
-export interface AtualizarFiscalInput {
+export interface AtualizarCotacaoInput {
   origem?: string;
   destino?: string;
-  benefFiscal?: string;
+  benefFiscal?: Cotacao["benefFiscal"];
+  empresaTrade?: string;
+  cliente?: string;
   markupPct?: number;
+  despesas?: Despesa[];
+  params?: Partial<ParamsSaida>;
+  /** Se true, recalcula icmsSaida a partir de destino+benefício (ignora override manual). */
+  icmsAuto?: boolean;
 }
 
-export async function atualizarFiscalCotacao(id: string, state: AppState, opts: AtualizarFiscalInput) {
+function mergeParams(
+  base: ParamsSaida,
+  destino: string,
+  benefFiscal: string,
+  opts: AtualizarCotacaoInput,
+): ParamsSaida {
+  const params = { ...base, ...opts.params };
+  if (opts.markupPct != null) params.markupPct = opts.markupPct;
+  if (opts.icmsAuto !== false && opts.params?.icmsSaida == null) {
+    params.icmsSaida = icmsSaidaParaDestino(destino, benefFiscal);
+  }
+  return params;
+}
+
+export async function atualizarCotacao(id: string, state: AppState, opts: AtualizarCotacaoInput) {
   if (!dbAtivo()) throw new PersistenciaIndisponivelError();
 
   const row = await prisma.cotacao.findUnique({
@@ -370,31 +399,66 @@ export async function atualizarFiscalCotacao(id: string, state: AppState, opts: 
   const { cotacao } = mapRowParaDominio(row);
   const origem = opts.origem ? (normalizarUf(opts.origem) ?? cotacao.origem) : cotacao.origem;
   const destino = opts.destino ? (normalizarUf(opts.destino) ?? cotacao.destino) : cotacao.destino;
-  const benefFiscal = opts.benefFiscal?.trim() || cotacao.benefFiscal;
-  const params = { ...cotacao.params };
-  if (opts.markupPct != null) params.markupPct = opts.markupPct;
-  params.icmsSaida = icmsSaidaParaDestino(destino, benefFiscal);
+  const benefFiscal = opts.benefFiscal ?? cotacao.benefFiscal;
+  const empresaTrade = opts.empresaTrade !== undefined ? opts.empresaTrade.trim() : cotacao.empresaTrade;
+  const cliente = opts.cliente !== undefined ? opts.cliente.trim() || "Sem cliente" : cotacao.cliente;
+  const despesas = opts.despesas ?? cotacao.despesas;
+  const params = mergeParams(cotacao.params, destino, benefFiscal, opts);
 
-  const atualizada: Cotacao = { ...cotacao, origem, destino, benefFiscal, params };
+  const atualizada: Cotacao = {
+    ...cotacao,
+    origem,
+    destino,
+    benefFiscal,
+    empresaTrade,
+    cliente,
+    despesas,
+    params,
+  };
   const { resultado, itens } = calcularCotacao(atualizada, state);
   const canal = canalPredominante(itens);
 
-  const updated = await prisma.cotacao.update({
-    where: { id },
-    data: {
-      origem,
-      destino,
-      benefFiscal,
-      params,
-      status: resultado ? "CALCULADA" : row.status,
-      totalBRL: resultado?.totalBRL ?? null,
-      totalUS: resultado?.totalUS ?? null,
-      canalPredominante: canal,
-      resultadoCalculo: (resultado ?? undefined) as unknown as Prisma.InputJsonValue | undefined,
-      calculadoEm: resultado ? new Date() : row.calculadoEm,
-    },
-    include: { itens: true, despesas: true },
+  const updated = await prisma.$transaction(async (tx) => {
+    if (opts.despesas) {
+      await tx.despesa.deleteMany({ where: { cotacaoId: id } });
+    }
+    return tx.cotacao.update({
+      where: { id },
+      data: {
+        origem,
+        destino,
+        benefFiscal,
+        empresaTrade,
+        cliente,
+        params,
+        status: resultado ? "CALCULADA" : row.status,
+        totalBRL: resultado?.totalBRL ?? null,
+        totalUS: resultado?.totalUS ?? null,
+        canalPredominante: canal,
+        resultadoCalculo: (resultado ?? undefined) as unknown as Prisma.InputJsonValue | undefined,
+        calculadoEm: resultado ? new Date() : row.calculadoEm,
+        ...(opts.despesas
+          ? {
+              despesas: {
+                create: despesas.map((d, ordem) => ({
+                  ordem,
+                  nome: d.nome,
+                  valorBRL: d.valorBRL,
+                  entraBaseSaida: d.entraBaseSaida,
+                  entraBaseNota: d.entraBaseNota,
+                })),
+              },
+            }
+          : {}),
+      },
+      include: { itens: true, despesas: true },
+    });
   });
 
   return formatCotacaoSalva(updated as CotacaoComRelacoes);
+}
+
+/** @deprecated use atualizarCotacao */
+export async function atualizarFiscalCotacao(id: string, state: AppState, opts: AtualizarCotacaoInput) {
+  return atualizarCotacao(id, state, opts);
 }

@@ -111,8 +111,15 @@ export const paramsSaidaSchema = z.object({
 });
 export type ParamsSaida = z.infer<typeof paramsSaidaSchema>;
 
+/** Benefícios fiscais suportados na formação de preço (v1). */
+export const BENEFICIOS_FISCAIS = ["ALAGOAS", "NENHUM"] as const;
+export type BeneficioFiscal = (typeof BENEFICIOS_FISCAIS)[number];
+
 export const cotacaoSchema = z.object({
   id: z.string().optional(),
+  /** Importadora / empresa trade (quem opera a importação). */
+  empresaTrade: z.string().default(""),
+  /** Cliente final do orçamento. */
   cliente: z.string().default(""),
   benefFiscal: z.string().default("ALAGOAS"),
   moeda: z.string().default("US$"),

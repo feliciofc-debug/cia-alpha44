@@ -39,6 +39,7 @@ model Cotacao {
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   // --- cabeçalho (espelha @cia/shared cotacaoSchema) ---
+  empresaTrade          String  @default("")
   cliente               String  @default("")
   benefFiscal           String  @default("ALAGOAS")
   moeda                 String  @default("US$")

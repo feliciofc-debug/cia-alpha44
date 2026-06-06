@@ -81,10 +81,13 @@ export interface ParamsSaida {
   icmsEntrada: number;
 }
 
+export type BeneficioFiscal = "ALAGOAS" | "NENHUM";
+
 export interface Cotacao {
   id?: string;
+  empresaTrade?: string;
   cliente: string;
-  benefFiscal: string;
+  benefFiscal: BeneficioFiscal | string;
   moeda: string;
   cambio: number;
   freteTotalUS: number;
