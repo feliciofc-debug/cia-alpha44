@@ -186,6 +186,9 @@ export interface CotacaoResumo {
   status: CotacaoStatus;
   totalBRL: number | null;
   canalPredominante: Canal | null;
+  origem: string;
+  destino: string;
+  icmsSaidaPct: number | null;
   markupPct: number;
   markupBRL: number | null;
   lucroLiquidoTradeBRL: number | null;

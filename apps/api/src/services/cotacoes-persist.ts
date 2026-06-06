@@ -2,7 +2,7 @@
 
 import { prisma, type CanalAduaneiro, type Cotacao as CotacaoRow } from "@cia/db";
 import type { ResultadoCotacao } from "@cia/fiscal-engine";
-import type { Cotacao, Item } from "@cia/shared";
+import { icmsSaidaParaDestino, normalizarUf, type Cotacao, type Item } from "@cia/shared";
 import type { Prisma } from "@prisma/client";
 import { extrairResumoFinanceiro } from "../lib/financeiro.js";
 import { calcularCotacao } from "./cotacao.js";
@@ -281,12 +281,16 @@ export async function listarCotacoes(opts?: { cliente?: string; limite?: number 
       const markupPct = (r.params as Cotacao["params"]).markupPct ?? 0.06;
       const resultado = r.resultadoCalculo as ResultadoCotacao | null;
       const financeiro = extrairResumoFinanceiro(resultado, markupPct);
+      const params = r.params as Cotacao["params"];
       return {
         id: r.id,
         cliente: r.cliente,
         status: r.status,
         totalBRL: numOrNull(r.totalBRL),
         canalPredominante: r.canalPredominante,
+        origem: r.origem,
+        destino: r.destino,
+        icmsSaidaPct: params.icmsSaida ?? null,
         markupPct,
         markupBRL: financeiro?.markupBRL ?? null,
         lucroLiquidoTradeBRL: financeiro?.lucroLiquidoTradeBRL ?? null,
@@ -336,6 +340,61 @@ export async function duplicarCotacao(
     itens: cotacao.itens.map((it) => ({ ...it, id: undefined })),
   };
 
+  const destino = normalizarUf(nova.destino) ?? "SP";
+  nova.destino = destino;
+  nova.params = {
+    ...params,
+    icmsSaida: icmsSaidaParaDestino(destino, nova.benefFiscal),
+  };
+
   const { resultado, itens } = calcularCotacao(nova, state);
   return salvarCotacao({ cotacao: nova, itens, resultado });
+}
+
+export interface AtualizarFiscalInput {
+  origem?: string;
+  destino?: string;
+  benefFiscal?: string;
+  markupPct?: number;
+}
+
+export async function atualizarFiscalCotacao(id: string, state: AppState, opts: AtualizarFiscalInput) {
+  if (!dbAtivo()) throw new PersistenciaIndisponivelError();
+
+  const row = await prisma.cotacao.findUnique({
+    where: { id },
+    include: { itens: true, despesas: true },
+  });
+  if (!row) return null;
+
+  const { cotacao } = mapRowParaDominio(row);
+  const origem = opts.origem ? (normalizarUf(opts.origem) ?? cotacao.origem) : cotacao.origem;
+  const destino = opts.destino ? (normalizarUf(opts.destino) ?? cotacao.destino) : cotacao.destino;
+  const benefFiscal = opts.benefFiscal?.trim() || cotacao.benefFiscal;
+  const params = { ...cotacao.params };
+  if (opts.markupPct != null) params.markupPct = opts.markupPct;
+  params.icmsSaida = icmsSaidaParaDestino(destino, benefFiscal);
+
+  const atualizada: Cotacao = { ...cotacao, origem, destino, benefFiscal, params };
+  const { resultado, itens } = calcularCotacao(atualizada, state);
+  const canal = canalPredominante(itens);
+
+  const updated = await prisma.cotacao.update({
+    where: { id },
+    data: {
+      origem,
+      destino,
+      benefFiscal,
+      params,
+      status: resultado ? "CALCULADA" : row.status,
+      totalBRL: resultado?.totalBRL ?? null,
+      totalUS: resultado?.totalUS ?? null,
+      canalPredominante: canal,
+      resultadoCalculo: (resultado ?? undefined) as unknown as Prisma.InputJsonValue | undefined,
+      calculadoEm: resultado ? new Date() : row.calculadoEm,
+    },
+    include: { itens: true, despesas: true },
+  });
+
+  return formatCotacaoSalva(updated as CotacaoComRelacoes);
 }

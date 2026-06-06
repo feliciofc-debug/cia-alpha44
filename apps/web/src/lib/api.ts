@@ -1,3 +1,4 @@
+import { icmsSaidaParaDestino } from "./icms-uf.ts";
 import type {
   Cotacao,
   CotacaoLista,
@@ -88,9 +89,12 @@ export const api = {
 
     const comFob = itens.some((it) => it.fobTotalUS > 0);
     const cambio = await fetch(`${BASE}/api/cambio?moeda=USD`).then(handle<Cambio>);
+    const benefFiscal = "ALAGOAS";
+    const origem = "RJ";
+    const destino = "SP";
     const cotacao: Cotacao = {
       cliente: "Análise importação",
-      benefFiscal: "ALAGOAS",
+      benefFiscal,
       moeda: "US$",
       cambio: cambio.cotacaoVenda ?? 5.2,
       freteTotalUS: 0,
@@ -99,15 +103,15 @@ export const api = {
       siscomex: 154.23,
       antidumpingBRL: 0,
       incoterm: "CFR",
-      origem: "RJ",
-      destino: "SP",
+      origem,
+      destino,
       itens,
       despesas: [],
       params: {
         markupPct: 0.06,
         pisSaida: 0.0165,
         cofinsSaida: 0.076,
-        icmsSaida: 0.04,
+        icmsSaida: icmsSaidaParaDestino(destino, benefFiscal),
         csllSobreMarkup: 0.09,
         irrfAliq: 0.25,
         irrfBaseNotaPct: 0.027,
@@ -167,4 +171,21 @@ export const api = {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(cotacao),
     }).then(handle<{ resultado: ResultadoCotacao; itens: Item[] }>),
+
+  atualizarFiscal: (
+    id: string,
+    opts: { origem?: string; destino?: string; benefFiscal?: string; markupPct?: number },
+  ) =>
+    fetch(`${BASE}/api/cotacoes/${id}/fiscal`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(opts),
+    }).then(handle<CotacaoSalva>),
+
+  listarUfs: (benefFiscal = "ALAGOAS") =>
+    fetch(`${BASE}/api/fiscal/ufs?benefFiscal=${encodeURIComponent(benefFiscal)}`).then(
+      handle<{
+        ufs: { sigla: string; nome: string; icmsInterno: number; icmsEfetivoSaida: number }[];
+      }>,
+    ),
 };

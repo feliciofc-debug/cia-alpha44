@@ -3,6 +3,7 @@ import { useAuth } from "./auth/auth.tsx";
 import { api, type AnaliseCompleta, type Meta } from "./lib/api.ts";
 import { brl, fmtNcm, pct } from "./lib/format.ts";
 import { extrairResumoFinanceiro, type ResumoFinanceiro } from "./lib/financeiro.ts";
+import { icmsSaidaParaDestino, UFS_BRASIL, UF_NOMES, type UfBrasil } from "./lib/icms-uf.ts";
 import type { Canal, CotacaoResumo, CotacaoSalva, Item, ResultadoCotacao } from "./lib/types.ts";
 
 type View = "lista" | "nova" | "detalhe";
@@ -62,7 +63,7 @@ function ResumoFinanceiroPainel({
         <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-amber-400/90">Impostos venda</p>
           <p className="mt-1 text-xl font-bold text-amber-200/90">{brl(financeiro.impostosSaidaBRL)}</p>
-          <p className="mt-1 text-xs text-slate-500">ICMS + DIFs — variam com a margem</p>
+          <p className="mt-1 text-xs text-slate-500">ICMS + DIFs — variam com UF destino e margem</p>
         </div>
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-emerald-400">Lucro da trade</p>
@@ -92,18 +93,94 @@ function ResumoFinanceiroPainel({
       </p>
 
       {resultado && (
-        <details className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
-          <summary className="cursor-pointer font-medium text-slate-300">Detalhe fiscal (entrada + saída)</summary>
-          <div className="mt-3 grid gap-2 text-xs text-slate-400 sm:grid-cols-2">
-            <p>Impostos entrada: {brl(resultado.entrada.impostosEntradaTotal)}</p>
-            <p>Taxas locais: {brl(resultado.saida.taxasLocaisTotalBRL)}</p>
-            <p>Impostos saída: {brl(resultado.saida.impostosSaidaTotal)}</p>
-            <p>CSLL s/ markup: {brl(resultado.saida.csll)}</p>
-            <p>IRRF: {brl(resultado.saida.irrf)}</p>
-            <p>Margem s/ custo: {pct(financeiro.margemSobreCustoPct)}</p>
+        <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
+          <p className="font-medium text-slate-300">Breakdown impostos de venda</p>
+          <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-3">
+            <p className="text-slate-400">
+              ICMS saída: <span className="text-amber-200/90">{brl(resultado.saida.icmsSaida)}</span>
+            </p>
+            <p className="text-slate-400">
+              DIF IPI: <span className="text-amber-200/90">{brl(resultado.saida.difIPI)}</span>
+            </p>
+            <p className="text-slate-400">
+              DIF PIS: <span className="text-amber-200/90">{brl(resultado.saida.difPIS)}</span>
+            </p>
+            <p className="text-slate-400">
+              DIF COFINS: <span className="text-amber-200/90">{brl(resultado.saida.difCOFINS)}</span>
+            </p>
+            <p className="text-slate-400">
+              CSLL: <span className="text-amber-200/90">{brl(resultado.saida.csll)}</span>
+            </p>
+            <p className="text-slate-400">
+              IRRF: <span className="text-amber-200/90">{brl(resultado.saida.irrf)}</span>
+            </p>
           </div>
-        </details>
+          <details className="mt-3">
+            <summary className="cursor-pointer text-xs text-slate-500">Entrada + taxas locais</summary>
+            <div className="mt-2 grid gap-1 text-xs text-slate-500 sm:grid-cols-2">
+              <p>Impostos entrada: {brl(resultado.entrada.impostosEntradaTotal)}</p>
+              <p>Taxas locais: {brl(resultado.saida.taxasLocaisTotalBRL)}</p>
+              <p>Venda líquida: {brl(resultado.saida.vendaLiquida)}</p>
+              <p>Margem s/ custo: {pct(financeiro.margemSobreCustoPct)}</p>
+            </div>
+          </details>
+        </div>
       )}
+    </div>
+  );
+}
+
+function PainelFiscalUf({
+  origem,
+  destino,
+  benefFiscal,
+  icmsSaida,
+  onOrigemChange,
+  onDestinoChange,
+  onAplicar,
+  aplicando,
+}: {
+  origem: string;
+  destino: string;
+  benefFiscal: string;
+  icmsSaida: number;
+  onOrigemChange: (uf: string) => void;
+  onDestinoChange: (uf: string) => void;
+  onAplicar: () => void;
+  aplicando?: boolean;
+}) {
+  const ufOpts = (UFS_BRASIL as readonly UfBrasil[]).map((sigla) => (
+    <option key={sigla} value={sigla}>
+      {sigla} — {UF_NOMES[sigla]}
+    </option>
+  ));
+
+  return (
+    <div className="rounded-xl border-2 border-brand-500/40 bg-brand-500/5 p-4">
+      <p className="text-sm font-bold text-white">Origem e destino (UF)</p>
+      <p className="mt-1 text-xs text-slate-400">
+        Mude o <span className="text-brand-300">estado de destino</span> e clique em recalcular — o ICMS de venda
+        ({pct(icmsSaida)}) e o orçamento atualizam. Benefício fiscal: {benefFiscal}.
+      </p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div>
+          <label className="label">Origem (UF)</label>
+          <select className="input" value={origem} onChange={(e) => onOrigemChange(e.target.value)}>
+            {ufOpts}
+          </select>
+        </div>
+        <div>
+          <label className="label">Destino (UF)</label>
+          <select className="input" value={destino} onChange={(e) => onDestinoChange(e.target.value)}>
+            {ufOpts}
+          </select>
+        </div>
+        <div className="flex items-end">
+          <button type="button" className="btn-primary w-full" disabled={aplicando} onClick={onAplicar}>
+            {aplicando ? "Recalculando…" : "Aplicar e recalcular"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -115,6 +192,10 @@ function AnalisePainel({
   onSalvar,
   salvando,
   salvaId,
+  fiscalDraft,
+  onFiscalDraftChange,
+  onAplicarFiscal,
+  aplicandoFiscal,
 }: {
   analise: AnaliseView;
   cliente?: string;
@@ -122,6 +203,10 @@ function AnalisePainel({
   onSalvar?: () => void;
   salvando?: boolean;
   salvaId?: string | null;
+  fiscalDraft?: { origem: string; destino: string };
+  onFiscalDraftChange?: (f: { origem: string; destino: string }) => void;
+  onAplicarFiscal?: () => void;
+  aplicandoFiscal?: boolean;
 }) {
   const itens = analise.itens;
   const provider = (analise as { provider?: string | null }).provider ?? "—";
@@ -130,16 +215,34 @@ function AnalisePainel({
     "financeiro" in analise && analise.financeiro
       ? analise.financeiro
       : extrairResumoFinanceiro(analise.resultado, analise.cotacao.params.markupPct);
+  const fiscal = fiscalDraft ?? {
+    origem: analise.cotacao.origem,
+    destino: analise.cotacao.destino,
+  };
 
   return (
     <div className="space-y-6 text-left">
+      {onFiscalDraftChange && onAplicarFiscal && (
+        <PainelFiscalUf
+          origem={fiscal.origem}
+          destino={fiscal.destino}
+          benefFiscal={analise.cotacao.benefFiscal}
+          icmsSaida={icmsSaidaParaDestino(fiscal.destino, analise.cotacao.benefFiscal)}
+          onOrigemChange={(uf) => onFiscalDraftChange({ ...fiscal, origem: uf })}
+          onDestinoChange={(uf) => onFiscalDraftChange({ ...fiscal, destino: uf })}
+          onAplicar={onAplicarFiscal}
+          aplicando={aplicandoFiscal}
+        />
+      )}
+
       <div className="rounded-xl border border-brand-500/30 bg-brand-500/10 p-4">
         <p className="font-semibold text-white">
           {salvaId ? "Cotação salva" : "Análise concluída"}
           {salvaId && <span className="ml-2 text-xs font-normal text-slate-400">#{salvaId.slice(0, 8)}</span>}
         </p>
         <p className="mt-1 text-sm text-slate-300">
-          Provedor: {provider} · {itens.length} itens · Benefício {analise.cotacao.benefFiscal}
+          Provedor: {provider} · {itens.length} itens · rota {analise.cotacao.origem} → {analise.cotacao.destino} ·
+          ICMS {pct(analise.cotacao.params.icmsSaida)}
         </p>
         {analise.avisoFiscal && <p className="mt-2 text-sm text-amber-300">{analise.avisoFiscal}</p>}
       </div>
@@ -277,6 +380,8 @@ export function Dashboard() {
   const [detalhe, setDetalhe] = useState<CotacaoSalva | null>(null);
   const [dupAlvo, setDupAlvo] = useState<CotacaoResumo | null>(null);
   const [duplicando, setDuplicando] = useState(false);
+  const [fiscalDraft, setFiscalDraft] = useState<{ origem: string; destino: string } | null>(null);
+  const [aplicandoFiscal, setAplicandoFiscal] = useState(false);
 
   const carregarLista = useCallback(async () => {
     setListaLoading(true);
@@ -304,6 +409,7 @@ export function Dashboard() {
     setSalvaId(null);
     setCliente("");
     setDetalhe(null);
+    setFiscalDraft(null);
   }
 
   async function abrirCotacao(id: string) {
@@ -311,9 +417,59 @@ export function Dashboard() {
     try {
       const c = await api.buscarCotacao(id);
       setDetalhe(c);
+      setFiscalDraft({ origem: c.cotacao.origem, destino: c.cotacao.destino });
       setView("detalhe");
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Falha ao abrir cotação.");
+    }
+  }
+
+  useEffect(() => {
+    if (analise) {
+      setFiscalDraft({ origem: analise.cotacao.origem, destino: analise.cotacao.destino });
+    }
+  }, [analise?.cotacao.origem, analise?.cotacao.destino, analise]);
+
+  async function aplicarFiscalAnalise() {
+    if (!analise || !fiscalDraft) return;
+    setAplicandoFiscal(true);
+    setErro("");
+    try {
+      const benefFiscal = analise.cotacao.benefFiscal;
+      const cotacao = {
+        ...analise.cotacao,
+        origem: fiscalDraft.origem,
+        destino: fiscalDraft.destino,
+        params: {
+          ...analise.cotacao.params,
+          icmsSaida: icmsSaidaParaDestino(fiscalDraft.destino, benefFiscal),
+        },
+      };
+      const { resultado, itens } = await api.calcular(cotacao);
+      setAnalise({ ...analise, cotacao, resultado, itens });
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao recalcular.");
+    } finally {
+      setAplicandoFiscal(false);
+    }
+  }
+
+  async function aplicarFiscalDetalhe() {
+    if (!detalhe || !fiscalDraft) return;
+    setAplicandoFiscal(true);
+    setErro("");
+    try {
+      const atualizada = await api.atualizarFiscal(detalhe.id, {
+        origem: fiscalDraft.origem,
+        destino: fiscalDraft.destino,
+      });
+      setDetalhe(atualizada);
+      setFiscalDraft({ origem: atualizada.cotacao.origem, destino: atualizada.cotacao.destino });
+      await carregarLista();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao atualizar fiscal.");
+    } finally {
+      setAplicandoFiscal(false);
     }
   }
 
@@ -477,6 +633,7 @@ export function Dashboard() {
                       <th className="px-6 py-3">Cliente</th>
                       <th className="px-4 py-3">Data</th>
                       <th className="px-4 py-3">Itens</th>
+                      <th className="px-4 py-3">Destino</th>
                       <th className="px-4 py-3">Custo import.</th>
                       <th className="px-4 py-3">Imp. venda</th>
                       <th className="px-4 py-3">Lucro trade</th>
@@ -491,6 +648,12 @@ export function Dashboard() {
                         <td className="px-6 py-3 font-medium text-white">{c.cliente}</td>
                         <td className="px-4 py-3 text-slate-400 whitespace-nowrap">{fmtData(c.criadoEm)}</td>
                         <td className="px-4 py-3 text-slate-300">{c.totalItens}</td>
+                        <td className="px-4 py-3 text-slate-300 whitespace-nowrap">
+                          {c.destino ?? "—"}
+                          {c.icmsSaidaPct != null && (
+                            <span className="ml-1 text-xs text-slate-500">({pct(c.icmsSaidaPct)})</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-slate-300">
                           {c.custoImportacaoBRL != null ? brl(c.custoImportacaoBRL) : "—"}
                         </td>
@@ -552,6 +715,9 @@ export function Dashboard() {
                       status: detalhe.status,
                       totalBRL: detalhe.totalBRL,
                       canalPredominante: detalhe.canalPredominante,
+                      origem: detalhe.cotacao.origem,
+                      destino: detalhe.cotacao.destino,
+                      icmsSaidaPct: detalhe.cotacao.params.icmsSaida,
                       markupPct: detalhe.cotacao.params.markupPct,
                       markupBRL: detalhe.financeiro?.markupBRL ?? null,
                       lucroLiquidoTradeBRL: detalhe.financeiro?.lucroLiquidoTradeBRL ?? null,
@@ -571,7 +737,14 @@ export function Dashboard() {
               </div>
             </div>
             <div className="card p-6">
-              <AnalisePainel analise={detalhe} salvaId={detalhe.id} />
+              <AnalisePainel
+                analise={detalhe}
+                salvaId={detalhe.id}
+                fiscalDraft={fiscalDraft ?? undefined}
+                onFiscalDraftChange={setFiscalDraft}
+                onAplicarFiscal={() => void aplicarFiscalDetalhe()}
+                aplicandoFiscal={aplicandoFiscal}
+              />
             </div>
           </div>
         )}
@@ -640,6 +813,10 @@ export function Dashboard() {
                   onSalvar={() => void salvarAnalise()}
                   salvando={salvando}
                   salvaId={salvaId}
+                  fiscalDraft={fiscalDraft ?? undefined}
+                  onFiscalDraftChange={setFiscalDraft}
+                  onAplicarFiscal={() => void aplicarFiscalAnalise()}
+                  aplicandoFiscal={aplicandoFiscal}
                 />
                 {salvaId && (
                   <button type="button" className="btn-ghost mt-4 w-full" onClick={() => void abrirCotacao(salvaId)}>

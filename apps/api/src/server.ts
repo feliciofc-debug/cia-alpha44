@@ -4,11 +4,12 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import { z } from "zod";
-import { cotacaoSchema } from "@cia/shared";
+import { cotacaoSchema, listarUfsFiscais } from "@cia/shared";
 import { getState } from "./state.js";
 import { buscarCambioPtax } from "./services/cambio.js";
 import { calcularCotacao, montarItens } from "./services/cotacao.js";
 import {
+  atualizarFiscalCotacao,
   buscarCotacao,
   duplicarCotacao,
   listarCotacoes,
@@ -49,6 +50,11 @@ export async function buildServer() {
   app.get("/api/cambio", async (req) => {
     const moeda = (req.query as { moeda?: string }).moeda ?? "USD";
     return buscarCambioPtax(moeda.toUpperCase());
+  });
+
+  app.get("/api/fiscal/ufs", async (req) => {
+    const benef = (req.query as { benefFiscal?: string }).benefFiscal ?? "ALAGOAS";
+    return { ufs: listarUfsFiscais(benef) };
   });
 
   // Upload: planilha (.xlsx/.csv) ou PDF/imagem (OCR) → linhas para cotação.
@@ -122,6 +128,26 @@ export async function buildServer() {
         resultado: parsed.data.resultado ?? null,
         provider: parsed.data.provider,
       });
+    } catch (e) {
+      return persistenciaErro(reply, e);
+    }
+  });
+
+  app.patch("/api/cotacoes/:id/fiscal", async (req, reply) => {
+    const body = z
+      .object({
+        origem: z.string().optional(),
+        destino: z.string().optional(),
+        benefFiscal: z.string().optional(),
+        markupPct: z.number().min(0).max(1).optional(),
+      })
+      .safeParse(req.body ?? {});
+    if (!body.success) return reply.status(400).send({ erro: "Body inválido", detalhe: body.error.flatten() });
+    try {
+      const { id } = req.params as { id: string };
+      const atualizada = await atualizarFiscalCotacao(id, getState(), body.data);
+      if (!atualizada) return reply.status(404).send({ erro: "Cotação não encontrada." });
+      return atualizada;
     } catch (e) {
       return persistenciaErro(reply, e);
     }
