@@ -9,12 +9,14 @@ export function ClientesView({
   clientes,
   loading,
   busca,
+  onVoltar,
   onAbrirCliente,
   onAbrirCotacao,
 }: {
   clientes: ClienteResumo[];
   loading: boolean;
   busca: string;
+  onVoltar?: () => void;
   onAbrirCliente: (nome: string) => void;
   onAbrirCotacao: (id: string) => void;
 }) {
@@ -24,12 +26,19 @@ export function ClientesView({
 
   return (
     <div className="space-y-4 p-6">
-      <div>
-        <h2 className="text-lg font-bold text-white">Clientes</h2>
-        <p className="text-sm text-slate-400">
-          {clientes.length} cliente(s)
-          {busca.trim() ? ` · filtro “${busca.trim()}”` : ""}
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold text-white">Clientes</h2>
+          <p className="text-sm text-slate-400">
+            {clientes.length} cliente(s)
+            {busca.trim() ? ` · filtro “${busca.trim()}”` : ""}
+          </p>
+        </div>
+        {onVoltar && (
+          <button type="button" className="btn-ghost py-1.5 text-xs" onClick={onVoltar}>
+            ← Ver todos
+          </button>
+        )}
       </div>
 
       {clientes.length === 0 ? (

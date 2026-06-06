@@ -389,6 +389,7 @@ export function Dashboard() {
   const [view, setView] = useState<View>("painel");
   const [busca, setBusca] = useState("");
   const [filtroAtivo, setFiltroAtivo] = useState("");
+  const [origemVoltar, setOrigemVoltar] = useState<"lista" | "clientes">("lista");
   const [meta, setMeta] = useState<Meta | null>(null);
   const [erro, setErro] = useState("");
 
@@ -481,8 +482,38 @@ export function Dashboard() {
   function submitBusca() {
     const q = busca.trim();
     setFiltroAtivo(q);
+    setOrigemVoltar(view === "clientes" ? "clientes" : "lista");
     setView("lista");
     void carregarLista(q || undefined);
+  }
+
+  function voltarParaClientes() {
+    setBusca("");
+    setFiltroAtivo("");
+    setView("clientes");
+    void carregarClientes();
+  }
+
+  function voltarDoDetalhe() {
+    setDetalhe(null);
+    setEditorDraft(null);
+    if (origemVoltar === "clientes") {
+      setView("clientes");
+      void carregarClientes(busca.trim() || undefined);
+    } else {
+      setView("lista");
+      void carregarLista(filtroAtivo || undefined);
+    }
+  }
+
+  function voltarDaLista() {
+    if (origemVoltar === "clientes" || filtroAtivo) {
+      voltarParaClientes();
+      return;
+    }
+    setFiltroAtivo("");
+    setBusca("");
+    void carregarLista();
   }
 
   function irNova() {
@@ -496,7 +527,8 @@ export function Dashboard() {
     setEditorDraft(null);
   }
 
-  async function abrirCotacao(id: string) {
+  async function abrirCotacao(id: string, origem: "lista" | "clientes" = "lista") {
+    setOrigemVoltar(origem);
     setErro("");
     try {
       const c = await api.buscarCotacao(id);
@@ -715,13 +747,15 @@ export function Dashboard() {
               clientes={clientes}
               loading={clientesLoading}
               busca={busca}
+              onVoltar={busca.trim() ? voltarParaClientes : undefined}
               onAbrirCliente={(nome) => {
                 setBusca(nome);
                 setFiltroAtivo(nome);
+                setOrigemVoltar("clientes");
                 setView("lista");
                 void carregarLista(nome);
               }}
-              onAbrirCotacao={(id) => void abrirCotacao(id)}
+              onAbrirCotacao={(id) => void abrirCotacao(id, "clientes")}
             />
           </div>
         )}
@@ -729,12 +763,19 @@ export function Dashboard() {
         {view === "lista" && (
           <div className="card overflow-hidden">
             <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
-              <div>
-                <h2 className="text-lg font-bold text-white">Minhas cotações</h2>
-                <p className="text-sm text-slate-400">
-                  {lista.length} processo(s)
-                  {filtroAtivo ? ` · filtro “${filtroAtivo}”` : " salvos"}
-                </p>
+              <div className="flex items-start gap-3">
+                {(filtroAtivo || origemVoltar === "clientes") && (
+                  <button type="button" className="btn-ghost mt-0.5 py-1.5 text-xs" onClick={voltarDaLista}>
+                    ← Voltar
+                  </button>
+                )}
+                <div>
+                  <h2 className="text-lg font-bold text-white">Minhas cotações</h2>
+                  <p className="text-sm text-slate-400">
+                    {lista.length} processo(s)
+                    {filtroAtivo ? ` · filtro “${filtroAtivo}”` : " salvos"}
+                  </p>
+                </div>
               </div>
               <button type="button" className="btn-primary" onClick={irNova}>
                 + Nova cotação
@@ -889,8 +930,8 @@ export function Dashboard() {
                 >
                   Duplicar + margem
                 </button>
-                <button type="button" className="btn-ghost" onClick={() => setView("lista")}>
-                  Voltar
+                <button type="button" className="btn-ghost" onClick={voltarDoDetalhe}>
+                  ← Voltar
                 </button>
               </div>
             </div>
