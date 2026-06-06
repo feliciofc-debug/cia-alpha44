@@ -4,7 +4,9 @@ import type {
   Cotacao,
   CotacaoLista,
   CotacaoSalva,
+  ClienteResumo,
   DashboardKpis,
+  DashboardSeries,
   Item,
   ParsedSheet,
   ResultadoCotacao,
@@ -143,6 +145,14 @@ export const api = {
   },
 
   dashboardKpis: () => fetch(`${BASE}/api/dashboard/kpis`).then(handle<DashboardKpis>),
+
+  dashboardSeries: (meses = 12) =>
+    fetch(`${BASE}/api/dashboard/series?meses=${meses}`).then(handle<DashboardSeries>),
+
+  dashboardClientes: (q?: string) => {
+    const qs = q?.trim() ? `?q=${encodeURIComponent(q.trim())}` : "";
+    return fetch(`${BASE}/api/dashboard/clientes${qs}`).then(handle<{ total: number; clientes: ClienteResumo[] }>);
+  },
 
   listarCotacoes: (cliente?: string) => {
     const q = cliente ? `?cliente=${encodeURIComponent(cliente)}` : "";

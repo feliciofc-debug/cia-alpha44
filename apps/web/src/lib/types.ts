@@ -207,6 +207,38 @@ export interface CotacaoLista {
   totalHoje: number;
 }
 
+export interface MesSerie {
+  mes: string;
+  label: string;
+  processos: number;
+  volumeBRL: number;
+  lucroTradeBRL: number;
+  lucroLiquidoBRL: number;
+}
+
+export interface DashboardSeries {
+  serie: MesSerie[];
+  projecaoMensal: { volumeBRL: number; lucroTradeBRL: number; processos: number };
+  projecaoAnual: {
+    volumeBRL: number;
+    lucroTradeBRL: number;
+    baseMediaMensalVolume: number;
+    baseMediaMensalLucro: number;
+  };
+  mesAtual: { chave: string; processos: number; volumeBRL: number; lucroTradeBRL: number; lucroLiquidoBRL: number };
+}
+
+export interface ClienteResumo {
+  cliente: string;
+  processos: number;
+  volumeBRL: number;
+  lucroTradeBRL: number;
+  markupMedioPct: number;
+  ultimaCotacaoId: string;
+  ultimaCotacaoEm: string;
+  destinos: string[];
+}
+
 export interface DashboardKpis {
   totalCotacoes: number;
   cotacoesHoje: number;

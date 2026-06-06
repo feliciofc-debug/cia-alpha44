@@ -11,10 +11,12 @@ import {
 } from "./lib/editor-cotacao.ts";
 import type { Canal, CotacaoResumo, CotacaoSalva, Item, ResultadoCotacao } from "./lib/types.ts";
 import { PainelEditorCotacao } from "./painel-editor.tsx";
+import { AppShell, type NavItem } from "./app-shell.tsx";
+import { ClientesView } from "./clientes-view.tsx";
 import { PainelKpisView } from "./painel-kpis.tsx";
-import type { DashboardKpis } from "./lib/types.ts";
+import type { ClienteResumo, DashboardKpis, DashboardSeries } from "./lib/types.ts";
 
-type View = "lista" | "painel" | "nova" | "detalhe";
+type View = NavItem | "detalhe";
 
 const CANAL_LABEL: Record<Canal, string> = {
   VERDE_PROVAVEL: "Verde",
@@ -296,7 +298,9 @@ function ModalDuplicar({
 
 export function Dashboard() {
   const { user, logout } = useAuth();
-  const [view, setView] = useState<View>("lista");
+  const [view, setView] = useState<View>("painel");
+  const [busca, setBusca] = useState("");
+  const [filtroAtivo, setFiltroAtivo] = useState("");
   const [meta, setMeta] = useState<Meta | null>(null);
   const [erro, setErro] = useState("");
 
@@ -320,24 +324,29 @@ export function Dashboard() {
   const [aplicandoEditor, setAplicandoEditor] = useState(false);
   const [pdfBaixando, setPdfBaixando] = useState<"cliente" | "trade" | null>(null);
   const [kpis, setKpis] = useState<DashboardKpis | null>(null);
+  const [series, setSeries] = useState<DashboardSeries | null>(null);
   const [kpisLoading, setKpisLoading] = useState(false);
+  const [clientes, setClientes] = useState<ClienteResumo[]>([]);
+  const [clientesLoading, setClientesLoading] = useState(false);
 
-  const carregarKpis = useCallback(async () => {
+  const carregarPainel = useCallback(async () => {
     setKpisLoading(true);
     try {
-      const res = await api.dashboardKpis();
-      setKpis(res);
+      const [k, s] = await Promise.all([api.dashboardKpis(), api.dashboardSeries(12)]);
+      setKpis(k);
+      setSeries(s);
     } catch {
       setKpis(null);
+      setSeries(null);
     } finally {
       setKpisLoading(false);
     }
   }, []);
 
-  const carregarLista = useCallback(async () => {
+  const carregarLista = useCallback(async (cliente?: string) => {
     setListaLoading(true);
     try {
-      const res = await api.listarCotacoes();
+      const res = await api.listarCotacoes(cliente?.trim() || undefined);
       setLista(res.cotacoes);
       setTotalHoje(res.totalHoje);
     } catch (e) {
@@ -347,10 +356,45 @@ export function Dashboard() {
     }
   }, []);
 
+  const carregarClientes = useCallback(async (q?: string) => {
+    setClientesLoading(true);
+    try {
+      const res = await api.dashboardClientes(q);
+      setClientes(res.clientes);
+    } catch {
+      setClientes([]);
+    } finally {
+      setClientesLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     api.meta().then(setMeta).catch(() => {});
+    void carregarPainel();
     void carregarLista();
-  }, [carregarLista]);
+  }, [carregarPainel, carregarLista]);
+
+  function irNav(n: NavItem) {
+    setErro("");
+    if (n === "nova") irNova();
+    else if (n === "painel") {
+      setView("painel");
+      void carregarPainel();
+    } else if (n === "lista") {
+      setView("lista");
+      void carregarLista(filtroAtivo || undefined);
+    } else if (n === "clientes") {
+      setView("clientes");
+      void carregarClientes(busca || undefined);
+    }
+  }
+
+  function submitBusca() {
+    const q = busca.trim();
+    setFiltroAtivo(q);
+    setView("lista");
+    void carregarLista(q || undefined);
+  }
 
   function irNova() {
     setView("nova");
@@ -500,59 +544,20 @@ export function Dashboard() {
     }
   }
 
-  return (
-    <div className="min-h-full bg-ink-900">
-      <header className="border-b border-white/5">
-        <div className="container-cia flex h-14 items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500 text-sm font-black text-white">
-              α
-            </div>
-            <nav className="flex gap-1 text-sm">
-              <button
-                type="button"
-                className={`rounded-lg px-3 py-1.5 ${view === "painel" ? "bg-white/10 text-white" : "text-slate-400 hover:text-white"}`}
-                onClick={() => {
-                  setView("painel");
-                  void carregarKpis();
-                }}
-              >
-                Painel
-              </button>
-              <button
-                type="button"
-                className={`rounded-lg px-3 py-1.5 ${view === "lista" ? "bg-white/10 text-white" : "text-slate-400 hover:text-white"}`}
-                onClick={() => {
-                  setView("lista");
-                  void carregarLista();
-                }}
-              >
-                Cotações
-              </button>
-              <button
-                type="button"
-                className={`rounded-lg px-3 py-1.5 ${view === "nova" ? "bg-white/10 text-white" : "text-slate-400 hover:text-white"}`}
-                onClick={irNova}
-              >
-                Nova
-              </button>
-            </nav>
-          </div>
-          <div className="flex items-center gap-4 text-sm">
-            {totalHoje > 0 && (
-              <span className="hidden rounded-full bg-brand-500/20 px-3 py-1 text-xs font-medium text-brand-300 sm:inline">
-                {totalHoje} hoje
-              </span>
-            )}
-            <span className="text-slate-400">{user?.email}</span>
-            <button type="button" className="btn-ghost py-1.5" onClick={logout}>
-              Sair
-            </button>
-          </div>
-        </div>
-      </header>
+  const navAtivo: NavItem = view === "detalhe" ? "lista" : view;
 
-      <main className="container-cia py-8">
+  return (
+    <AppShell
+      nav={navAtivo}
+      onNav={irNav}
+      userEmail={user?.email}
+      totalHoje={totalHoje}
+      busca={busca}
+      onBuscaChange={setBusca}
+      onBuscaSubmit={submitBusca}
+      onLogout={logout}
+    >
+      <div className="container-cia py-6 md:py-8">
         {erro && (
           <p className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-300">
             {erro}
@@ -563,8 +568,26 @@ export function Dashboard() {
           <div className="card overflow-hidden">
             <PainelKpisView
               kpis={kpis}
+              series={series}
               loading={kpisLoading}
               onAbrir={(id) => void abrirCotacao(id)}
+            />
+          </div>
+        )}
+
+        {view === "clientes" && (
+          <div className="card overflow-hidden">
+            <ClientesView
+              clientes={clientes}
+              loading={clientesLoading}
+              busca={busca}
+              onAbrirCliente={(nome) => {
+                setBusca(nome);
+                setFiltroAtivo(nome);
+                setView("lista");
+                void carregarLista(nome);
+              }}
+              onAbrirCotacao={(id) => void abrirCotacao(id)}
             />
           </div>
         )}
@@ -574,7 +597,10 @@ export function Dashboard() {
             <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
               <div>
                 <h2 className="text-lg font-bold text-white">Minhas cotações</h2>
-                <p className="text-sm text-slate-400">{lista.length} processo(s) salvos</p>
+                <p className="text-sm text-slate-400">
+                  {lista.length} processo(s)
+                  {filtroAtivo ? ` · filtro “${filtroAtivo}”` : " salvos"}
+                </p>
               </div>
               <button type="button" className="btn-primary" onClick={irNova}>
                 + Nova cotação
@@ -817,7 +843,7 @@ export function Dashboard() {
             </p>
           </div>
         )}
-      </main>
+      </div>
 
       {dupAlvo && (
         <ModalDuplicar
@@ -827,6 +853,6 @@ export function Dashboard() {
           loading={duplicando}
         />
       )}
-    </div>
+    </AppShell>
   );
 }

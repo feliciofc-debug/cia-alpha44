@@ -17,7 +17,9 @@ import {
   salvarCotacao,
 } from "./services/cotacoes-persist.js";
 import { ingerirArquivo } from "./services/ingest.js";
+import { listarClientesDashboard } from "./services/dashboard-clientes.js";
 import { obterDashboardKpis } from "./services/dashboard-kpis.js";
+import { obterSeriesMensais } from "./services/dashboard-series.js";
 import { gerarPdfCotacao } from "./services/pdf-cotacao.js";
 
 const PORT = Number(process.env.PORT ?? 3333);
@@ -100,6 +102,24 @@ export async function buildServer() {
   app.get("/api/dashboard/kpis", async (_req, reply) => {
     try {
       return await obterDashboardKpis();
+    } catch (e) {
+      return persistenciaErro(reply, e);
+    }
+  });
+
+  app.get("/api/dashboard/series", async (req, reply) => {
+    try {
+      const meses = Number((req.query as { meses?: string }).meses) || 12;
+      return await obterSeriesMensais(Math.min(24, Math.max(3, meses)));
+    } catch (e) {
+      return persistenciaErro(reply, e);
+    }
+  });
+
+  app.get("/api/dashboard/clientes", async (req, reply) => {
+    try {
+      const q = (req.query as { q?: string }).q;
+      return await listarClientesDashboard(q);
     } catch (e) {
       return persistenciaErro(reply, e);
     }

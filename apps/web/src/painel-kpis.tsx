@@ -1,5 +1,6 @@
+import { GraficosProducao } from "./graficos-producao.tsx";
 import { brl, pct } from "./lib/format.ts";
-import type { DashboardKpis } from "./lib/types.ts";
+import type { DashboardKpis, DashboardSeries } from "./lib/types.ts";
 
 const CANAL_LABEL: Record<string, string> = {
   VERDE_PROVAVEL: "Verde",
@@ -38,10 +39,12 @@ function KpiCard({
 
 export function PainelKpisView({
   kpis,
+  series,
   loading,
   onAbrir,
 }: {
   kpis: DashboardKpis | null;
+  series: DashboardSeries | null;
   loading: boolean;
   onAbrir: (id: string) => void;
 }) {
@@ -59,7 +62,7 @@ export function PainelKpisView({
       <div>
         <h2 className="text-lg font-bold text-white">Painel executivo</h2>
         <p className="text-sm text-slate-400">
-          Resumo de {kpis.amostra} cotações recentes · {kpis.totalCotacoes} no total
+          {kpis.cotacoesMes} processos no mês · {kpis.totalCotacoes} no total · produção em tempo real
         </p>
       </div>
 
@@ -79,6 +82,8 @@ export function PainelKpisView({
           destaque="emerald"
         />
       </div>
+
+      <GraficosProducao series={series} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-white/10 bg-ink-900/40 p-4">
