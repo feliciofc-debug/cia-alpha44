@@ -21,7 +21,7 @@ import { ingerirArquivo } from "./services/ingest.js";
 import { listarClientesDashboard } from "./services/dashboard-clientes.js";
 import { obterDashboardKpis } from "./services/dashboard-kpis.js";
 import { obterSeriesMensais } from "./services/dashboard-series.js";
-import { gerarPdfCotacao } from "./services/pdf-cotacao.js";
+import { gerarPdfCotacao, gerarPdfFromPayload } from "./services/pdf-cotacao.js";
 
 const PORT = Number(process.env.PORT ?? 3333);
 const HOST = process.env.HOST ?? "0.0.0.0";
@@ -164,6 +164,30 @@ export async function buildServer() {
       return row;
     } catch (e) {
       return persistenciaErro(reply, e);
+    }
+  });
+
+  app.post("/api/cotacoes/preview-pdf", async (req, reply) => {
+    const parsed = salvarBody.safeParse(req.body);
+    if (!parsed.success) return reply.status(400).send({ erro: "Body inválido", detalhe: parsed.error.flatten() });
+    try {
+      const tipo = (req.query as { tipo?: string }).tipo === "trade" ? "trade" : "cliente";
+      const buf = await gerarPdfFromPayload(
+        {
+          cotacao: parsed.data.cotacao,
+          itens: parsed.data.itens as import("@cia/shared").Item[],
+          resultado: parsed.data.resultado ?? null,
+        },
+        tipo,
+      );
+      const nome = (parsed.data.cotacao.cliente || "cotacao").replace(/[^\w\-]+/g, "_").slice(0, 40);
+      return reply
+        .header("Content-Type", "application/pdf")
+        .header("Content-Disposition", `attachment; filename="cia-preview-${tipo}-${nome}.pdf"`)
+        .send(buf);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Falha ao gerar PDF.";
+      return reply.status(422).send({ erro: msg });
     }
   });
 

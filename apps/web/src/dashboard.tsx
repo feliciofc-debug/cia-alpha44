@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "./auth/auth.tsx";
 import { api, type AnaliseCompleta, type Meta } from "./lib/api.ts";
 import { brl, fmtNcm, pct, usdKg } from "./lib/format.ts";
+import { fobKgItem } from "./lib/fob-kg.ts";
 import { extrairResumoFinanceiro, type ResumoFinanceiro } from "./lib/financeiro.ts";
 import {
   aplicarEditorNaCotacao,
@@ -14,6 +15,7 @@ import { PainelEditorCotacao } from "./painel-editor.tsx";
 import { AppShell, type NavItem } from "./app-shell.tsx";
 import { ClientesView } from "./clientes-view.tsx";
 import { PainelKpisView } from "./painel-kpis.tsx";
+import { PreviewOrcamentoCliente } from "./preview-orcamento-cliente.tsx";
 import type { ClienteResumo, DashboardKpis, DashboardSeries } from "./lib/types.ts";
 
 type View = NavItem | "detalhe";
@@ -39,20 +41,6 @@ function resumoCanais(itens: Item[]) {
     m[c] = (m[c] ?? 0) + 1;
   }
   return m;
-}
-
-function fobKgItem(it: Item) {
-  if (it.calibracao) {
-    return {
-      principal: it.calibracao.fobKgCalibrado,
-      original: it.calibracao.fobKgOriginal,
-      ajustado: it.calibracao.ajustado,
-    };
-  }
-  if (it.pesoLiqKg > 0 && it.fobTotalUS > 0) {
-    return { principal: it.fobTotalUS / it.pesoLiqKg, original: null, ajustado: false };
-  }
-  return { principal: null, original: null, ajustado: false };
 }
 
 function IconLixeira() {
@@ -171,6 +159,8 @@ function AnalisePainel({
   onEditorChange,
   onAplicarEditor,
   aplicandoEditor,
+  onBaixarPdfCliente,
+  pdfBaixando,
 }: {
   analise: AnaliseView;
   onSalvar?: () => void;
@@ -180,7 +170,10 @@ function AnalisePainel({
   onEditorChange?: (d: EditorDraft) => void;
   onAplicarEditor?: () => void;
   aplicandoEditor?: boolean;
+  onBaixarPdfCliente?: () => void;
+  pdfBaixando?: boolean;
 }) {
+  const [aba, setAba] = useState<"orcamento" | "tecnica">(salvaId ? "tecnica" : "orcamento");
   const itens = analise.itens;
   const provider = (analise as { provider?: string | null }).provider ?? "—";
   const canais = resumoCanais(itens);
@@ -188,43 +181,10 @@ function AnalisePainel({
     "financeiro" in analise && analise.financeiro
       ? analise.financeiro
       : extrairResumoFinanceiro(analise.resultado, analise.cotacao.params.markupPct);
-  return (
-    <div className="space-y-6 text-left">
-      {editorDraft && onEditorChange && onAplicarEditor && (
-        <PainelEditorCotacao
-          draft={editorDraft}
-          onChange={onEditorChange}
-          onAplicar={onAplicarEditor}
-          aplicando={aplicandoEditor}
-          modo={salvaId ? "salva" : "analise"}
-        />
-      )}
 
-      <div className="rounded-xl border border-brand-500/30 bg-brand-500/10 p-4">
-        <p className="font-semibold text-white">
-          {salvaId ? "Cotação salva" : "Análise concluída"}
-          {salvaId && <span className="ml-2 text-xs font-normal text-slate-400">#{salvaId.slice(0, 8)}</span>}
-        </p>
-        <p className="mt-1 text-sm text-slate-300">
-          Provedor: {provider} · {itens.length} itens · {analise.cotacao.empresaTrade || "—"} →{" "}
-          {analise.cotacao.cliente} · rota {analise.cotacao.origem} → {analise.cotacao.destino} · ICMS{" "}
-          {pct(analise.cotacao.params.icmsSaida)}
-        </p>
-        {analise.avisoFiscal && <p className="mt-2 text-sm text-amber-300">{analise.avisoFiscal}</p>}
-      </div>
-
+  const conteudoTecnico: ReactNode = (
+    <>
       <ResumoFinanceiroPainel financeiro={financeiro} resultado={analise.resultado} />
-
-      {!salvaId && onSalvar && (
-        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-          <button type="button" className="btn-primary w-full" disabled={salvando} onClick={onSalvar}>
-            {salvando ? "Salvando…" : "Salvar cotação"}
-          </button>
-          <p className="mt-2 text-center text-xs text-slate-500">
-            Empresa, cliente e parâmetros do editor acima serão gravados.
-          </p>
-        </div>
-      )}
 
       <div className="flex flex-wrap gap-2">
         {(Object.entries(canais) as [Canal, number][]).map(([canal, qtd]) => (
@@ -300,6 +260,77 @@ function AnalisePainel({
           </tbody>
         </table>
       </div>
+    </>
+  );
+
+  return (
+    <div className="space-y-6 text-left">
+      {editorDraft && onEditorChange && onAplicarEditor && (
+        <PainelEditorCotacao
+          draft={editorDraft}
+          onChange={onEditorChange}
+          onAplicar={onAplicarEditor}
+          aplicando={aplicandoEditor}
+          modo={salvaId ? "salva" : "analise"}
+        />
+      )}
+
+      <div className="rounded-xl border border-brand-500/30 bg-brand-500/10 p-4">
+        <p className="font-semibold text-white">
+          {salvaId ? "Cotação salva" : "Análise concluída"}
+          {salvaId && <span className="ml-2 text-xs font-normal text-slate-400">#{salvaId.slice(0, 8)}</span>}
+        </p>
+        <p className="mt-1 text-sm text-slate-300">
+          Provedor: {provider} · {itens.length} itens · {analise.cotacao.empresaTrade || "—"} →{" "}
+          {analise.cotacao.cliente} · rota {analise.cotacao.origem} → {analise.cotacao.destino} · ICMS{" "}
+          {pct(analise.cotacao.params.icmsSaida)}
+        </p>
+        {analise.avisoFiscal && <p className="mt-2 text-sm text-amber-300">{analise.avisoFiscal}</p>}
+      </div>
+
+      <div className="flex gap-2 border-b border-white/10 pb-1">
+        <button
+          type="button"
+          className={`rounded-t-lg px-4 py-2 text-sm font-medium transition ${
+            aba === "orcamento" ? "bg-white/10 text-white" : "text-slate-400 hover:text-white"
+          }`}
+          onClick={() => setAba("orcamento")}
+        >
+          Orçamento cliente
+        </button>
+        <button
+          type="button"
+          className={`rounded-t-lg px-4 py-2 text-sm font-medium transition ${
+            aba === "tecnica" ? "bg-white/10 text-white" : "text-slate-400 hover:text-white"
+          }`}
+          onClick={() => setAba("tecnica")}
+        >
+          Análise técnica
+        </button>
+      </div>
+
+      {aba === "orcamento" ? (
+        <PreviewOrcamentoCliente
+          cotacao={analise.cotacao}
+          itens={itens}
+          financeiro={financeiro}
+          onBaixarPdf={onBaixarPdfCliente}
+          pdfBaixando={pdfBaixando}
+        />
+      ) : (
+        conteudoTecnico
+      )}
+
+      {!salvaId && onSalvar && (
+        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+          <p className="mb-3 text-center text-xs text-slate-400">
+            Revise o orçamento na aba acima antes de salvar e enviar ao cliente.
+          </p>
+          <button type="button" className="btn-primary w-full" disabled={salvando} onClick={onSalvar}>
+            {salvando ? "Salvando…" : "Salvar cotação"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -499,6 +530,26 @@ export function Dashboard() {
     setErro("");
     try {
       await api.baixarPdf(detalhe.id, tipo);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao gerar PDF.");
+    } finally {
+      setPdfBaixando(null);
+    }
+  }
+
+  async function baixarPdfClienteOrcamento() {
+    setErro("");
+    setPdfBaixando("cliente");
+    try {
+      const idSalvo = detalhe?.id ?? salvaId;
+      if (idSalvo) {
+        await api.baixarPdf(idSalvo, "cliente");
+        return;
+      }
+      if (!analise) return;
+      const draft = editorDraft ?? editorFromCotacao(analise.cotacao, cliente);
+      const cotacao = aplicarEditorNaCotacao(analise.cotacao, draft);
+      await api.previewPdf({ cotacao, itens: analise.itens, resultado: analise.resultado }, "cliente");
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Falha ao gerar PDF.");
     } finally {
@@ -851,6 +902,8 @@ export function Dashboard() {
                 onEditorChange={setEditorDraft}
                 onAplicarEditor={() => void aplicarEditorDetalhe()}
                 aplicandoEditor={aplicandoEditor}
+                onBaixarPdfCliente={() => void baixarPdfClienteOrcamento()}
+                pdfBaixando={pdfBaixando === "cliente"}
               />
             </div>
           </div>
@@ -925,6 +978,8 @@ export function Dashboard() {
                   }}
                   onAplicarEditor={() => void aplicarEditorAnalise()}
                   aplicandoEditor={aplicandoEditor}
+                  onBaixarPdfCliente={() => void baixarPdfClienteOrcamento()}
+                  pdfBaixando={pdfBaixando === "cliente"}
                 />
                 {salvaId && (
                   <button type="button" className="btn-ghost mt-4 w-full" onClick={() => void abrirCotacao(salvaId)}>

@@ -205,8 +205,7 @@ export const api = {
       body: JSON.stringify(opts),
     }).then(handle<CotacaoSalva>),
 
-  baixarPdf: async (id: string, tipo: "cliente" | "trade") => {
-    const res = await fetch(`${BASE}/api/cotacoes/${id}/pdf?tipo=${tipo}`);
+  baixarPdfBlob: async (res: Response, fallback: string) => {
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
       throw new Error(txt || `Falha ao gerar PDF (${res.status})`);
@@ -214,7 +213,7 @@ export const api = {
     const blob = await res.blob();
     const disp = res.headers.get("Content-Disposition") ?? "";
     const match = /filename="([^"]+)"/.exec(disp);
-    const filename = match?.[1] ?? `cia-${tipo}.pdf`;
+    const filename = match?.[1] ?? fallback;
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -222,6 +221,22 @@ export const api = {
     a.click();
     URL.revokeObjectURL(url);
   },
+
+  baixarPdf: async (id: string, tipo: "cliente" | "trade") => {
+    const res = await fetch(`${BASE}/api/cotacoes/${id}/pdf?tipo=${tipo}`);
+    return api.baixarPdfBlob(res, `cia-${tipo}.pdf`);
+  },
+
+  previewPdf: (payload: {
+    cotacao: Cotacao;
+    itens: Item[];
+    resultado: ResultadoCotacao | null;
+  }, tipo: "cliente" | "trade" = "cliente") =>
+    fetch(`${BASE}/api/cotacoes/preview-pdf?tipo=${tipo}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    }).then((res) => api.baixarPdfBlob(res, `cia-preview-${tipo}.pdf`)),
 
   listarUfs: (benefFiscal = "ALAGOAS") =>
     fetch(`${BASE}/api/fiscal/ufs?benefFiscal=${encodeURIComponent(benefFiscal)}`).then(

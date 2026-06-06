@@ -1,11 +1,22 @@
 /** Geração de PDF — orçamento cliente (comercial) e relatório estratégico (trade). */
 
 import PDFDocument from "pdfkit";
+import type { ResultadoCotacao } from "@cia/fiscal-engine";
+import type { Cotacao, Item } from "@cia/shared";
 import { formatNcm } from "@cia/shared";
 import { extrairResumoFinanceiro } from "../lib/financeiro.js";
 import type { buscarCotacao } from "./cotacoes-persist.js";
 
 type CotacaoSalva = NonNullable<Awaited<ReturnType<typeof buscarCotacao>>>;
+
+export type PayloadPdf = {
+  cotacao: Cotacao;
+  itens: Item[];
+  resultado: ResultadoCotacao | null;
+  criadoEm?: string;
+  financeiro?: CotacaoSalva["financeiro"];
+};
+
 type PdfDoc = InstanceType<typeof PDFDocument>;
 
 export type TipoPdf = "cliente" | "trade";
@@ -50,50 +61,86 @@ function linha(doc: PdfDoc, label: string, valor: string, bold = false) {
   doc.text(`${label}: `, { continued: true }).font("Helvetica-Bold").text(valor);
 }
 
-function gerarPdfCliente(salva: CotacaoSalva): Promise<Buffer> {
-  const { cotacao, itens, resultado, criadoEm } = salva;
-  const financeiro = salva.financeiro ?? extrairResumoFinanceiro(resultado, cotacao.params.markupPct);
+function fobKgValor(it: Item): number | null {
+  if (it.calibracao?.fobKgCalibrado) return it.calibracao.fobKgCalibrado;
+  if (it.pesoLiqKg > 0 && it.fobTotalUS > 0) return it.fobTotalUS / it.pesoLiqKg;
+  return null;
+}
+
+function usdKg(n: number | null): string {
+  if (n == null) return "—";
+  return `US$ ${n.toFixed(4)}/kg`;
+}
+
+function gerarPdfCliente(payload: PayloadPdf): Promise<Buffer> {
+  const { cotacao, itens, resultado } = payload;
+  const criadoEm = payload.criadoEm ?? new Date().toISOString();
+  const financeiro =
+    payload.financeiro ?? extrairResumoFinanceiro(resultado, cotacao.params.markupPct);
   const doc = new PDFDocument({ size: "A4", margin: 50, info: { Title: "Orçamento de Importação" } });
 
   const empresa = cotacao.empresaTrade?.trim() || "CIA / Alpha 44";
+  const fobTotalUS = itens.reduce((s, it) => s + (it.fobTotalUS > 0 ? it.fobTotalUS : 0), 0);
+  const pesoTotalKg = itens.reduce((s, it) => s + (it.pesoLiqKg > 0 ? it.pesoLiqKg : 0), 0);
+
   titulo(doc, "ORÇAMENTO DE IMPORTAÇÃO");
   doc.fontSize(11).font("Helvetica-Bold").text(empresa);
   doc.font("Helvetica").fontSize(10);
   doc.text(`Cliente: ${cotacao.cliente || "—"}`);
-  doc.text(`Data: ${fmtData(criadoEm)} · Destino: ${cotacao.destino} · Incoterm: ${cotacao.incoterm}`);
+  doc.text(
+    `Data: ${fmtData(criadoEm)} · Destino: ${cotacao.destino} · Incoterm: ${cotacao.incoterm} · Câmbio ref.: R$ ${cotacao.cambio.toFixed(4)}`,
+  );
   doc.moveDown(1);
 
   doc.fontSize(11).font("Helvetica-Bold").text("Itens cotados");
   doc.moveDown(0.4);
-  doc.fontSize(9).font("Helvetica-Bold");
-  const colDesc = 50;
-  const colNcm = 320;
-  const colFob = 430;
-  doc.text("Descrição", colDesc, doc.y, { width: 260, continued: false });
-  const headerY = doc.y - 12;
-  doc.text("NCM", colNcm, headerY);
-  doc.text("FOB US$", colFob, headerY);
+  doc.fontSize(8).font("Helvetica-Bold");
+  const cols = { num: 50, desc: 68, ncm: 248, qtd: 318, peso: 358, fobKg: 408, fob: 478 };
+  const headerY = doc.y;
+  doc.text("#", cols.num, headerY);
+  doc.text("Descrição", cols.desc, headerY, { width: 170 });
+  doc.text("NCM", cols.ncm, headerY);
+  doc.text("Qtd", cols.qtd, headerY);
+  doc.text("Peso", cols.peso, headerY);
+  doc.text("US$/kg", cols.fobKg, headerY);
+  doc.text("FOB US$", cols.fob, headerY);
+  doc.moveDown(0.3);
+  doc.strokeColor("#cccccc").lineWidth(0.5).moveTo(50, doc.y).lineTo(545, doc.y).stroke();
+  doc.moveDown(0.35);
+
+  itens.forEach((it, idx) => {
+    if (doc.y > 700) doc.addPage();
+    const y = doc.y;
+    doc.font("Helvetica").fontSize(8);
+    doc.text(String(idx + 1), cols.num, y);
+    doc.text((it.descPt || it.descOriginal).slice(0, 55), cols.desc, y, { width: 170 });
+    doc.text(formatNcm(it.ncm || "00000000"), cols.ncm, y);
+    doc.text(it.qtd != null ? String(it.qtd) : "—", cols.qtd, y);
+    doc.text(it.pesoLiqKg > 0 ? it.pesoLiqKg.toLocaleString("pt-BR") : "—", cols.peso, y);
+    doc.text(usdKg(fobKgValor(it)), cols.fobKg, y);
+    doc.text(it.fobTotalUS > 0 ? it.fobTotalUS.toFixed(2) : "—", cols.fob, y);
+    doc.moveDown(0.85);
+  });
+
   doc.moveDown(0.3);
   doc.strokeColor("#cccccc").lineWidth(0.5).moveTo(50, doc.y).lineTo(545, doc.y).stroke();
   doc.moveDown(0.4);
-
-  for (const it of itens) {
-    const y = doc.y;
-    if (y > 700) {
-      doc.addPage();
-    }
-    doc.font("Helvetica").fontSize(9);
-    const desc = (it.descPt || it.descOriginal).slice(0, 80);
-    doc.text(desc, colDesc, doc.y, { width: 260 });
-    const rowY = y;
-    doc.text(formatNcm(it.ncm || "00000000"), colNcm, rowY);
-    doc.text(it.fobTotalUS > 0 ? it.fobTotalUS.toFixed(2) : "—", colFob, rowY);
-    doc.moveDown(0.9);
-  }
-
+  doc.fontSize(8).font("Helvetica-Bold");
+  doc.text("Totais", cols.desc, doc.y);
+  doc.text(pesoTotalKg > 0 ? pesoTotalKg.toLocaleString("pt-BR") : "—", cols.peso, doc.y);
+  doc.text(`US$ ${fobTotalUS.toFixed(2)}`, cols.fob, doc.y);
   doc.moveDown(1);
+
+  doc.fontSize(10).font("Helvetica").fillColor("#000000");
+  doc.text(`FOB total mercadorias: US$ ${fobTotalUS.toFixed(2)}`);
+  doc.text(`Câmbio de referência: R$ ${cotacao.cambio.toFixed(4)}`);
+  doc.fontSize(9).fillColor("#444444");
+  doc.text(`Inclui nacionalização, impostos, despesas locais e entrega até ${cotacao.destino}.`);
+  doc.moveDown(0.8);
   doc.fontSize(12).font("Helvetica-Bold").fillColor("#1e3a5f");
-  doc.text(`Investimento total: ${financeiro ? brl(financeiro.totalOrcamentoBRL) : "—"}`, { align: "right" });
+  doc.text(`Investimento total estimado: ${financeiro ? brl(financeiro.totalOrcamentoBRL) : "—"}`, {
+    align: "right",
+  });
   doc.fillColor("#000000").font("Helvetica").fontSize(9);
   doc.moveDown(1.5);
   doc.text("Condições gerais:", { underline: true });
@@ -108,9 +155,10 @@ function gerarPdfCliente(salva: CotacaoSalva): Promise<Buffer> {
   return pdfParaBuffer(doc);
 }
 
-function gerarPdfTrade(salva: CotacaoSalva): Promise<Buffer> {
-  const { cotacao, itens, resultado, criadoEm } = salva;
-  const f = salva.financeiro ?? extrairResumoFinanceiro(resultado, cotacao.params.markupPct);
+function gerarPdfTrade(payload: PayloadPdf): Promise<Buffer> {
+  const { cotacao, itens, resultado } = payload;
+  const criadoEm = payload.criadoEm ?? new Date().toISOString();
+  const f = payload.financeiro ?? extrairResumoFinanceiro(resultado, cotacao.params.markupPct);
   const doc = new PDFDocument({ size: "A4", margin: 50, info: { Title: "Relatório Estratégico — Trade" } });
 
   titulo(doc, "RELATÓRIO ESTRATÉGICO — TRADE");
@@ -161,11 +209,12 @@ function gerarPdfTrade(salva: CotacaoSalva): Promise<Buffer> {
     doc.text((it.descPt || it.descOriginal).slice(0, 90));
     doc.font("Helvetica");
     const canal = it.risco?.canal?.replace(/_/g, " ") ?? "—";
+    const fobKg = fobKgValor(it);
     doc.text(
-      `NCM ${formatNcm(it.ncm)} · FOB US$ ${it.fobTotalUS.toFixed(2)} · Canal ${canal} · Peso ${it.pesoLiqKg} kg`,
+      `NCM ${formatNcm(it.ncm)} · FOB US$ ${it.fobTotalUS.toFixed(2)} · ${usdKg(fobKg)} · Canal ${canal} · Peso ${it.pesoLiqKg} kg`,
     );
     if (it.benchmark?.mediaFobKg != null) {
-      doc.text(`Benchmark: US$/kg ${it.benchmark.mediaFobKg.toFixed(2)} (${it.benchmark.fonte})`);
+      doc.text(`Benchmark: US$/kg ${it.benchmark.mediaFobKg.toFixed(4)} (${it.benchmark.fonte})`);
     }
     doc.moveDown(0.6);
   }
@@ -186,9 +235,23 @@ function gerarPdfTrade(salva: CotacaoSalva): Promise<Buffer> {
   return pdfParaBuffer(doc);
 }
 
+function salvaParaPayload(salva: CotacaoSalva): PayloadPdf {
+  return {
+    cotacao: salva.cotacao,
+    itens: salva.itens,
+    resultado: salva.resultado,
+    criadoEm: salva.criadoEm,
+    financeiro: salva.financeiro,
+  };
+}
+
 export async function gerarPdfCotacao(salva: CotacaoSalva, tipo: TipoPdf): Promise<Buffer> {
-  if (!salva.resultado && tipo === "trade") {
+  return gerarPdfFromPayload(salvaParaPayload(salva), tipo);
+}
+
+export async function gerarPdfFromPayload(payload: PayloadPdf, tipo: TipoPdf): Promise<Buffer> {
+  if (!payload.resultado && tipo === "trade") {
     throw new Error("Cotação sem resultado fiscal — recalcule antes de gerar o PDF.");
   }
-  return tipo === "trade" ? gerarPdfTrade(salva) : gerarPdfCliente(salva);
+  return tipo === "trade" ? gerarPdfTrade(payload) : gerarPdfCliente(payload);
 }
