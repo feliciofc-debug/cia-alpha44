@@ -316,6 +316,7 @@ export function Dashboard() {
   const [duplicando, setDuplicando] = useState(false);
   const [editorDraft, setEditorDraft] = useState<EditorDraft | null>(null);
   const [aplicandoEditor, setAplicandoEditor] = useState(false);
+  const [pdfBaixando, setPdfBaixando] = useState<"cliente" | "trade" | null>(null);
 
   const carregarLista = useCallback(async () => {
     setListaLoading(true);
@@ -371,6 +372,19 @@ export function Dashboard() {
       setErro(e instanceof Error ? e.message : "Falha ao recalcular.");
     } finally {
       setAplicandoEditor(false);
+    }
+  }
+
+  async function baixarPdf(tipo: "cliente" | "trade") {
+    if (!detalhe) return;
+    setPdfBaixando(tipo);
+    setErro("");
+    try {
+      await api.baixarPdf(detalhe.id, tipo);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao gerar PDF.");
+    } finally {
+      setPdfBaixando(null);
     }
   }
 
@@ -623,7 +637,23 @@ export function Dashboard() {
                 <h2 className="text-xl font-bold text-white">{detalhe.cotacao.cliente}</h2>
                 <p className="text-sm text-slate-400">Salva em {fmtData(detalhe.criadoEm)}</p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={pdfBaixando != null}
+                  onClick={() => void baixarPdf("cliente")}
+                >
+                  {pdfBaixando === "cliente" ? "Gerando…" : "PDF cliente"}
+                </button>
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  disabled={pdfBaixando != null}
+                  onClick={() => void baixarPdf("trade")}
+                >
+                  {pdfBaixando === "trade" ? "Gerando…" : "PDF trade"}
+                </button>
                 <button
                   type="button"
                   className="btn-ghost"

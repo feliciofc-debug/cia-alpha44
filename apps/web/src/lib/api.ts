@@ -189,6 +189,24 @@ export const api = {
       body: JSON.stringify(opts),
     }).then(handle<CotacaoSalva>),
 
+  baixarPdf: async (id: string, tipo: "cliente" | "trade") => {
+    const res = await fetch(`${BASE}/api/cotacoes/${id}/pdf?tipo=${tipo}`);
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(txt || `Falha ao gerar PDF (${res.status})`);
+    }
+    const blob = await res.blob();
+    const disp = res.headers.get("Content-Disposition") ?? "";
+    const match = /filename="([^"]+)"/.exec(disp);
+    const filename = match?.[1] ?? `cia-${tipo}.pdf`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+
   listarUfs: (benefFiscal = "ALAGOAS") =>
     fetch(`${BASE}/api/fiscal/ufs?benefFiscal=${encodeURIComponent(benefFiscal)}`).then(
       handle<{

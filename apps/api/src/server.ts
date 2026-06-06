@@ -17,6 +17,7 @@ import {
   salvarCotacao,
 } from "./services/cotacoes-persist.js";
 import { ingerirArquivo } from "./services/ingest.js";
+import { gerarPdfCotacao } from "./services/pdf-cotacao.js";
 
 const PORT = Number(process.env.PORT ?? 3333);
 const HOST = process.env.HOST ?? "0.0.0.0";
@@ -104,6 +105,24 @@ export async function buildServer() {
       });
     } catch (e) {
       return persistenciaErro(reply, e);
+    }
+  });
+
+  app.get("/api/cotacoes/:id/pdf", async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string };
+      const tipo = (req.query as { tipo?: string }).tipo === "trade" ? "trade" : "cliente";
+      const row = await buscarCotacao(id);
+      if (!row) return reply.status(404).send({ erro: "Cotação não encontrada." });
+      const buf = await gerarPdfCotacao(row, tipo);
+      const nome = (row.cotacao.cliente || "cotacao").replace(/[^\w\-]+/g, "_").slice(0, 40);
+      return reply
+        .header("Content-Type", "application/pdf")
+        .header("Content-Disposition", `attachment; filename="cia-${tipo}-${nome}.pdf"`)
+        .send(buf);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Falha ao gerar PDF.";
+      return reply.status(422).send({ erro: msg });
     }
   });
 
