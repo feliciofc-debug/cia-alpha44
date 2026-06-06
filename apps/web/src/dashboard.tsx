@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "./auth/auth.tsx";
 import { api, type AnaliseCompleta, type Meta } from "./lib/api.ts";
 import { brl, fmtNcm, pct } from "./lib/format.ts";
-import type { Canal, CotacaoResumo, CotacaoSalva, Item } from "./lib/types.ts";
+import { extrairResumoFinanceiro, type ResumoFinanceiro } from "./lib/financeiro.ts";
+import type { Canal, CotacaoResumo, CotacaoSalva, Item, ResultadoCotacao } from "./lib/types.ts";
 
 type View = "lista" | "nova" | "detalhe";
 
@@ -41,6 +42,54 @@ function fmtData(iso: string) {
 
 type AnaliseView = AnaliseCompleta | CotacaoSalva;
 
+function ResumoFinanceiroPainel({
+  financeiro,
+  resultado,
+}: {
+  financeiro: ResumoFinanceiro | null;
+  resultado?: ResultadoCotacao | null;
+}) {
+  if (!financeiro) return null;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-xl border border-white/10 bg-ink-900/50 p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Custo da operação</p>
+          <p className="mt-1 text-xl font-bold text-slate-200">{brl(financeiro.custoOperacionalBRL)}</p>
+          <p className="mt-1 text-xs text-slate-500">Impostos + taxas (sem margem trade)</p>
+        </div>
+        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-emerald-400">Lucro da trade</p>
+          <p className="mt-1 text-xl font-bold text-emerald-300">{brl(financeiro.markupBRL)}</p>
+          <p className="mt-1 text-xs text-emerald-400/80">
+            Markup {pct(financeiro.markupPct)} · líquido {brl(financeiro.lucroLiquidoTradeBRL)}
+          </p>
+        </div>
+        <div className="rounded-xl border border-brand-500/30 bg-brand-500/10 p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-brand-300">Total orçamento</p>
+          <p className="mt-1 text-xl font-bold text-white">{brl(financeiro.totalOrcamentoBRL)}</p>
+          <p className="mt-1 text-xs text-slate-400">Custo + margem trade</p>
+        </div>
+      </div>
+
+      {resultado && (
+        <details className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
+          <summary className="cursor-pointer font-medium text-slate-300">Detalhe fiscal (entrada + saída)</summary>
+          <div className="mt-3 grid gap-2 text-xs text-slate-400 sm:grid-cols-2">
+            <p>Impostos entrada: {brl(resultado.entrada.impostosEntradaTotal)}</p>
+            <p>Taxas locais: {brl(resultado.saida.taxasLocaisTotalBRL)}</p>
+            <p>Impostos saída: {brl(resultado.saida.impostosSaidaTotal)}</p>
+            <p>CSLL s/ markup: {brl(resultado.saida.csll)}</p>
+            <p>IRRF: {brl(resultado.saida.irrf)}</p>
+            <p>Margem s/ custo: {pct(financeiro.margemSobreCustoPct)}</p>
+          </div>
+        </details>
+      )}
+    </div>
+  );
+}
+
 function AnalisePainel({
   analise,
   cliente,
@@ -59,6 +108,10 @@ function AnalisePainel({
   const itens = analise.itens;
   const provider = (analise as { provider?: string | null }).provider ?? "—";
   const canais = resumoCanais(itens);
+  const financeiro =
+    "financeiro" in analise && analise.financeiro
+      ? analise.financeiro
+      : extrairResumoFinanceiro(analise.resultado, analise.cotacao.params.markupPct);
 
   return (
     <div className="space-y-6 text-left">
@@ -68,16 +121,12 @@ function AnalisePainel({
           {salvaId && <span className="ml-2 text-xs font-normal text-slate-400">#{salvaId.slice(0, 8)}</span>}
         </p>
         <p className="mt-1 text-sm text-slate-300">
-          Provedor: {provider} · {itens.length} itens
-          {"markupPct" in analise.cotacao.params && (
-            <> · Markup {pct(analise.cotacao.params.markupPct)}</>
-          )}
+          Provedor: {provider} · {itens.length} itens · Benefício {analise.cotacao.benefFiscal}
         </p>
         {analise.avisoFiscal && <p className="mt-2 text-sm text-amber-300">{analise.avisoFiscal}</p>}
-        {analise.resultado && (
-          <p className="mt-2 text-lg font-bold text-white">Total: {brl(analise.resultado.totalBRL)}</p>
-        )}
       </div>
+
+      <ResumoFinanceiroPainel financeiro={financeiro} resultado={analise.resultado} />
 
       {!salvaId && onSalvar && (
         <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4 sm:flex-row sm:items-end">
@@ -405,8 +454,9 @@ export function Dashboard() {
                       <th className="px-6 py-3">Cliente</th>
                       <th className="px-4 py-3">Data</th>
                       <th className="px-4 py-3">Itens</th>
-                      <th className="px-4 py-3">Markup</th>
-                      <th className="px-4 py-3">Total</th>
+                      <th className="px-4 py-3">Custo op.</th>
+                      <th className="px-4 py-3">Lucro trade</th>
+                      <th className="px-4 py-3">Orçamento</th>
                       <th className="px-4 py-3">Canal</th>
                       <th className="px-6 py-3 text-right">Ações</th>
                     </tr>
@@ -417,8 +467,22 @@ export function Dashboard() {
                         <td className="px-6 py-3 font-medium text-white">{c.cliente}</td>
                         <td className="px-4 py-3 text-slate-400 whitespace-nowrap">{fmtData(c.criadoEm)}</td>
                         <td className="px-4 py-3 text-slate-300">{c.totalItens}</td>
-                        <td className="px-4 py-3 text-slate-300">{pct(c.markupPct)}</td>
-                        <td className="px-4 py-3 font-medium text-white">{c.totalBRL != null ? brl(c.totalBRL) : "—"}</td>
+                        <td className="px-4 py-3 text-slate-400">
+                          {c.custoOperacionalBRL != null ? brl(c.custoOperacionalBRL) : "—"}
+                        </td>
+                        <td className="px-4 py-3 font-medium text-emerald-300">
+                          {c.markupBRL != null ? (
+                            <>
+                              {brl(c.markupBRL)}
+                              <span className="ml-1 text-xs text-emerald-500/80">({pct(c.markupPct)})</span>
+                            </>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td className="px-4 py-3 font-medium text-white">
+                          {c.totalBRL != null ? brl(c.totalBRL) : "—"}
+                        </td>
                         <td className="px-4 py-3">
                           {c.canalPredominante && (
                             <span className={`rounded px-2 py-0.5 text-xs ${CANAL_STYLE[c.canalPredominante]}`}>
@@ -462,6 +526,9 @@ export function Dashboard() {
                       totalBRL: detalhe.totalBRL,
                       canalPredominante: detalhe.canalPredominante,
                       markupPct: detalhe.cotacao.params.markupPct,
+                      markupBRL: detalhe.financeiro?.markupBRL ?? null,
+                      lucroLiquidoTradeBRL: detalhe.financeiro?.lucroLiquidoTradeBRL ?? null,
+                      custoOperacionalBRL: detalhe.financeiro?.custoOperacionalBRL ?? null,
                       totalItens: detalhe.itens.length,
                       criadoEm: detalhe.criadoEm,
                     })

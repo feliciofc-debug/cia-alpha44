@@ -4,6 +4,7 @@ import { prisma, type CanalAduaneiro, type Cotacao as CotacaoRow } from "@cia/db
 import type { ResultadoCotacao } from "@cia/fiscal-engine";
 import type { Cotacao, Item } from "@cia/shared";
 import type { Prisma } from "@prisma/client";
+import { extrairResumoFinanceiro } from "../lib/financeiro.js";
 import { calcularCotacao } from "./cotacao.js";
 import type { AppState } from "../state.js";
 
@@ -235,6 +236,7 @@ export async function salvarCotacao(input: SalvarCotacaoInput) {
 
 function formatCotacaoSalva(row: CotacaoComRelacoes, provider?: string) {
   const { cotacao, itens, resultado } = mapRowParaDominio(row);
+  const financeiro = extrairResumoFinanceiro(resultado, cotacao.params.markupPct);
   return {
     id: row.id,
     status: row.status,
@@ -242,6 +244,7 @@ function formatCotacaoSalva(row: CotacaoComRelacoes, provider?: string) {
     calculadoEm: row.calculadoEm?.toISOString() ?? null,
     canalPredominante: row.canalPredominante,
     totalBRL: numOrNull(row.totalBRL),
+    financeiro,
     provider: provider ?? null,
     cotacao,
     itens,
@@ -274,16 +277,24 @@ export async function listarCotacoes(opts?: { cliente?: string; limite?: number 
 
   return {
     totalHoje,
-    cotacoes: rows.map((r) => ({
-      id: r.id,
-      cliente: r.cliente,
-      status: r.status,
-      totalBRL: numOrNull(r.totalBRL),
-      canalPredominante: r.canalPredominante,
-      markupPct: (r.params as Cotacao["params"]).markupPct ?? 0.06,
-      totalItens: r._count.itens,
-      criadoEm: r.criadoEm.toISOString(),
-    })),
+    cotacoes: rows.map((r) => {
+      const markupPct = (r.params as Cotacao["params"]).markupPct ?? 0.06;
+      const resultado = r.resultadoCalculo as ResultadoCotacao | null;
+      const financeiro = extrairResumoFinanceiro(resultado, markupPct);
+      return {
+        id: r.id,
+        cliente: r.cliente,
+        status: r.status,
+        totalBRL: numOrNull(r.totalBRL),
+        canalPredominante: r.canalPredominante,
+        markupPct,
+        markupBRL: financeiro?.markupBRL ?? null,
+        lucroLiquidoTradeBRL: financeiro?.lucroLiquidoTradeBRL ?? null,
+        custoOperacionalBRL: financeiro?.custoOperacionalBRL ?? null,
+        totalItens: r._count.itens,
+        criadoEm: r.criadoEm.toISOString(),
+      };
+    }),
   };
 }
 

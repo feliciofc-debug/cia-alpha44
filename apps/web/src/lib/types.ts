@@ -167,6 +167,17 @@ export interface ParsedSheet {
 
 export type CotacaoStatus = "RASCUNHO" | "CALCULADA" | "ARQUIVADA";
 
+export interface ResumoFinanceiro {
+  custoOperacionalBRL: number;
+  markupBRL: number;
+  markupPct: number;
+  csllBRL: number;
+  irrfBRL: number;
+  lucroLiquidoTradeBRL: number;
+  totalOrcamentoBRL: number;
+  margemSobreCustoPct: number;
+}
+
 export interface CotacaoResumo {
   id: string;
   cliente: string;
@@ -174,6 +185,9 @@ export interface CotacaoResumo {
   totalBRL: number | null;
   canalPredominante: Canal | null;
   markupPct: number;
+  markupBRL: number | null;
+  lucroLiquidoTradeBRL: number | null;
+  custoOperacionalBRL: number | null;
   totalItens: number;
   criadoEm: string;
 }
@@ -190,6 +204,7 @@ export interface CotacaoSalva {
   calculadoEm: string | null;
   canalPredominante: Canal | null;
   totalBRL: number | null;
+  financeiro: ResumoFinanceiro | null;
   provider: string | null;
   cotacao: Cotacao;
   itens: Item[];
