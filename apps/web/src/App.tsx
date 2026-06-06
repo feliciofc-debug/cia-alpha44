@@ -1,5 +1,6 @@
+import { SignIn, SignUp } from "@clerk/clerk-react";
 import { useEffect, useState } from "react";
-import { useAuth } from "./auth/auth.tsx";
+import { authUsaClerk, useAuth } from "./auth/auth.tsx";
 import { Dashboard } from "./dashboard.tsx";
 import { api, type Meta } from "./lib/api.ts";
 
@@ -257,10 +258,50 @@ function Landing({ onLogin, onSignup }: { onLogin: () => void; onSignup: () => v
   );
 }
 
+function ClerkAuthScreen() {
+  const [tab, setTab] = useState<"login" | "signup">("login");
+
+  return (
+    <div className="min-h-full bg-ink-900">
+      <div className="container-cia flex min-h-screen flex-col items-center justify-center py-12">
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-500 text-lg font-black text-white">
+            α
+          </div>
+          <h1 className="text-2xl font-bold text-white">CIA / Alpha 44</h1>
+          <p className="mt-2 text-sm text-slate-400">Sistema de Cotação de Importação</p>
+        </div>
+        <div className="mb-4 flex gap-2">
+          <button
+            type="button"
+            className={`rounded-lg px-4 py-2 text-sm ${tab === "login" ? "bg-white/10 text-white" : "text-slate-400"}`}
+            onClick={() => setTab("login")}
+          >
+            Entrar
+          </button>
+          <button
+            type="button"
+            className={`rounded-lg px-4 py-2 text-sm ${tab === "signup" ? "bg-white/10 text-white" : "text-slate-400"}`}
+            onClick={() => setTab("signup")}
+          >
+            Criar conta
+          </button>
+        </div>
+        {tab === "login" ? (
+          <SignIn routing="hash" signUpUrl="#signup" />
+        ) : (
+          <SignUp routing="hash" signInUrl="#login" />
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
-  const { user } = useAuth();
+  const { user, isLoaded } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+  const usaClerk = authUsaClerk();
 
   function openLogin() {
     setAuthMode("login");
@@ -271,7 +312,17 @@ export default function App() {
     setAuthOpen(true);
   }
 
+  if (!isLoaded) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-ink-900 text-slate-400">
+        Carregando…
+      </div>
+    );
+  }
+
   if (user) return <Dashboard />;
+
+  if (usaClerk) return <ClerkAuthScreen />;
 
   return (
     <>

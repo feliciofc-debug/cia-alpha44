@@ -4,6 +4,7 @@ import type {
   Cotacao,
   CotacaoLista,
   CotacaoSalva,
+  DashboardKpis,
   Item,
   ParsedSheet,
   ResultadoCotacao,
@@ -140,6 +141,8 @@ export const api = {
       cotacao,
     };
   },
+
+  dashboardKpis: () => fetch(`${BASE}/api/dashboard/kpis`).then(handle<DashboardKpis>),
 
   listarCotacoes: (cliente?: string) => {
     const q = cliente ? `?cliente=${encodeURIComponent(cliente)}` : "";

@@ -17,6 +17,7 @@ import {
   salvarCotacao,
 } from "./services/cotacoes-persist.js";
 import { ingerirArquivo } from "./services/ingest.js";
+import { obterDashboardKpis } from "./services/dashboard-kpis.js";
 import { gerarPdfCotacao } from "./services/pdf-cotacao.js";
 
 const PORT = Number(process.env.PORT ?? 3333);
@@ -94,6 +95,14 @@ export async function buildServer() {
     itens: z.array(z.any()),
     resultado: z.any().nullable().optional().default(null),
     provider: z.string().optional(),
+  });
+
+  app.get("/api/dashboard/kpis", async (_req, reply) => {
+    try {
+      return await obterDashboardKpis();
+    } catch (e) {
+      return persistenciaErro(reply, e);
+    }
   });
 
   app.get("/api/cotacoes", async (req, reply) => {

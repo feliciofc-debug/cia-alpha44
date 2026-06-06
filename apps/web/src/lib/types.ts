@@ -207,6 +207,21 @@ export interface CotacaoLista {
   totalHoje: number;
 }
 
+export interface DashboardKpis {
+  totalCotacoes: number;
+  cotacoesHoje: number;
+  cotacoesSemana: number;
+  cotacoesMes: number;
+  volumeOrcadoBRL: number;
+  lucroTradeTotalBRL: number;
+  markupMedioPct: number;
+  ticketMedioBRL: number;
+  porCanal: Record<string, number>;
+  porDestino: { uf: string; qtd: number; volumeBRL: number }[];
+  recentes: CotacaoResumo[];
+  amostra: number;
+}
+
 export interface CotacaoSalva {
   id: string;
   status: CotacaoStatus;

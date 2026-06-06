@@ -11,8 +11,10 @@ import {
 } from "./lib/editor-cotacao.ts";
 import type { Canal, CotacaoResumo, CotacaoSalva, Item, ResultadoCotacao } from "./lib/types.ts";
 import { PainelEditorCotacao } from "./painel-editor.tsx";
+import { PainelKpisView } from "./painel-kpis.tsx";
+import type { DashboardKpis } from "./lib/types.ts";
 
-type View = "lista" | "nova" | "detalhe";
+type View = "lista" | "painel" | "nova" | "detalhe";
 
 const CANAL_LABEL: Record<Canal, string> = {
   VERDE_PROVAVEL: "Verde",
@@ -317,6 +319,20 @@ export function Dashboard() {
   const [editorDraft, setEditorDraft] = useState<EditorDraft | null>(null);
   const [aplicandoEditor, setAplicandoEditor] = useState(false);
   const [pdfBaixando, setPdfBaixando] = useState<"cliente" | "trade" | null>(null);
+  const [kpis, setKpis] = useState<DashboardKpis | null>(null);
+  const [kpisLoading, setKpisLoading] = useState(false);
+
+  const carregarKpis = useCallback(async () => {
+    setKpisLoading(true);
+    try {
+      const res = await api.dashboardKpis();
+      setKpis(res);
+    } catch {
+      setKpis(null);
+    } finally {
+      setKpisLoading(false);
+    }
+  }, []);
 
   const carregarLista = useCallback(async () => {
     setListaLoading(true);
@@ -495,6 +511,16 @@ export function Dashboard() {
             <nav className="flex gap-1 text-sm">
               <button
                 type="button"
+                className={`rounded-lg px-3 py-1.5 ${view === "painel" ? "bg-white/10 text-white" : "text-slate-400 hover:text-white"}`}
+                onClick={() => {
+                  setView("painel");
+                  void carregarKpis();
+                }}
+              >
+                Painel
+              </button>
+              <button
+                type="button"
                 className={`rounded-lg px-3 py-1.5 ${view === "lista" ? "bg-white/10 text-white" : "text-slate-400 hover:text-white"}`}
                 onClick={() => {
                   setView("lista");
@@ -531,6 +557,16 @@ export function Dashboard() {
           <p className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-300">
             {erro}
           </p>
+        )}
+
+        {view === "painel" && (
+          <div className="card overflow-hidden">
+            <PainelKpisView
+              kpis={kpis}
+              loading={kpisLoading}
+              onAbrir={(id) => void abrirCotacao(id)}
+            />
+          </div>
         )}
 
         {view === "lista" && (
