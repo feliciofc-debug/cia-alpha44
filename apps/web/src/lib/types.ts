@@ -322,4 +322,6 @@ export interface LinhaCrua {
   fobUnitarioUS: number | null;
   fobTotalUS: number | null;
   dimensoes: string | null;
+  fotoBase64?: string;
+  fotoMime?: string;
 }

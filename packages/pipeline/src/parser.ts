@@ -364,13 +364,18 @@ export async function parsePlanilhaBuffer(
   const parsed = parseRows(rows, aba);
 
   try {
-    const fotos = await extrairFotosXlsx(buf);
+    const { fotos, mediaCount } = await extrairFotosXlsx(buf);
     if (fotos.size > 0) {
       parsed.linhas = associarFotosLinhas(parsed.linhas, fotos);
-      parsed.avisos.push(`${fotos.size} foto(s) de produto extraída(s) da planilha.`);
+      const comFoto = parsed.linhas.filter((l) => l.fotoBase64).length;
+      parsed.avisos.push(`${comFoto} foto(s) de produto vinculada(s) (${mediaCount} na planilha).`);
+    } else if (mediaCount > 0) {
+      parsed.avisos.push(
+        `Planilha contém ${mediaCount} imagem(ns), mas não foi possível vincular aos itens — reenvie o .xlsx original.`,
+      );
     }
   } catch {
-    /* planilha sem imagens embutidas */
+    parsed.avisos.push("Não foi possível ler imagens embutidas desta planilha.");
   }
 
   return parsed;

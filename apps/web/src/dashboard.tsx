@@ -3,6 +3,7 @@ import { useAuth } from "./auth/auth.tsx";
 import { api, type AnaliseCompleta, type Meta } from "./lib/api.ts";
 import { brl, fmtNcm, pct, usdKg } from "./lib/format.ts";
 import { fobKgItem } from "./lib/fob-kg.ts";
+import { contarItensComFoto, fotoItemSrc } from "./lib/item-foto.ts";
 import { extrairResumoFinanceiro, type ResumoFinanceiro } from "./lib/financeiro.ts";
 import {
   aplicarEditorNaCotacao,
@@ -173,8 +174,11 @@ function AnalisePainel({
   onBaixarPdfCliente?: () => void;
   pdfBaixando?: boolean;
 }) {
-  const [aba, setAba] = useState<"orcamento" | "tecnica">(salvaId ? "tecnica" : "orcamento");
+  const [aba, setAba] = useState<"orcamento" | "tecnica">(
+    salvaId && contarItensComFoto(analise.itens) === 0 ? "tecnica" : "orcamento",
+  );
   const itens = analise.itens;
+  const qtdFotos = contarItensComFoto(itens);
   const provider = (analise as { provider?: string | null }).provider ?? "—";
   const canais = resumoCanais(itens);
   const financeiro =
@@ -192,12 +196,18 @@ function AnalisePainel({
             {CANAL_LABEL[canal]}: {qtd}
           </span>
         ))}
+        {qtdFotos > 0 && (
+          <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-medium text-emerald-300">
+            {qtdFotos} foto(s) de produto
+          </span>
+        )}
       </div>
 
       <div className="max-h-96 overflow-auto rounded-xl border border-white/10">
         <table className="w-full text-left text-xs">
           <thead className="sticky top-0 bg-ink-800 text-slate-400">
             <tr>
+              <th className="p-2 w-14">Foto</th>
               <th className="p-2">Descrição (PT)</th>
               <th className="p-2">NCM</th>
               <th className="p-2">FOB US$</th>
@@ -209,8 +219,20 @@ function AnalisePainel({
           <tbody>
             {itens.map((it, i) => {
               const fobKg = fobKgItem(it);
+              const foto = fotoItemSrc(it);
               return (
                 <tr key={i} className="border-t border-white/5 text-slate-300">
+                  <td className="p-2 align-top">
+                    {foto ? (
+                      <img
+                        src={foto}
+                        alt=""
+                        className="h-12 w-12 rounded border border-white/10 object-contain bg-white"
+                      />
+                    ) : (
+                      <span className="text-[10px] text-slate-600">—</span>
+                    )}
+                  </td>
                   <td className="max-w-xs p-2">
                     <div className="truncate font-medium text-white">{it.descPt || it.descOriginal}</div>
                     <div className="truncate text-slate-500">{it.descDuimp.slice(0, 80)}</div>
@@ -995,9 +1017,9 @@ export function Dashboard() {
                     <span className="ml-2 text-xs font-normal text-slate-400">(PDF/imagem)</span>
                   )}
                 </p>
-                {parsed.totalLinhas === 0 && parsed.avisos?.length ? (
+                {parsed.avisos?.length ? (
                   <ul className="mt-2 list-inside list-disc text-xs text-amber-400/90">
-                    {parsed.avisos.slice(0, 4).map((a, i) => (
+                    {parsed.avisos.slice(0, 6).map((a, i) => (
                       <li key={i}>{a}</li>
                     ))}
                   </ul>

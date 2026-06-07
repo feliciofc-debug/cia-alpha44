@@ -81,7 +81,7 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
       anuencia: it.anuencia,
       antidumping: it.antidumping,
     });
-    return { ...it, benchmark, calibracao, risco };
+    return { ...it, benchmark, calibracao, risco, fotoBase64: it.fotoBase64, fotoMime: it.fotoMime, fotoPath: it.fotoPath };
   });
 
   const engineInput: CotacaoFiscalInput = {

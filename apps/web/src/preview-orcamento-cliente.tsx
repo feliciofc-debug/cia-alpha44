@@ -1,4 +1,5 @@
 import { fmtNcm } from "./lib/format.ts";
+import { fotoItemSrc } from "./lib/item-foto.ts";
 import type { Cotacao, Despesa, Item, ResultadoCotacao } from "./lib/types.ts";
 
 function fmtDataCurta(d = new Date()) {
@@ -66,12 +67,8 @@ function Linha({ label, valor }: { label: string; valor: string }) {
   );
 }
 
-const API_BASE = (import.meta.env.VITE_API_URL as string) || "";
-
 function fotoSrc(it: Item): string | null {
-  if (it.fotoBase64) return `data:${it.fotoMime ?? "image/jpeg"};base64,${it.fotoBase64}`;
-  if (it.fotoUrl) return `${API_BASE}${it.fotoUrl}`;
-  return null;
+  return fotoItemSrc(it);
 }
 
 function FotosCertificacao({ itens }: { itens: Item[] }) {

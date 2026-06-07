@@ -141,7 +141,7 @@ export const api = {
       avisoFiscal: comFob
         ? null
         : "Planilha sem FOB/preços — NCM e risco analisados; totais fiscais quando houver valores.",
-      cotacao,
+      cotacao: { ...cotacao, itens: itensCalc },
     };
   },
 
