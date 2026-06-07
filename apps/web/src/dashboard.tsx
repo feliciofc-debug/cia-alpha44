@@ -161,7 +161,7 @@ function AnalisePainel({
   onAplicarEditor,
   aplicandoEditor,
   onBaixarPdfCliente,
-  pdfBaixando,
+  irParaOrcamento,
 }: {
   analise: AnaliseView;
   onSalvar?: () => void;
@@ -171,12 +171,21 @@ function AnalisePainel({
   onEditorChange?: (d: EditorDraft) => void;
   onAplicarEditor?: () => void;
   aplicandoEditor?: boolean;
-  onBaixarPdfCliente?: () => void;
-  pdfBaixando?: boolean;
+  onBaixarPdfCliente?: () => void | Promise<void>;
+  /** Incrementar para abrir a aba Orçamento cliente e rolar até o preview. */
+  irParaOrcamento?: number;
 }) {
   const [aba, setAba] = useState<"orcamento" | "tecnica">(
     salvaId && contarItensComFoto(analise.itens) === 0 ? "tecnica" : "orcamento",
   );
+
+  useEffect(() => {
+    if (!irParaOrcamento) return;
+    setAba("orcamento");
+    requestAnimationFrame(() => {
+      document.getElementById("preview-orcamento-cliente")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [irParaOrcamento]);
   const itens = analise.itens;
   const qtdFotos = contarItensComFoto(itens);
   const provider = (analise as { provider?: string | null }).provider ?? "—";
@@ -332,13 +341,15 @@ function AnalisePainel({
       </div>
 
       {aba === "orcamento" ? (
-        <PreviewOrcamentoCliente
-          cotacao={analise.cotacao}
-          itens={itens}
-          resultado={analise.resultado}
-          onBaixarPdf={onBaixarPdfCliente}
-          pdfBaixando={pdfBaixando}
-        />
+        <div id="preview-orcamento-cliente">
+          <PreviewOrcamentoCliente
+            cotacao={analise.cotacao}
+            itens={itens}
+            resultado={analise.resultado}
+            onBaixarPdf={onBaixarPdfCliente}
+            salvo={Boolean(salvaId)}
+          />
+        </div>
       ) : (
         conteudoTecnico
       )}
@@ -435,6 +446,7 @@ export function Dashboard() {
   const [editorDraft, setEditorDraft] = useState<EditorDraft | null>(null);
   const [aplicandoEditor, setAplicandoEditor] = useState(false);
   const [pdfBaixando, setPdfBaixando] = useState<"cliente" | "trade" | null>(null);
+  const [irParaOrcamento, setIrParaOrcamento] = useState(0);
   const [kpis, setKpis] = useState<DashboardKpis | null>(null);
   const [series, setSeries] = useState<DashboardSeries | null>(null);
   const [kpisLoading, setKpisLoading] = useState(false);
@@ -593,7 +605,6 @@ export function Dashboard() {
 
   async function baixarPdfClienteOrcamento() {
     setErro("");
-    setPdfBaixando("cliente");
     try {
       const idSalvo = detalhe?.id ?? salvaId;
       if (idSalvo) {
@@ -605,9 +616,9 @@ export function Dashboard() {
       const cotacao = aplicarEditorNaCotacao(analise.cotacao, draft);
       await api.previewPdf({ cotacao, itens: analise.itens, resultado: analise.resultado }, "cliente");
     } catch (e) {
-      setErro(e instanceof Error ? e.message : "Falha ao gerar PDF.");
-    } finally {
-      setPdfBaixando(null);
+      const msg = e instanceof Error ? e.message : "Falha ao gerar PDF.";
+      setErro(msg.includes("abort") ? "Geração do PDF demorou demais. Tente novamente." : msg);
+      throw e;
     }
   }
 
@@ -921,10 +932,9 @@ export function Dashboard() {
                 <button
                   type="button"
                   className="btn-primary"
-                  disabled={pdfBaixando != null}
-                  onClick={() => void baixarPdf("cliente")}
+                  onClick={() => setIrParaOrcamento((n) => n + 1)}
                 >
-                  {pdfBaixando === "cliente" ? "Gerando…" : "PDF cliente"}
+                  Ver orçamento cliente
                 </button>
                 <button
                   type="button"
@@ -973,8 +983,8 @@ export function Dashboard() {
                 onEditorChange={setEditorDraft}
                 onAplicarEditor={() => void aplicarEditorDetalhe()}
                 aplicandoEditor={aplicandoEditor}
-                onBaixarPdfCliente={() => void baixarPdfClienteOrcamento()}
-                pdfBaixando={pdfBaixando === "cliente"}
+                onBaixarPdfCliente={baixarPdfClienteOrcamento}
+                irParaOrcamento={irParaOrcamento}
               />
             </div>
           </div>
@@ -1059,8 +1069,7 @@ export function Dashboard() {
                   }}
                   onAplicarEditor={() => void aplicarEditorAnalise()}
                   aplicandoEditor={aplicandoEditor}
-                  onBaixarPdfCliente={() => void baixarPdfClienteOrcamento()}
-                  pdfBaixando={pdfBaixando === "cliente"}
+                  onBaixarPdfCliente={baixarPdfClienteOrcamento}
                 />
                 {salvaId && (
                   <button type="button" className="btn-ghost mt-4 w-full" onClick={() => void abrirCotacao(salvaId)}>

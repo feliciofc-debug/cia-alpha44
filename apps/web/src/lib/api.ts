@@ -26,6 +26,7 @@ const BASE = (import.meta.env.VITE_API_URL as string) || "";
 
 const PARSE_TIMEOUT_MS = 120_000;
 const CLASSIFY_TIMEOUT_MS = 600_000;
+const PDF_TIMEOUT_MS = 180_000;
 
 function fetchComTimeout(url: string, init: RequestInit, ms: number) {
   const ctrl = new AbortController();
@@ -233,25 +234,37 @@ export const api = {
     const a = document.createElement("a");
     a.href = url;
     a.download = filename;
+    a.style.display = "none";
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
   },
 
   baixarPdf: async (id: string, tipo: "cliente" | "trade") => {
-    const res = await fetch(`${BASE}/api/cotacoes/${id}/pdf?tipo=${tipo}`);
+    const res = await fetchComTimeout(`${BASE}/api/cotacoes/${id}/pdf?tipo=${tipo}`, {}, PDF_TIMEOUT_MS);
     return api.baixarPdfBlob(res, `cia-${tipo}.pdf`);
   },
 
-  previewPdf: (payload: {
-    cotacao: Cotacao;
-    itens: Item[];
-    resultado: ResultadoCotacao | null;
-  }, tipo: "cliente" | "trade" = "cliente") =>
-    fetch(`${BASE}/api/cotacoes/preview-pdf?tipo=${tipo}`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
-    }).then((res) => api.baixarPdfBlob(res, `cia-preview-${tipo}.pdf`)),
+  previewPdf: async (
+    payload: {
+      cotacao: Cotacao;
+      itens: Item[];
+      resultado: ResultadoCotacao | null;
+    },
+    tipo: "cliente" | "trade" = "cliente",
+  ) => {
+    const res = await fetchComTimeout(
+      `${BASE}/api/cotacoes/preview-pdf?tipo=${tipo}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+      PDF_TIMEOUT_MS,
+    );
+    return api.baixarPdfBlob(res, `cia-preview-${tipo}.pdf`);
+  },
 
   listarUfs: (benefFiscal = "ALAGOAS") =>
     fetch(`${BASE}/api/fiscal/ufs?benefFiscal=${encodeURIComponent(benefFiscal)}`).then(

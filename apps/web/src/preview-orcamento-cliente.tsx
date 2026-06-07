@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { fmtNcm } from "./lib/format.ts";
 import { fotoItemSrc } from "./lib/item-foto.ts";
 import type { Cotacao, Despesa, Item, ResultadoCotacao } from "./lib/types.ts";
@@ -99,14 +100,28 @@ export function PreviewOrcamentoCliente({
   itens,
   resultado,
   onBaixarPdf,
-  pdfBaixando,
+  salvo = true,
 }: {
   cotacao: Cotacao;
   itens: Item[];
   resultado: ResultadoCotacao | null;
-  onBaixarPdf?: () => void;
-  pdfBaixando?: boolean;
+  onBaixarPdf?: () => void | Promise<void>;
+  /** Cotação já persistida — PDF usa ID salvo; senão gera preview temporário. */
+  salvo?: boolean;
 }) {
+  const [baixando, setBaixando] = useState(false);
+
+  async function handleBaixarPdf() {
+    if (!onBaixarPdf || baixando) return;
+    setBaixando(true);
+    try {
+      await onBaixarPdf();
+    } catch {
+      // mensagem de erro exibida pelo Dashboard
+    } finally {
+      setBaixando(false);
+    }
+  }
   const dataStr = fmtDataCurta();
   const porto = `PORTO ${cotacao.origem || "RJ"}`;
   const fatura = `${cotacao.cliente || "CLIENTE"} - ${dataStr}`.toUpperCase();
@@ -262,9 +277,19 @@ export function PreviewOrcamentoCliente({
       </div>
 
       {onBaixarPdf && (
-        <div className="border-t border-slate-200 bg-slate-50 px-6 py-3 text-right">
-          <button type="button" className="btn-primary text-sm" disabled={pdfBaixando} onClick={onBaixarPdf}>
-            {pdfBaixando ? "Gerando PDF…" : "Baixar PDF deste orçamento"}
+        <div className="border-t border-slate-200 bg-slate-50 px-6 py-3 sm:flex sm:items-center sm:justify-between sm:gap-4">
+          <p className="mb-2 text-left text-xs text-slate-600 sm:mb-0">
+            {salvo
+              ? "Revise o layout acima. Quando estiver ok, baixe o PDF para enviar ao cliente."
+              : "Salve a cotação para manter o histórico; você ainda pode baixar um PDF de preview."}
+          </p>
+          <button
+            type="button"
+            className="btn-primary shrink-0 text-sm"
+            disabled={baixando}
+            onClick={() => void handleBaixarPdf()}
+          >
+            {baixando ? "Gerando PDF…" : "Baixar PDF deste orçamento"}
           </button>
         </div>
       )}
