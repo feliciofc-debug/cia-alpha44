@@ -12,6 +12,7 @@ import {
 import { escolherProvider, comFallback, type LlmProvider } from "./llm/index.js";
 import { criarMockProvider } from "./llm/mock.js";
 import { escolherOcrProvider, type OcrProvider } from "./ocr/index.js";
+import { escolherSiscomexProvider, type SiscomexProvider } from "./siscomex/index.js";
 
 export interface AppState {
   comexSeed: ComexEntry[];
@@ -19,6 +20,7 @@ export interface AppState {
   tecSource: AliquotaSource;
   provider: LlmProvider;
   ocr: OcrProvider;
+  siscomex: SiscomexProvider;
 }
 
 let state: AppState | null = null;
@@ -32,6 +34,7 @@ export function getState(): AppState {
   const mock = criarMockProvider(comex.itens);
   const provider = comFallback(escolherProvider(comex.itens), mock);
   const ocr = escolherOcrProvider();
-  state = { comexSeed: comex.itens, benchmarkIndex, tecSource, provider, ocr };
+  const siscomex = escolherSiscomexProvider();
+  state = { comexSeed: comex.itens, benchmarkIndex, tecSource, provider, ocr, siscomex };
   return state;
 }

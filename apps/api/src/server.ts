@@ -24,6 +24,7 @@ import { obterRelatorioFaturamento } from "./services/dashboard-relatorio.js";
 import { obterSeriesMensais } from "./services/dashboard-series.js";
 import { gerarPdfRelatorioFaturamento } from "./services/pdf-relatorio-faturamento.js";
 import { gerarPdfCotacao, gerarPdfFromPayload } from "./services/pdf-cotacao.js";
+import { conferirNcmItens } from "./services/ncm-conferencia.js";
 
 const PORT = Number(process.env.PORT ?? 3333);
 const HOST = process.env.HOST ?? "0.0.0.0";
@@ -49,9 +50,48 @@ export async function buildServer() {
       llmDisponivel: s.provider.disponivel,
       ocrProvider: s.ocr.nome,
       ocrDisponivel: s.ocr.disponivel,
+      siscomexProvider: s.siscomex.nome,
+      siscomexConfigurado: s.siscomex.configurado,
+      siscomexOperacional: s.siscomex.operacional,
       comexTotal: s.comexSeed.length,
       benefFiscal: "ALAGOAS",
     };
+  });
+
+  app.get("/api/siscomex/status", async () => {
+    const s = getState().siscomex;
+    return {
+      provider: s.nome,
+      configurado: s.configurado,
+      operacional: s.operacional,
+      ambiente: s.config.ambiente,
+      modoAuth: s.config.modoAuth,
+      mensagem: s.operacional
+        ? "Portal Único ativo — consultas CLSF/TTCE habilitadas."
+        : s.configurado
+          ? "Credenciais detectadas — aguardando SISCOMEX_ATIVO=true e homologação."
+          : "Inativo — configure certificado ou chaves de acesso (ver docs/SISCOMEX.md).",
+    };
+  });
+
+  const conferirNcmBody = z.object({
+    itens: z.array(
+      z.object({
+        indice: z.number().int().min(0).optional(),
+        ncmPlanilha: z.string().nullable().optional(),
+        ncmIa: z.string().nullable().optional(),
+        descricao: z.string().nullable().optional(),
+      }),
+    ),
+  });
+
+  /** Conferência NCM isolada — não altera /api/classificar nem /api/calcular. */
+  app.post("/api/ncm/conferir", async (req, reply) => {
+    const parsed = conferirNcmBody.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return reply.status(400).send({ erro: "Body inválido", detalhe: parsed.error.flatten() });
+    }
+    return conferirNcmItens(getState().siscomex, parsed.data.itens);
   });
 
   app.get("/api/cambio", async (req) => {
