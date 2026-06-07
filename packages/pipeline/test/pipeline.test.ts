@@ -70,6 +70,28 @@ describe("Análise de risco", () => {
   });
 });
 
+describe("Fotos WPS (.xls DISPIMG)", () => {
+  it("extrai imagens do stream ETCellImageData", async () => {
+    const { extrairImagensWpsOle } = await import("../src/wps-images.js");
+    const fs = await import("node:fs");
+    const path = "c:/Users/usuario/Desktop/processos china/装箱单出货清单.xls";
+    if (!fs.existsSync(path)) return;
+    const buf = fs.readFileSync(path);
+    const imgs = extrairImagensWpsOle(buf);
+    expect(imgs.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it("vincula fotos DISPIMG às linhas da 装箱单", async () => {
+    const fs = await import("node:fs");
+    const path = "c:/Users/usuario/Desktop/processos china/装箱单出货清单.xls";
+    if (!fs.existsSync(path)) return;
+    const { parseSupplierFile } = await import("../src/parser.js");
+    const parsed = await parseSupplierFile(new Uint8Array(fs.readFileSync(path)));
+    const comFoto = parsed.linhas.filter((l) => l.fotoBase64).length;
+    expect(comFoto).toBeGreaterThanOrEqual(5);
+  });
+});
+
 describe("Fotos da planilha", () => {
   it("associa imagens às linhas por número de linha Excel", async () => {
     const { associarFotosLinhas } = await import("../src/xlsx-images.js");

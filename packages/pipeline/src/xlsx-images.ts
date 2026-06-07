@@ -5,6 +5,7 @@
 
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
+import { isZipXlsx } from "./wps-images.js";
 
 export interface FotoPlanilha {
   /** Linha Excel 1-based (0 = associar só por ordem). */
@@ -115,6 +116,9 @@ export async function extrairFotosXlsx(
   buffer: Buffer | ArrayBuffer | Uint8Array,
 ): Promise<{ fotos: Map<number, FotoPlanilha>; mediaCount: number }> {
   const buf: Buffer = Buffer.isBuffer(buffer) ? buffer : Buffer.from(new Uint8Array(buffer));
+  if (!isZipXlsx(buf)) {
+    return { fotos: new Map(), mediaCount: 0 };
+  }
   let mediaCount = 0;
 
   try {

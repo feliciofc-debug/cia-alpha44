@@ -4,7 +4,8 @@
 
 import * as XLSX from "xlsx";
 import type { LinhaCrua } from "./linha.js";
-import { associarFotosLinhas, extrairFotosXlsx } from "./xlsx-images.js";
+import { associarFotosLinhas, extrairFotosXlsx, type FotoPlanilha } from "./xlsx-images.js";
+import { extrairImagensWpsOle, isOleXls, isZipXlsx, mapDispimgLinhas } from "./wps-images.js";
 
 export type ColunaDetectada =
   | "descricao"
@@ -49,14 +50,14 @@ export interface ResultadoParse {
 const PADROES: { tipo: ColunaDetectada; re: RegExp }[] = [
   {
     tipo: "descricao",
-    re: /desc|description|品名|货物|产品配置|配置|product\s*config|product|item\s*number|货号|nome|mercadoria/i,
+    re: /desc|description|品名|货物|产品配置|配置|product\s*config|product|item\s*number|货号|nome|mercadoria|中文品名|英文品名/i,
   },
-  { tipo: "qtd", re: /qty|quant|quantity|数量|装箱量|qtd|pcs|unidade/i },
+  { tipo: "qtd", re: /qty|quant|quantity|数量|装箱量|总数量|pcs|qtd|unidade|单箱个数/i },
   { tipo: "peso_bruto", re: /gross|bruto|毛重|gw\b/i },
   { tipo: "peso", re: /peso|weight|净重|nw\b|net|kg/i },
-  { tipo: "fob", re: /fob|total.*usd|amount|valor.*us/i },
+  { tipo: "fob", re: /fob|total.*usd|amount|valor.*us|总价/i },
   { tipo: "preco", re: /price|preço|preco|unit|单价|usd\/kg/i },
-  { tipo: "ncm", re: /ncm|hs\s*code|tariff|税号/i },
+  { tipo: "ncm", re: /ncm|hs\s*code|tariff|税号|海关编码/i },
   { tipo: "dimensoes", re: /dim|size|规格|measure/i },
 ];
 
@@ -364,14 +365,48 @@ export async function parsePlanilhaBuffer(
   const parsed = parseRows(rows, aba);
 
   try {
-    const { fotos, mediaCount } = await extrairFotosXlsx(buf);
+    let fotos = new Map<number, FotoPlanilha>();
+    let mediaCount = 0;
+
+    if (isZipXlsx(buf)) {
+      const zipOut = await extrairFotosXlsx(buf);
+      fotos = zipOut.fotos;
+      mediaCount = zipOut.mediaCount;
+    } else if (isOleXls(buf)) {
+      const imagens = extrairImagensWpsOle(buf);
+      mediaCount = imagens.length;
+      const disp = mapDispimgLinhas(ws);
+      if (disp.size > 0 && imagens.length > 0) {
+        for (const [linhaExcel, imgIdx] of disp) {
+          const img = imagens[imgIdx];
+          if (img) {
+            fotos.set(linhaExcel, { linhaExcel, buffer: img.buffer, mime: img.mime });
+          }
+        }
+      } else if (imagens.length > 0) {
+        for (let i = 0; i < imagens.length; i++) {
+          fotos.set(-(i + 1), {
+            linhaExcel: 0,
+            buffer: imagens[i]!.buffer,
+            mime: imagens[i]!.mime,
+          });
+        }
+      }
+      if (mediaCount > 0 && fotos.size === 0) {
+        parsed.avisos.push(
+          `Planilha WPS (.xls) com ${mediaCount} imagem(ns) — salve como .xlsx se as fotos não vincularem.`,
+        );
+      }
+    }
+
     if (fotos.size > 0) {
       parsed.linhas = associarFotosLinhas(parsed.linhas, fotos);
       const comFoto = parsed.linhas.filter((l) => l.fotoBase64).length;
-      parsed.avisos.push(`${comFoto} foto(s) de produto vinculada(s) (${mediaCount} na planilha).`);
+      const fmt = isOleXls(buf) ? "WPS/.xls" : "Excel";
+      parsed.avisos.push(`${comFoto} foto(s) vinculada(s) (${mediaCount} no arquivo ${fmt}).`);
     } else if (mediaCount > 0) {
       parsed.avisos.push(
-        `Planilha contém ${mediaCount} imagem(ns), mas não foi possível vincular aos itens — reenvie o .xlsx original.`,
+        `Planilha contém ${mediaCount} imagem(ns), mas não foi possível vincular aos itens.`,
       );
     }
   } catch {

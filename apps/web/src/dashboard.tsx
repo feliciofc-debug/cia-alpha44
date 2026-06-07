@@ -832,13 +832,17 @@ export function Dashboard() {
                       <th className="px-4 py-3">Lucro trade</th>
                       <th className="px-4 py-3">Orçamento</th>
                       <th className="px-4 py-3">Canal</th>
-                      <th className="px-6 py-3 text-right">Ações</th>
+                      <th className="sticky right-0 bg-ink-800/95 px-4 py-3 text-right shadow-[-8px_0_12px_rgba(0,0,0,0.35)]">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
                     {lista.map((c) => (
-                      <tr key={c.id} className="border-t border-white/5 hover:bg-white/[0.02]">
-                        <td className="px-3 py-3">
+                      <tr
+                        key={c.id}
+                        className="cursor-pointer border-t border-white/5 hover:bg-white/[0.04]"
+                        onClick={() => void abrirCotacao(c.id)}
+                      >
+                        <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
                             className="rounded p-1.5 text-slate-500 transition hover:bg-red-500/10 hover:text-red-400 disabled:opacity-40"
@@ -885,11 +889,15 @@ export function Dashboard() {
                             </span>
                           )}
                         </td>
-                        <td className="px-6 py-3 text-right">
-                          <button type="button" className="btn-ghost py-1 text-xs" onClick={() => void abrirCotacao(c.id)}>
-                            Abrir
+                        <td className="sticky right-0 bg-ink-900/95 px-4 py-3 text-right shadow-[-8px_0_12px_rgba(0,0,0,0.35)]" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            className="btn-primary py-1.5 text-xs"
+                            onClick={() => void abrirCotacao(c.id)}
+                          >
+                            Abrir cotação
                           </button>
-                          <button type="button" className="btn-ghost ml-1 py-1 text-xs" onClick={() => setDupAlvo(c)}>
+                          <button type="button" className="btn-ghost ml-2 py-1 text-xs" onClick={() => setDupAlvo(c)}>
                             Duplicar
                           </button>
                         </td>
