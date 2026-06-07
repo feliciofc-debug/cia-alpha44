@@ -81,4 +81,31 @@ describe("Parser OCR", () => {
     expect(r.totalLinhas).toBeGreaterThanOrEqual(2);
     expect(r.linhas[0]?.descOriginal).toContain("C2");
   });
+
+  it("converte linhas coladas do PDF nativo (sem espaços entre colunas)", () => {
+    const texto = [
+      "1LED Panel Light 36W 600x600mm / LED面板灯500600.008.504,250.00",
+      "2Cordless Drill 18V with 2 Batteries / 无绳电钻300540.0022.006,600.00",
+      "4Cotton T-Shirt 180gsm / 纯棉T恤2000360.001.953,900.00",
+    ].join("\n");
+    const r = parseSupplierOcrText(texto, "cotacao.pdf");
+    expect(r.totalLinhas).toBe(3);
+    expect(r.linhas[0]?.fobTotalUS).toBe(4250);
+    expect(r.linhas[1]?.qtd).toBe(300);
+    expect(r.linhas[2]?.descOriginal).toContain("Cotton");
+  });
+
+  it("converte linhas OCR com espaços simples (cotação PDF)", () => {
+    const texto = [
+      "No. Description / 品名 Qty / 数量 Net Weight (kg) Unit Price USD FOB Total USD",
+      "1 LED Panel Light 36W 600x600mm / LED面板灯 500 600.00 8.50 4,250.00",
+      "2 Cordless Drill 18V with 2 Batteries / 无绳电钻 300 540.00 22.00 6,600.00",
+      "3 Bluetooth Earphones TWS / 蓝牙耳机 1000 50.00 4.80 4,800.00",
+    ].join("\n");
+    const r = parseSupplierOcrText(texto, "cotacao-shenzhen.pdf");
+    expect(r.totalLinhas).toBeGreaterThanOrEqual(3);
+    expect(r.linhas[0]?.descOriginal).toContain("LED Panel");
+    expect(r.linhas[0]?.fobTotalUS).toBe(4250);
+    expect(r.linhas[1]?.qtd).toBe(300);
+  });
 });

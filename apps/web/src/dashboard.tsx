@@ -991,7 +991,17 @@ export function Dashboard() {
               <div className="mt-8 rounded-xl border border-white/10 bg-white/5 p-4 text-left text-sm">
                 <p className="font-semibold text-white">
                   ✓ {parsed.arquivo ?? "Arquivo"} — {parsed.totalLinhas} linha(s)
+                  {parsed.fonte === "ocr" && (
+                    <span className="ml-2 text-xs font-normal text-slate-400">(PDF/imagem)</span>
+                  )}
                 </p>
+                {parsed.totalLinhas === 0 && parsed.avisos?.length ? (
+                  <ul className="mt-2 list-inside list-disc text-xs text-amber-400/90">
+                    {parsed.avisos.slice(0, 4).map((a, i) => (
+                      <li key={i}>{a}</li>
+                    ))}
+                  </ul>
+                ) : null}
                 {!analise && (
                   <button
                     type="button"

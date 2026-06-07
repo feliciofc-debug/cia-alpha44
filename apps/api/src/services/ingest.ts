@@ -2,6 +2,7 @@
 
 import { parseSupplierFile, parseSupplierOcrText, type ParsedSupplierFile } from "@cia/pipeline";
 import type { OcrProvider } from "../ocr/types.js";
+import { extrairTextoPdf } from "./pdf-text.js";
 
 const EXT_PLANILHA = /\.(xlsx|xls|csv)$/i;
 const EXT_OCR = /\.(pdf|png|jpe?g|webp|tiff?|bmp)$/i;
@@ -36,6 +37,24 @@ export async function ingerirArquivo(
     return { arquivo: filename, fonte, ...parsed };
   }
 
+  const avisosIngest: string[] = [];
+
+  if (filename.toLowerCase().endsWith(".pdf")) {
+    const nativo = await extrairTextoPdf(bytes);
+    if (nativo && nativo.length > 60) {
+      const parsedNativo = parseSupplierOcrText(nativo, filename);
+      if (parsedNativo.totalLinhas > 0) {
+        return {
+          arquivo: filename,
+          fonte,
+          ...parsedNativo,
+          avisos: ["Texto extraído do PDF (sem OCR externo).", ...parsedNativo.avisos],
+        };
+      }
+      avisosIngest.push("PDF com texto nativo, mas parser não encontrou itens — tentando OCR.");
+    }
+  }
+
   if (!ocr.disponivel) {
     throw new Error("OCR não configurado — defina OCR_API_KEY na VPS (ver docs/OCR.md).");
   }
@@ -47,6 +66,6 @@ export async function ingerirArquivo(
     fonte,
     ocrPaginas: ocrOut.paginas,
     ...parsed,
-    avisos: [...ocrOut.avisos, ...parsed.avisos],
+    avisos: [...avisosIngest, ...ocrOut.avisos, ...parsed.avisos],
   };
 }
