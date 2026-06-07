@@ -1,16 +1,25 @@
-/** Fotos seguras para PDF — evita PNGs enormes que travam o PDFKit. */
+/** Redimensiona fotos para PDF — fiel ao preview, sem travar o PDFKit. */
 
+import sharp from "sharp";
 import type { Item } from "@cia/shared";
 
-/** Acima disso o PDFKit pode bloquear o event loop por minutos. */
-export const MAX_FOTO_PDF_BYTES = 400_000;
+export async function prepararFotoParaPdf(buffer: Buffer): Promise<Buffer | null> {
+  if (buffer.length === 0) return null;
+  try {
+    return await sharp(buffer)
+      .rotate()
+      .resize(480, 480, { fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 82, mozjpeg: true })
+      .toBuffer();
+  } catch {
+    return null;
+  }
+}
 
-export function bufferFotoItem(it: Item): Buffer | null {
+async function bufferBrutoItem(it: Item): Promise<Buffer | null> {
   if (!it.fotoBase64) return null;
   try {
-    const buf = Buffer.from(it.fotoBase64, "base64");
-    if (buf.length === 0 || buf.length > MAX_FOTO_PDF_BYTES) return null;
-    return buf;
+    return Buffer.from(it.fotoBase64, "base64");
   } catch {
     return null;
   }
@@ -20,29 +29,31 @@ function chaveFoto(buf: Buffer): string {
   return `${buf.length}:${buf.subarray(0, 24).toString("hex")}`;
 }
 
-/** Até 4 fotos únicas, ignorando arquivos grandes ou duplicados. */
-export function fotosParaPdf(itens: Item[]): Buffer[] {
+/** Até 6 fotos únicas — mesmo limite do preview web. */
+export async function fotosParaPdf(itens: Item[]): Promise<Buffer[]> {
   const seen = new Set<string>();
   const out: Buffer[] = [];
   for (const it of itens) {
-    const buf = bufferFotoItem(it);
-    if (!buf) continue;
-    const key = chaveFoto(buf);
+    const raw = await bufferBrutoItem(it);
+    if (!raw) continue;
+    const key = chaveFoto(raw);
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push(buf);
-    if (out.length >= 4) break;
+    const prepared = await prepararFotoParaPdf(raw);
+    if (!prepared) continue;
+    out.push(prepared);
+    if (out.length >= 6) break;
   }
   return out;
 }
 
-/** Menor foto válida — ideal para thumbnail em MERCADORIAS NCM. */
-export function menorFotoParaPdf(itens: Item[]): Buffer | null {
-  let best: Buffer | null = null;
+/** Primeira foto do item — igual ao preview (MERCADORIAS NCM). */
+export async function primeiraFotoParaPdf(itens: Item[]): Promise<Buffer | null> {
   for (const it of itens) {
-    const buf = bufferFotoItem(it);
-    if (!buf) continue;
-    if (!best || buf.length < best.length) best = buf;
+    const raw = await bufferBrutoItem(it);
+    if (!raw) continue;
+    const prepared = await prepararFotoParaPdf(raw);
+    if (prepared) return prepared;
   }
-  return best;
+  return null;
 }

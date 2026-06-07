@@ -348,6 +348,7 @@ function AnalisePainel({
             resultado={analise.resultado}
             onBaixarPdf={onBaixarPdfCliente}
             salvo={Boolean(salvaId)}
+            criadoEm={"criadoEm" in analise ? analise.criadoEm : undefined}
           />
         </div>
       ) : (

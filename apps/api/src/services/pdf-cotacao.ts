@@ -74,11 +74,11 @@ function usdKg(n: number | null): string {
   return `US$ ${n.toFixed(4)}/kg`;
 }
 
-function gerarPdfCliente(payload: PayloadPdf): Promise<Buffer> {
+async function gerarPdfCliente(payload: PayloadPdf): Promise<Buffer> {
   if (!payload.resultado) {
     throw new Error("Cotação sem resultado fiscal — recalcule antes de gerar o PDF do cliente.");
   }
-  return gerarPdfOrcamentoClienteModelo({
+  return await gerarPdfOrcamentoClienteModelo({
     cotacao: payload.cotacao,
     itens: payload.itens,
     resultado: payload.resultado,

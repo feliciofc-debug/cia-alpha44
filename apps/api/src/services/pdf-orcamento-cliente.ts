@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import type { ResultadoCotacao } from "@cia/fiscal-engine";
 import type { Cotacao, Despesa, Item } from "@cia/shared";
 import { formatNcm } from "@cia/shared";
-import { fotosParaPdf, menorFotoParaPdf } from "./pdf-fotos.js";
+import { fotosParaPdf, primeiraFotoParaPdf } from "./pdf-fotos.js";
 
 type PdfDoc = InstanceType<typeof PDFDocument>;
 
@@ -31,12 +31,20 @@ function fmtUsd(n: number): string {
   return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function parseDataIso(iso: string) {
+  const src = iso.slice(0, 10);
+  const [y, m, d] = src.split("-");
+  return { d: d ?? "01", m: m ?? "01", y: y ?? "2026" };
+}
+
 function fmtDataBr(iso: string): string {
-  return new Date(iso).toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+  const { d, m, y } = parseDataIso(iso);
+  return `${d}/${m}/${y}`;
+}
+
+function fmtDataFatura(iso: string): string {
+  const { d, m, y } = parseDataIso(iso);
+  return `${d}-${m}-${y}`;
 }
 
 function pdfParaBuffer(doc: PdfDoc): Promise<Buffer> {
@@ -151,7 +159,7 @@ function desenharFotosCertificacao(
   }
 }
 
-export function gerarPdfOrcamentoClienteModelo(payload: PayloadOrcamentoCliente): Promise<Buffer> {
+export async function gerarPdfOrcamentoClienteModelo(payload: PayloadOrcamentoCliente): Promise<Buffer> {
   const { cotacao, itens, resultado } = payload;
   const criadoEm = payload.criadoEm ?? new Date().toISOString();
   const cambio = cotacao.cambio;
@@ -168,7 +176,8 @@ export function gerarPdfOrcamentoClienteModelo(payload: PayloadOrcamentoCliente)
   const pesoLiq = itens.reduce((acc, it) => acc + (it.pesoLiqKg > 0 ? it.pesoLiqKg : 0), 0);
   const pesoBruto = itens.reduce((acc, it) => acc + (it.pesoBrutoKg ?? 0), 0) || pesoLiq * 1.1;
   const porto = `PORTO ${cotacao.origem || "RJ"}`;
-  const faturaTitulo = `${cotacao.cliente || "CLIENTE"} - ${fmtDataBr(criadoEm)}`.toUpperCase();
+  const faturaTitulo = `${cotacao.cliente || "CLIENTE"} - ${fmtDataFatura(criadoEm)}`.toUpperCase();
+  const [fotoMerc, fotosCert] = await Promise.all([primeiraFotoParaPdf(itens), fotosParaPdf(itens)]);
 
   const doc = new PDFDocument({
     size: "A4",
@@ -240,7 +249,7 @@ export function gerarPdfOrcamentoClienteModelo(payload: PayloadOrcamentoCliente)
   const rx = m + contentW * 0.54;
   doc.fontSize(8).font("Helvetica-Bold").text(descricaoMercadorias(itens), rx, y + 22, { width: contentW * 0.4 });
   doc.fontSize(8).font("Helvetica").text(`NCM: ${ncmMercadorias(itens)}`, rx, y + 48, { width: contentW * 0.4 });
-  const fotoMerc = menorFotoParaPdf(itens);
+  const fotoMercResolved = fotoMerc;
   if (fotoMerc) {
     try {
       doc.image(fotoMerc, rx, y + 62, {
@@ -275,7 +284,6 @@ export function gerarPdfOrcamentoClienteModelo(payload: PayloadOrcamentoCliente)
     ly += 11;
   }
   const pctMarkup = `${(cotacao.params.markupPct * 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
-  const fotosCert = fotosParaPdf(itens);
   const certX = m + contentW * 0.54;
   if (fotosCert.length > 0) {
     desenharFotosCertificacao(doc, fotosCert, certX, y + 16, contentW * 0.42, b3h - 28);

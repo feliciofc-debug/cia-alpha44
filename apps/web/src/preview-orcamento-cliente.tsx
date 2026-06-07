@@ -3,8 +3,20 @@ import { fmtNcm } from "./lib/format.ts";
 import { fotoItemSrc } from "./lib/item-foto.ts";
 import type { Cotacao, Despesa, Item, ResultadoCotacao } from "./lib/types.ts";
 
-function fmtDataCurta(d = new Date()) {
-  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+function parseDataIso(iso?: string) {
+  const src = iso?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
+  const [y, m, d] = src.split("-");
+  return { d: d ?? "01", m: m ?? "01", y: y ?? "2026" };
+}
+
+function fmtDataBr(iso?: string) {
+  const { d, m, y } = parseDataIso(iso);
+  return `${d}/${m}/${y}`;
+}
+
+function fmtDataFatura(iso?: string) {
+  const { d, m, y } = parseDataIso(iso);
+  return `${d}-${m}-${y}`;
 }
 
 function fmtBrl(n: number) {
@@ -101,6 +113,7 @@ export function PreviewOrcamentoCliente({
   resultado,
   onBaixarPdf,
   salvo = true,
+  criadoEm,
 }: {
   cotacao: Cotacao;
   itens: Item[];
@@ -108,6 +121,8 @@ export function PreviewOrcamentoCliente({
   onBaixarPdf?: () => void | Promise<void>;
   /** Cotação já persistida — PDF usa ID salvo; senão gera preview temporário. */
   salvo?: boolean;
+  /** Data da cotação salva — alinha preview com o PDF baixado. */
+  criadoEm?: string;
 }) {
   const [baixando, setBaixando] = useState(false);
 
@@ -122,9 +137,9 @@ export function PreviewOrcamentoCliente({
       setBaixando(false);
     }
   }
-  const dataStr = fmtDataCurta();
+  const dataStr = fmtDataBr(criadoEm);
   const porto = `PORTO ${cotacao.origem || "RJ"}`;
-  const fatura = `${cotacao.cliente || "CLIENTE"} - ${dataStr}`.toUpperCase();
+  const fatura = `${cotacao.cliente || "CLIENTE"} - ${fmtDataFatura(criadoEm)}`.toUpperCase();
 
   if (!resultado) {
     return (
