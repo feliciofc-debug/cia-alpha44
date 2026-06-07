@@ -27,6 +27,17 @@ import { gerarPdfCotacao, gerarPdfFromPayload } from "./services/pdf-cotacao.js"
 import { conferirNcmItens } from "./services/ncm-conferencia.js";
 import { lerFotoItem } from "./services/fotos.js";
 
+const PDF_GERACAO_TIMEOUT_MS = 45_000;
+
+function comTimeout<T>(promise: Promise<T>, ms: number, mensagem: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error(mensagem)), ms);
+    }),
+  ]);
+}
+
 const PORT = Number(process.env.PORT ?? 3333);
 const HOST = process.env.HOST ?? "0.0.0.0";
 
@@ -222,7 +233,11 @@ export async function buildServer() {
       const tipo = (req.query as { tipo?: string }).tipo === "trade" ? "trade" : "cliente";
       const row = await buscarCotacao(id);
       if (!row) return reply.status(404).send({ erro: "Cotação não encontrada." });
-      const buf = await gerarPdfCotacao(row, tipo);
+      const buf = await comTimeout(
+        gerarPdfCotacao(row, tipo),
+        PDF_GERACAO_TIMEOUT_MS,
+        "Geração do PDF excedeu o tempo limite. Tente novamente.",
+      );
       const nome = (row.cotacao.cliente || "cotacao").replace(/[^\w\-]+/g, "_").slice(0, 40);
       return reply
         .header("Content-Type", "application/pdf")
@@ -266,13 +281,17 @@ export async function buildServer() {
     if (!parsed.success) return reply.status(400).send({ erro: "Body inválido", detalhe: parsed.error.flatten() });
     try {
       const tipo = (req.query as { tipo?: string }).tipo === "trade" ? "trade" : "cliente";
-      const buf = await gerarPdfFromPayload(
-        {
-          cotacao: parsed.data.cotacao,
-          itens: parsed.data.itens as import("@cia/shared").Item[],
-          resultado: parsed.data.resultado ?? null,
-        },
-        tipo,
+      const buf = await comTimeout(
+        gerarPdfFromPayload(
+          {
+            cotacao: parsed.data.cotacao,
+            itens: parsed.data.itens as import("@cia/shared").Item[],
+            resultado: parsed.data.resultado ?? null,
+          },
+          tipo,
+        ),
+        PDF_GERACAO_TIMEOUT_MS,
+        "Geração do PDF excedeu o tempo limite. Tente novamente.",
       );
       const nome = (parsed.data.cotacao.cliente || "cotacao").replace(/[^\w\-]+/g, "_").slice(0, 40);
       return reply

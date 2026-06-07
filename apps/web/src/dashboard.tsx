@@ -459,9 +459,13 @@ export function Dashboard() {
       const [k, s] = await Promise.all([api.dashboardKpis(), api.dashboardSeries(12)]);
       setKpis(k);
       setSeries(s);
-    } catch {
+    } catch (e) {
       setKpis(null);
       setSeries(null);
+      const msg = e instanceof Error ? e.message : "";
+      if (msg.includes("abort") || msg.includes("AbortError")) {
+        setErro("API demorou para responder. Recarregue a página ou tente novamente.");
+      }
     } finally {
       setKpisLoading(false);
     }

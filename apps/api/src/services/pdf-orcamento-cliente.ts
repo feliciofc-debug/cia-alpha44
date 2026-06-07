@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import type { ResultadoCotacao } from "@cia/fiscal-engine";
 import type { Cotacao, Despesa, Item } from "@cia/shared";
 import { formatNcm } from "@cia/shared";
+import { fotosParaPdf, menorFotoParaPdf } from "./pdf-fotos.js";
 
 type PdfDoc = InstanceType<typeof PDFDocument>;
 
@@ -105,12 +106,6 @@ function descricaoMercadorias(itens: Item[]): string {
 function ncmMercadorias(itens: Item[]): string {
   const ncms = [...new Set(itens.map((it) => formatNcm(it.ncm || "00000000")))];
   return ncms.slice(0, 3).join(" / ") + (ncms.length > 3 ? " …" : "");
-}
-
-function buffersFotosItens(itens: Item[]): Buffer[] {
-  return itens
-    .filter((it) => it.fotoBase64)
-    .map((it) => Buffer.from(it.fotoBase64!, "base64"));
 }
 
 function desenharFotosCertificacao(
@@ -245,10 +240,10 @@ export function gerarPdfOrcamentoClienteModelo(payload: PayloadOrcamentoCliente)
   const rx = m + contentW * 0.54;
   doc.fontSize(8).font("Helvetica-Bold").text(descricaoMercadorias(itens), rx, y + 22, { width: contentW * 0.4 });
   doc.fontSize(8).font("Helvetica").text(`NCM: ${ncmMercadorias(itens)}`, rx, y + 48, { width: contentW * 0.4 });
-  const fotoMerc = itens.find((it) => it.fotoBase64);
-  if (fotoMerc?.fotoBase64) {
+  const fotoMerc = menorFotoParaPdf(itens);
+  if (fotoMerc) {
     try {
-      doc.image(Buffer.from(fotoMerc.fotoBase64, "base64"), rx, y + 62, {
+      doc.image(fotoMerc, rx, y + 62, {
         fit: [contentW * 0.18, 36],
       });
     } catch {
@@ -280,7 +275,7 @@ export function gerarPdfOrcamentoClienteModelo(payload: PayloadOrcamentoCliente)
     ly += 11;
   }
   const pctMarkup = `${(cotacao.params.markupPct * 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
-  const fotosCert = buffersFotosItens(itens);
+  const fotosCert = fotosParaPdf(itens);
   const certX = m + contentW * 0.54;
   if (fotosCert.length > 0) {
     desenharFotosCertificacao(doc, fotosCert, certX, y + 16, contentW * 0.42, b3h - 28);

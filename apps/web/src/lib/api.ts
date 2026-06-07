@@ -27,6 +27,7 @@ const BASE = (import.meta.env.VITE_API_URL as string) || "";
 const PARSE_TIMEOUT_MS = 120_000;
 const CLASSIFY_TIMEOUT_MS = 600_000;
 const PDF_TIMEOUT_MS = 180_000;
+const API_TIMEOUT_MS = 30_000;
 
 function fetchComTimeout(url: string, init: RequestInit, ms: number) {
   const ctrl = new AbortController();
@@ -60,8 +61,9 @@ export interface Cambio {
 }
 
 export const api = {
-  meta: () => fetch(`${BASE}/api/meta`).then(handle<Meta>),
-  cambio: (moeda = "USD") => fetch(`${BASE}/api/cambio?moeda=${moeda}`).then(handle<Cambio>),
+  meta: () => fetchComTimeout(`${BASE}/api/meta`, {}, API_TIMEOUT_MS).then(handle<Meta>),
+  cambio: (moeda = "USD") =>
+    fetchComTimeout(`${BASE}/api/cambio?moeda=${moeda}`, {}, API_TIMEOUT_MS).then(handle<Cambio>),
 
   parse: (file: File) => {
     const fd = new FormData();
@@ -146,14 +148,16 @@ export const api = {
     };
   },
 
-  dashboardKpis: () => fetch(`${BASE}/api/dashboard/kpis`).then(handle<DashboardKpis>),
+  dashboardKpis: () => fetchComTimeout(`${BASE}/api/dashboard/kpis`, {}, API_TIMEOUT_MS).then(handle<DashboardKpis>),
 
   dashboardSeries: (meses = 12) =>
-    fetch(`${BASE}/api/dashboard/series?meses=${meses}`).then(handle<DashboardSeries>),
+    fetchComTimeout(`${BASE}/api/dashboard/series?meses=${meses}`, {}, API_TIMEOUT_MS).then(handle<DashboardSeries>),
 
   dashboardClientes: (q?: string) => {
     const qs = q?.trim() ? `?q=${encodeURIComponent(q.trim())}` : "";
-    return fetch(`${BASE}/api/dashboard/clientes${qs}`).then(handle<{ total: number; clientes: ClienteResumo[] }>);
+    return fetchComTimeout(`${BASE}/api/dashboard/clientes${qs}`, {}, API_TIMEOUT_MS).then(
+      handle<{ total: number; clientes: ClienteResumo[] }>,
+    );
   },
 
   relatorioFaturamento: (ano: number, mes?: number) => {
@@ -172,10 +176,11 @@ export const api = {
 
   listarCotacoes: (cliente?: string) => {
     const q = cliente ? `?cliente=${encodeURIComponent(cliente)}` : "";
-    return fetch(`${BASE}/api/cotacoes${q}`).then(handle<CotacaoLista>);
+    return fetchComTimeout(`${BASE}/api/cotacoes${q}`, {}, API_TIMEOUT_MS).then(handle<CotacaoLista>);
   },
 
-  buscarCotacao: (id: string) => fetch(`${BASE}/api/cotacoes/${id}`).then(handle<CotacaoSalva>),
+  buscarCotacao: (id: string) =>
+    fetchComTimeout(`${BASE}/api/cotacoes/${id}`, {}, API_TIMEOUT_MS).then(handle<CotacaoSalva>),
 
   salvarCotacao: (payload: {
     cotacao: Cotacao;
