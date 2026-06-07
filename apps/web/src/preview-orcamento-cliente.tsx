@@ -19,6 +19,17 @@ function fmtDataFatura(iso?: string) {
   return `${d}-${m}-${y}`;
 }
 
+function temTextoUnicode(texto: string) {
+  return /[^\u0000-\u007F]/.test(texto);
+}
+
+function tituloFatura(cliente: string, criadoEm?: string) {
+  const data = fmtDataFatura(criadoEm);
+  const nome = (cliente || "CLIENTE").trim();
+  if (temTextoUnicode(nome)) return `${nome} - ${data}`;
+  return `${nome} - ${data}`.toUpperCase();
+}
+
 function fmtBrl(n: number) {
   return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -139,7 +150,7 @@ export function PreviewOrcamentoCliente({
   }
   const dataStr = fmtDataBr(criadoEm);
   const porto = `PORTO ${cotacao.origem || "RJ"}`;
-  const fatura = `${cotacao.cliente || "CLIENTE"} - ${fmtDataFatura(criadoEm)}`.toUpperCase();
+  const fatura = tituloFatura(cotacao.cliente || "CLIENTE", criadoEm);
 
   if (!resultado) {
     return (

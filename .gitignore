@@ -17,4 +17,6 @@ tools/*.txt
 uploads/
 out/
 data/fotos/
+# fonte CJK baixada no build da API (copy-assets.cjs)
+apps/api/src/assets/NotoSansCJKsc-Regular.otf
 *.tmp

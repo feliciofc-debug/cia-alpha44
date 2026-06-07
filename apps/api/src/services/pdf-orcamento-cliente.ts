@@ -10,6 +10,7 @@ import type { ResultadoCotacao } from "@cia/fiscal-engine";
 import type { Cotacao, Despesa, Item } from "@cia/shared";
 import { formatNcm } from "@cia/shared";
 import { fotosParaPdf, primeiraFotoParaPdf } from "./pdf-fotos.js";
+import { registrarFontesPdf, textoPdf, tituloFatura } from "./pdf-fonts.js";
 
 type PdfDoc = InstanceType<typeof PDFDocument>;
 
@@ -72,13 +73,14 @@ function headerCell(
   x: number,
   y: number,
   w: number,
-  opts?: { color?: string; bold?: boolean; align?: "left" | "center" | "right" },
+  opts?: { color?: string; bold?: boolean; align?: "left" | "center" | "right"; fontSize?: number },
 ) {
-  doc
-    .fontSize(8)
-    .font(opts?.bold === false ? "Helvetica" : "Helvetica-Bold")
-    .fillColor(opts?.color ?? "#000000")
-    .text(text, x, y, { width: w, align: opts?.align ?? "left" });
+  textoPdf(doc, text, x, y, w, {
+    fontSize: opts?.fontSize ?? 8,
+    bold: opts?.bold !== false,
+    color: opts?.color,
+    align: opts?.align,
+  });
 }
 
 function rowPar(doc: PdfDoc, label: string, valor: string, x: number, y: number, lw: number, vw: number) {
@@ -128,16 +130,6 @@ function desenharFotosCertificacao(
   const pad = 4;
   const areaW = w - pad * 2;
   const areaH = h - pad * 2;
-
-  if (fotos.length === 1) {
-    try {
-      doc.image(fotos[0]!, x + pad, y + pad, { fit: [areaW, areaH], align: "center", valign: "center" });
-    } catch {
-      /* formato inválido */
-    }
-    return;
-  }
-
   const max = Math.min(fotos.length, 6);
   const cols = max <= 2 ? max : 3;
   const rows = Math.ceil(max / cols);
@@ -176,7 +168,7 @@ export async function gerarPdfOrcamentoClienteModelo(payload: PayloadOrcamentoCl
   const pesoLiq = itens.reduce((acc, it) => acc + (it.pesoLiqKg > 0 ? it.pesoLiqKg : 0), 0);
   const pesoBruto = itens.reduce((acc, it) => acc + (it.pesoBrutoKg ?? 0), 0) || pesoLiq * 1.1;
   const porto = `PORTO ${cotacao.origem || "RJ"}`;
-  const faturaTitulo = `${cotacao.cliente || "CLIENTE"} - ${fmtDataFatura(criadoEm)}`.toUpperCase();
+  const faturaTitulo = tituloFatura(cotacao.cliente || "CLIENTE", criadoEm, fmtDataFatura);
   const [fotoMerc, fotosCert] = await Promise.all([primeiraFotoParaPdf(itens), fotosParaPdf(itens)]);
 
   const doc = new PDFDocument({
@@ -184,6 +176,7 @@ export async function gerarPdfOrcamentoClienteModelo(payload: PayloadOrcamentoCl
     margin: 36,
     info: { Title: `Fatura ${faturaTitulo}`, Author: "INNOVE 888" },
   });
+  registrarFontesPdf(doc);
 
   const pageW = 595.28;
   const m = 36;
@@ -247,8 +240,11 @@ export async function gerarPdfOrcamentoClienteModelo(payload: PayloadOrcamentoCl
     ly += 11;
   }
   const rx = m + contentW * 0.54;
-  doc.fontSize(8).font("Helvetica-Bold").text(descricaoMercadorias(itens), rx, y + 22, { width: contentW * 0.4 });
-  doc.fontSize(8).font("Helvetica").text(`NCM: ${ncmMercadorias(itens)}`, rx, y + 48, { width: contentW * 0.4 });
+  const descMerc = descricaoMercadorias(itens);
+  textoPdf(doc, descMerc, rx, y + 22, contentW * 0.4, { fontSize: 8, bold: true });
+  doc.fontSize(8).font("Helvetica").fillColor("#000000").text(`NCM: ${ncmMercadorias(itens)}`, rx, y + 48, {
+    width: contentW * 0.4,
+  });
   const fotoMercResolved = fotoMerc;
   if (fotoMerc) {
     try {
