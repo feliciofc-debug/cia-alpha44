@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
-    "build": "tsc -p tsconfig.json && node ../../packages/pipeline/scripts/copy-data.cjs",
+    "build": "tsc -p tsconfig.json && node ../../packages/pipeline/scripts/copy-data.cjs && node scripts/copy-assets.cjs",
     "test": "vitest run"
   },
   "dependencies": {

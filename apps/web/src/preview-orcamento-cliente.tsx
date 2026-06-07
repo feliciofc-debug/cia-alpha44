@@ -1,131 +1,223 @@
-import { brl, fmtNcm, usdKg } from "./lib/format.ts";
-import { fobKgItem } from "./lib/fob-kg.ts";
-import type { Cotacao, Item } from "./lib/types.ts";
-import type { ResumoFinanceiro } from "./lib/financeiro.ts";
+import { fmtNcm } from "./lib/format.ts";
+import type { Cotacao, Despesa, Item, ResultadoCotacao } from "./lib/types.ts";
 
-function fmtDataCurta() {
-  return new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+function fmtDataCurta(d = new Date()) {
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function fmtBrl(n: number) {
+  return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function fmtUsd(n: number) {
+  return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function despesaValor(despesas: Despesa[], ...chaves: string[]) {
+  const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
+  for (const d of despesas) {
+    const n = norm(d.nome);
+    if (chaves.some((k) => n.includes(norm(k)))) return d.valorBRL;
+  }
+  return 0;
+}
+
+function totaisRegime(resultado: ResultadoCotacao) {
+  const e = resultado.entrada;
+  const impostosSuspensos = e.iiTotal + e.ipiTotal + e.pisTotal + e.cofinsTotal;
+  const totalIntegral = resultado.totalBRL;
+  const totalEntreposto = Math.max(0, totalIntegral - impostosSuspensos);
+  return { totalIntegral, totalEntreposto, proveitoEconomico: totalIntegral - totalEntreposto };
+}
+
+function Box({
+  title,
+  left,
+  right,
+  className = "",
+}: {
+  title?: string;
+  left: React.ReactNode;
+  right?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`border border-black text-[11px] leading-tight text-black ${className}`}>
+      {title ? (
+        <div className="grid grid-cols-2 border-b border-black font-bold">
+          <div className="border-r border-black px-2 py-1">{title.split("|")[0]}</div>
+          <div className="px-2 py-1">{title.split("|")[1] ?? ""}</div>
+        </div>
+      ) : null}
+      <div className={`grid ${right != null ? "grid-cols-2" : "grid-cols-1"}`}>
+        <div className={right != null ? "border-r border-black px-2 py-2" : "px-2 py-2"}>{left}</div>
+        {right != null ? <div className="px-2 py-2">{right}</div> : null}
+      </div>
+    </div>
+  );
+}
+
+function Linha({ label, valor }: { label: string; valor: string }) {
+  return (
+    <div className="flex justify-between gap-2 py-0.5">
+      <span className="font-bold">{label}</span>
+      <span>{valor}</span>
+    </div>
+  );
 }
 
 export function PreviewOrcamentoCliente({
   cotacao,
   itens,
-  financeiro,
+  resultado,
   onBaixarPdf,
   pdfBaixando,
 }: {
   cotacao: Cotacao;
   itens: Item[];
-  financeiro: ResumoFinanceiro | null;
+  resultado: ResultadoCotacao | null;
   onBaixarPdf?: () => void;
   pdfBaixando?: boolean;
 }) {
-  const empresa = cotacao.empresaTrade?.trim() || "CIA / Alpha 44";
-  const fobTotalUS = itens.reduce((s, it) => s + (it.fobTotalUS > 0 ? it.fobTotalUS : 0), 0);
-  const pesoTotalKg = itens.reduce((s, it) => s + (it.pesoLiqKg > 0 ? it.pesoLiqKg : 0), 0);
+  const dataStr = fmtDataCurta();
+  const porto = `PORTO ${cotacao.origem || "RJ"}`;
+  const fatura = `${cotacao.cliente || "CLIENTE"} - ${dataStr}`.toUpperCase();
+
+  if (!resultado) {
+    return (
+      <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-6 text-sm text-amber-100">
+        Recalcule a cotação para visualizar o orçamento no formato padrão INNOVE 888.
+      </div>
+    );
+  }
+
+  const cambio = cotacao.cambio;
+  const fobUS = resultado.entrada.fobTotalUS;
+  const freteUS = cotacao.freteTotalUS ?? 0;
+  const cifUS = fobUS + freteUS;
+  const e = resultado.entrada;
+  const s = resultado.saida;
+  const despesas = cotacao.despesas ?? [];
+  const { totalIntegral, totalEntreposto, proveitoEconomico } = totaisRegime(resultado);
+  const pesoLiq = itens.reduce((acc, it) => acc + (it.pesoLiqKg > 0 ? it.pesoLiqKg : 0), 0);
+  const pesoBruto = itens.reduce((acc, it) => acc + (it.pesoBrutoKg ?? 0), 0) || pesoLiq * 1.1;
+  const desc = (itens[0]?.descPt || itens[0]?.descOriginal || "—").toUpperCase();
+  const ncm = [...new Set(itens.map((it) => fmtNcm(it.ncm || "00000000")))].join(" / ");
+  const pctMarkup = `${(cotacao.params.markupPct * 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}%`;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-white/10 bg-white text-slate-900 shadow-xl">
-      <div className="border-b border-slate-200 bg-slate-50 px-6 py-4">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-brand-700">Orçamento de importação</p>
-            <h3 className="mt-1 text-xl font-bold text-slate-900">{empresa}</h3>
-            <p className="mt-2 text-sm text-slate-600">
-              Cliente: <span className="font-medium text-slate-900">{cotacao.cliente || "—"}</span>
-            </p>
-          </div>
-          <div className="text-right text-sm text-slate-600">
-            <p>Data: {fmtDataCurta()}</p>
-            <p>Destino: {cotacao.destino}</p>
-            <p>Incoterm: {cotacao.incoterm}</p>
-            <p>Câmbio ref.: R$ {cotacao.cambio.toLocaleString("pt-BR", { minimumFractionDigits: 4 })}</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="px-6 py-5">
-        <p className="text-sm font-semibold text-slate-800">Itens cotados</p>
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full min-w-[640px] text-left text-xs">
-            <thead className="border-b border-slate-200 text-[10px] uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-2 py-2">#</th>
-                <th className="px-2 py-2">Descrição</th>
-                <th className="px-2 py-2">NCM</th>
-                <th className="px-2 py-2 text-right">Qtd</th>
-                <th className="px-2 py-2 text-right">Peso (kg)</th>
-                <th className="px-2 py-2 text-right">FOB US$/kg</th>
-                <th className="px-2 py-2 text-right">FOB US$</th>
-              </tr>
-            </thead>
-            <tbody>
-              {itens.map((it, i) => {
-                const fobKg = fobKgItem(it);
-                return (
-                  <tr key={i} className="border-b border-slate-100">
-                    <td className="px-2 py-2 text-slate-500">{i + 1}</td>
-                    <td className="max-w-xs px-2 py-2">
-                      <p className="font-medium text-slate-900">{it.descPt || it.descOriginal}</p>
-                      {it.descDuimp && <p className="mt-0.5 text-[10px] text-slate-500">{it.descDuimp.slice(0, 100)}</p>}
-                    </td>
-                    <td className="whitespace-nowrap px-2 py-2 text-slate-700">{fmtNcm(it.ncm || "00000000")}</td>
-                    <td className="whitespace-nowrap px-2 py-2 text-right text-slate-700">
-                      {it.qtd != null ? it.qtd.toLocaleString("pt-BR") : "—"}
-                    </td>
-                    <td className="whitespace-nowrap px-2 py-2 text-right text-slate-700">
-                      {it.pesoLiqKg > 0 ? it.pesoLiqKg.toLocaleString("pt-BR") : "—"}
-                    </td>
-                    <td className="whitespace-nowrap px-2 py-2 text-right font-medium text-slate-800">
-                      {fobKg.principal != null ? usdKg(fobKg.principal) : "—"}
-                    </td>
-                    <td className="whitespace-nowrap px-2 py-2 text-right text-slate-700">
-                      {it.fobTotalUS > 0 ? `US$ ${it.fobTotalUS.toFixed(2)}` : "—"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot className="border-t border-slate-300 text-xs font-medium text-slate-700">
-              <tr>
-                <td colSpan={4} className="px-2 py-2 text-right">
-                  Totais
-                </td>
-                <td className="px-2 py-2 text-right">{pesoTotalKg > 0 ? pesoTotalKg.toLocaleString("pt-BR") : "—"}</td>
-                <td className="px-2 py-2" />
-                <td className="px-2 py-2 text-right">US$ {fobTotalUS.toFixed(2)}</td>
-              </tr>
-            </tfoot>
-          </table>
+    <div className="overflow-hidden rounded-xl border border-white/10 bg-white text-black shadow-xl">
+      <div className="p-4 sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-black pb-3">
+          <img src="/logo-innove888.jpeg" alt="INNOVE 888" className="h-12 w-auto object-contain" />
+          <p className="max-w-md text-right text-[10px] font-bold leading-snug sm:text-xs">
+            FATURA: {fatura}
+          </p>
         </div>
 
-        <div className="mt-6 rounded-lg border border-brand-200 bg-brand-50 px-5 py-4">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div className="text-sm text-slate-600">
-              <p>FOB total mercadorias: US$ {fobTotalUS.toFixed(2)}</p>
-              <p className="mt-1">Câmbio de referência: R$ {cotacao.cambio.toLocaleString("pt-BR", { minimumFractionDigits: 4 })}</p>
-              <p className="mt-1 text-xs text-slate-500">
-                Inclui nacionalização, impostos, despesas locais e entrega até {cotacao.destino}.
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-xs font-semibold uppercase tracking-wide text-brand-800">Investimento total estimado</p>
-              <p className="mt-1 text-2xl font-bold text-brand-900">
-                {financeiro ? brl(financeiro.totalOrcamentoBRL) : "—"}
-              </p>
-            </div>
+        <div className="mt-3 grid grid-cols-3 border border-black text-center text-[11px] font-bold">
+          <div className="border-r border-black px-2 py-1.5 text-left">DATA: {dataStr}</div>
+          <div className="border-r border-black px-2 py-1.5 text-blue-700">{porto}</div>
+          <div className="px-2 py-1.5 text-right text-red-600">ESTIMATIVA</div>
+        </div>
+
+        <div className="mt-2 border border-black p-2 text-[11px]">
+          <p className="font-bold">TAXA DOLLAR: $ {fmtUsd(cambio)}</p>
+          <div className="mt-2 grid grid-cols-3 gap-2 font-bold">
+            <div />
+            <div className="text-right">US$</div>
+            <div className="text-right">R$</div>
+            <div>VALOR FOB DI</div>
+            <div className="text-right font-normal">$ {fmtUsd(fobUS)}</div>
+            <div className="text-right font-normal">{fmtBrl(fobUS * cambio)}</div>
+            <div>FRETE PREPAID</div>
+            <div className="text-right font-normal">$ {fmtUsd(freteUS)}</div>
+            <div className="text-right font-normal">{fmtBrl(freteUS * cambio)}</div>
+            <div>VALOR CIF</div>
+            <div className="text-right font-normal">$ {fmtUsd(cifUS)}</div>
+            <div className="text-right font-normal">{fmtBrl(cifUS * cambio)}</div>
           </div>
         </div>
 
-        <div className="mt-5 text-xs text-slate-600">
-          <p className="font-semibold text-slate-800">Condições gerais</p>
-          <ul className="mt-2 list-inside list-disc space-y-1">
-            <li>Valores em Reais (BRL), sujeitos a variação cambial até fechamento.</li>
-            <li>Validade desta proposta: 15 dias corridos.</li>
-            <li>Impostos e taxas conforme legislação vigente na data do desembarque.</li>
-            <li>Carga ainda não inspecionada — sujeita a conferência aduaneira.</li>
-          </ul>
-        </div>
+        <Box
+          className="mt-2"
+          title="IMPOSTOS DE ENTRADA|MERCADORIAS NCM"
+          left={
+            <>
+              <Linha label="II:" valor={`R$ ${fmtBrl(e.iiTotal)}`} />
+              <Linha label="IPI:" valor={`R$ ${fmtBrl(e.ipiTotal)}`} />
+              <Linha label="PIS:" valor={`R$ ${fmtBrl(e.pisTotal)}`} />
+              <Linha label="COFINS:" valor={`R$ ${fmtBrl(e.cofinsTotal)}`} />
+              <Linha label="TAXA SISC:" valor={`R$ ${fmtBrl(e.siscomex)}`} />
+              <Linha label="ANTIDUMPING:" valor={`R$ ${fmtBrl(e.antidumpingBRL)}`} />
+            </>
+          }
+          right={
+            <>
+              <p className="font-bold">{desc}</p>
+              <p className="mt-3">NCM: {ncm}</p>
+            </>
+          }
+        />
+
+        <Box
+          className="mt-2"
+          title="TAXAS LOCAIS|CERTIFICAÇÃO"
+          left={
+            <>
+              <Linha label="AFRMM:" valor={`R$ ${fmtBrl(despesaValor(despesas, "afrmm"))}`} />
+              <Linha label="ARMAZENAGEM:" valor={`R$ ${fmtBrl(despesaValor(despesas, "armazenagem"))}`} />
+              <Linha label="LIBERAÇÃO BL:" valor={`R$ ${fmtBrl(despesaValor(despesas, "liberação", "bl"))}`} />
+              <Linha label="GNRE:" valor={`R$ ${fmtBrl(despesaValor(despesas, "gnre"))}`} />
+              <Linha label="ADMINISTRATIVO:" valor={`R$ ${fmtBrl(despesaValor(despesas, "administrativo"))}`} />
+              <Linha label="TRANSP+ESC DTA:" valor={`R$ ${fmtBrl(despesaValor(despesas, "transp", "dta"))}`} />
+              <Linha label={`TRANSPORTE ${cotacao.destino}:`} valor={`R$ ${fmtBrl(despesaValor(despesas, "transporte"))}`} />
+              <Linha label={`ESCOLTA ${cotacao.destino}:`} valor={`R$ ${fmtBrl(despesaValor(despesas, "escolta"))}`} />
+              <Linha label="DESPACHO HON:" valor={`R$ ${fmtBrl(despesaValor(despesas, "despacho", "honor"))}`} />
+              <Linha label="PROVEITO ECONÔMICO:" valor={`R$ ${fmtBrl(s.markup)}`} />
+            </>
+          }
+          right={<p className="mt-auto text-right font-bold">{pctMarkup}</p>}
+        />
+
+        <Box
+          className="mt-2"
+          title="IMPOSTOS DE SAIDA|OUTRAS INFORMAÇÕES"
+          left={
+            <>
+              <Linha label="DIF IPI:" valor={`R$ ${fmtBrl(s.difIPI)}`} />
+              <Linha label="DIF PIS:" valor={`R$ ${fmtBrl(s.difPIS)}`} />
+              <Linha label="DIF COFINS:" valor={`R$ ${fmtBrl(s.difCOFINS)}`} />
+              <Linha label="ICMS SAIDA:" valor={`R$ ${fmtBrl(s.icmsSaida)}`} />
+              <Linha label="CSLL:" valor={`R$ ${fmtBrl(s.csll)}`} />
+              <Linha label="IRRF:" valor={`R$ ${fmtBrl(s.irrf)}`} />
+              <Linha label="MARKUP:" valor={`R$ ${fmtBrl(s.markup)}`} />
+            </>
+          }
+          right={
+            <>
+              <Linha label="GROSS WEIGHT:" valor={fmtBrl(pesoBruto)} />
+              <Linha label="NET WEIGHT:" valor={fmtBrl(pesoLiq)} />
+              <Linha label="CAIXAS:" valor="" />
+            </>
+          }
+        />
+
+        {[
+          [totalIntegral, "VALOR DAS DESPESAS + IMPOSTOS REGIME INTEGRAL"],
+          [totalEntreposto, "VALOR DAS DESPESAS - ENTREPOSTO ADUANEIRO SUSPENSOS"],
+          [proveitoEconomico, "VALOR DO PROVEITO ECONÔMICO C/ENTREPOSTO ADUANEIRO"],
+        ].map(([val, leg], i) => (
+          <div key={i} className="mt-1 grid grid-cols-[1fr_auto_auto] border border-black text-[10px] font-bold sm:text-[11px]">
+            <div className="border-r border-black px-2 py-1.5">TOTAL R$ {fmtBrl(val as number)}</div>
+            <div className="border-r border-black px-2 py-1.5">$ {fmtUsd(cambio > 0 ? (val as number) / cambio : 0)}</div>
+            <div className="px-2 py-1.5 text-right font-normal">{leg as string}</div>
+          </div>
+        ))}
+
+        <p className="mt-3 text-[10px] font-bold leading-snug">
+          OBS: NO ATO DA NACIONALIZAÇÃO PODEREMOS PLEITEAR O USO DE UM E-TARIFÁRIO E REDUZIR O II PARA R$ 0,00
+        </p>
       </div>
 
       {onBaixarPdf && (
@@ -135,10 +227,6 @@ export function PreviewOrcamentoCliente({
           </button>
         </div>
       )}
-
-      <p className="border-t border-slate-100 px-6 py-2 text-center text-[10px] text-slate-400">
-        Pré-visualização — o documento final pode variar após salvar.
-      </p>
     </div>
   );
 }

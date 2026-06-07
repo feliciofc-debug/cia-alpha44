@@ -313,7 +313,7 @@ function AnalisePainel({
         <PreviewOrcamentoCliente
           cotacao={analise.cotacao}
           itens={itens}
-          financeiro={financeiro}
+          resultado={analise.resultado}
           onBaixarPdf={onBaixarPdfCliente}
           pdfBaixando={pdfBaixando}
         />
