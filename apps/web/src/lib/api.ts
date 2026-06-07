@@ -28,6 +28,7 @@ const PARSE_TIMEOUT_MS = 120_000;
 const CLASSIFY_TIMEOUT_MS = 600_000;
 const PDF_TIMEOUT_MS = 180_000;
 const API_TIMEOUT_MS = 30_000;
+const SALVAR_TIMEOUT_MS = 180_000;
 
 function fetchComTimeout(url: string, init: RequestInit, ms: number) {
   const ctrl = new AbortController();
@@ -188,11 +189,15 @@ export const api = {
     resultado: ResultadoCotacao | null;
     provider?: string;
   }) =>
-    fetch(`${BASE}/api/cotacoes`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
-    }).then(handle<CotacaoSalva>),
+    fetchComTimeout(
+      `${BASE}/api/cotacoes`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+      SALVAR_TIMEOUT_MS,
+    ).then(handle<CotacaoSalva>),
 
   duplicarCotacao: (id: string, opts?: { markupPct?: number; cliente?: string }) =>
     fetch(`${BASE}/api/cotacoes/${id}/duplicar`, {

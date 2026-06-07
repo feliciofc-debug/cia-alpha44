@@ -17,6 +17,7 @@ import { AppShell, type NavItem } from "./app-shell.tsx";
 import { ClientesView } from "./clientes-view.tsx";
 import { PainelKpisView } from "./painel-kpis.tsx";
 import { PreviewOrcamentoCliente } from "./preview-orcamento-cliente.tsx";
+import { cotacaoParaSalvar, itensParaSalvar } from "./lib/cotacao-payload.ts";
 import type { ClienteResumo, DashboardKpis, DashboardSeries } from "./lib/types.ts";
 
 type View = NavItem | "detalhe";
@@ -685,22 +686,29 @@ export function Dashboard() {
   }
 
   async function salvarAnalise() {
-    if (!analise) return;
+    if (!analise || salvando) return;
     setSalvando(true);
     setErro("");
     try {
       const draft = editorDraft ?? editorFromCotacao(analise.cotacao, cliente);
-      const cotacao = aplicarEditorNaCotacao(analise.cotacao, draft);
+      const cotacao = cotacaoParaSalvar(aplicarEditorNaCotacao(analise.cotacao, draft));
       const salva = await api.salvarCotacao({
         cotacao,
-        itens: analise.itens,
+        itens: itensParaSalvar(analise.itens),
         resultado: analise.resultado,
         provider: analise.provider,
       });
       setSalvaId(salva.id);
       await carregarLista();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : "Falha ao salvar.");
+      const msg = e instanceof Error ? e.message : "Falha ao salvar.";
+      setErro(
+        msg.includes("abort") || msg.includes("AbortError")
+          ? "Salvar demorou demais. Verifique a conexão e tente novamente."
+          : msg.includes("413")
+            ? "Planilha com fotos muito grandes. Tente salvar de novo ou reduza as imagens."
+            : msg,
+      );
     } finally {
       setSalvando(false);
     }

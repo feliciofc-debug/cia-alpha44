@@ -49,7 +49,7 @@ function corsOrigins(): boolean | string[] {
 }
 
 export async function buildServer() {
-  const app = Fastify({ logger: true, bodyLimit: 15 * 1024 * 1024 });
+  const app = Fastify({ logger: true, bodyLimit: 35 * 1024 * 1024 });
   await app.register(cors, { origin: corsOrigins() });
   await app.register(multipart, { limits: { fileSize: 25 * 1024 * 1024 } });
 
