@@ -34,11 +34,13 @@ export function AppShell({
     <div className="flex min-h-full bg-ink-900">
       <aside className="hidden w-56 shrink-0 flex-col border-r border-white/5 bg-ink-950/80 md:flex">
         <div className="flex h-14 items-center gap-2 border-b border-white/5 px-4">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-500 text-sm font-black text-white">
-            α
-          </div>
-          <div>
-            <p className="text-sm font-bold text-white">CIA / Alpha 44</p>
+          <img
+            src="/logo-innove888.jpeg"
+            alt="INNOVE 888"
+            className="h-9 w-auto max-w-[72px] object-contain"
+          />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold text-white">INNOVE 888</p>
             <p className="text-[10px] text-slate-500">Gestão de trade</p>
           </div>
         </div>
@@ -69,6 +71,14 @@ export function AppShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 shrink-0 items-center gap-3 border-b border-white/5 px-4 md:px-6">
+          <div className="flex items-center gap-2 md:hidden">
+            <img
+              src="/logo-innove888.jpeg"
+              alt="INNOVE 888"
+              className="h-8 w-auto max-w-[64px] object-contain"
+            />
+            <span className="text-sm font-bold text-white">INNOVE 888</span>
+          </div>
           <div className="flex gap-1 md:hidden">
             {NAV.map((item) => (
               <button
