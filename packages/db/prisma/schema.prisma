@@ -101,6 +101,8 @@ model Item {
   risco             Json?
   anuencia          Json     @default("[]")
   antidumping       Boolean  @default(false)
+  /// Caminho relativo em data/fotos/ (ex.: cotacaoId/0.jpg)
+  fotoPath          String?
 
   @@index([cotacaoId])
   @@index([ncm])

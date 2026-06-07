@@ -60,6 +60,10 @@ export interface Item {
   risco?: Risco;
   anuencia: string[];
   antidumping: boolean;
+  fotoBase64?: string;
+  fotoMime?: string;
+  fotoPath?: string;
+  fotoUrl?: string;
 }
 
 export interface Despesa {

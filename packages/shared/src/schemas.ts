@@ -87,6 +87,13 @@ export const itemSchema = z.object({
   risco: riscoSchema.optional(),
   anuencia: z.array(z.string()).default([]),
   antidumping: z.boolean().default(false),
+  /** Foto do produto (compliance) — base64 durante sessão ou após parse. */
+  fotoBase64: z.string().optional(),
+  fotoMime: z.string().optional(),
+  /** Caminho relativo em data/fotos/ após salvar cotação. */
+  fotoPath: z.string().optional(),
+  /** URL da API para exibir foto salva (preenchido pelo backend). */
+  fotoUrl: z.string().optional(),
 });
 export type Item = z.infer<typeof itemSchema>;
 

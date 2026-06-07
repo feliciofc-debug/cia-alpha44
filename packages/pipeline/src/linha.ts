@@ -11,6 +11,9 @@ export interface LinhaCrua {
   fobUnitarioUS: number | null;
   fobTotalUS: number | null;
   dimensoes?: string | null;
+  /** Foto do produto (base64) — extraída da planilha .xlsx. */
+  fotoBase64?: string;
+  fotoMime?: string;
 }
 
 /** Peso líquido por linha (regra 4: bruto × 0,92 se não informado). */

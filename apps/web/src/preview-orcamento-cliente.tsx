@@ -66,6 +66,37 @@ function Linha({ label, valor }: { label: string; valor: string }) {
   );
 }
 
+const API_BASE = (import.meta.env.VITE_API_URL as string) || "";
+
+function fotoSrc(it: Item): string | null {
+  if (it.fotoBase64) return `data:${it.fotoMime ?? "image/jpeg"};base64,${it.fotoBase64}`;
+  if (it.fotoUrl) return `${API_BASE}${it.fotoUrl}`;
+  return null;
+}
+
+function FotosCertificacao({ itens }: { itens: Item[] }) {
+  const urls = itens.map(fotoSrc).filter((u): u is string => Boolean(u));
+  if (urls.length === 0) {
+    return <p className="text-[10px] text-slate-500">Sem foto na planilha</p>;
+  }
+  const cols = urls.length <= 2 ? urls.length : 3;
+  return (
+    <div
+      className="grid gap-1"
+      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+    >
+      {urls.slice(0, 6).map((src, i) => (
+        <img
+          key={i}
+          src={src}
+          alt={`Produto ${i + 1}`}
+          className="h-14 w-full rounded border border-black/10 object-contain bg-white"
+        />
+      ))}
+    </div>
+  );
+}
+
 export function PreviewOrcamentoCliente({
   cotacao,
   itens,
@@ -104,6 +135,7 @@ export function PreviewOrcamentoCliente({
   const desc = (itens[0]?.descPt || itens[0]?.descOriginal || "—").toUpperCase();
   const ncm = [...new Set(itens.map((it) => fmtNcm(it.ncm || "00000000")))].join(" / ");
   const pctMarkup = `${(cotacao.params.markupPct * 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}%`;
+  const fotoMercadoria = itens.map(fotoSrc).find(Boolean);
 
   return (
     <div className="overflow-hidden rounded-xl border border-white/10 bg-white text-black shadow-xl">
@@ -155,7 +187,14 @@ export function PreviewOrcamentoCliente({
           right={
             <>
               <p className="font-bold">{desc}</p>
-              <p className="mt-3">NCM: {ncm}</p>
+              <p className="mt-2">NCM: {ncm}</p>
+              {fotoMercadoria ? (
+                <img
+                  src={fotoMercadoria}
+                  alt="Produto"
+                  className="mt-2 h-10 max-w-[88px] rounded border border-black/10 object-contain"
+                />
+              ) : null}
             </>
           }
         />
@@ -177,7 +216,12 @@ export function PreviewOrcamentoCliente({
               <Linha label="PROVEITO ECONÔMICO:" valor={`R$ ${fmtBrl(s.markup)}`} />
             </>
           }
-          right={<p className="mt-auto text-right font-bold">{pctMarkup}</p>}
+          right={
+            <div className="flex min-h-[120px] flex-col justify-between gap-2">
+              <FotosCertificacao itens={itens} />
+              <p className="text-right font-bold">{pctMarkup}</p>
+            </div>
+          }
         />
 
         <Box

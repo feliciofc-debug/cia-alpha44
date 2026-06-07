@@ -33,7 +33,7 @@ export async function ingerirArquivo(
   }
 
   if (fonte === "planilha") {
-    const parsed = parseSupplierFile(bytes);
+    const parsed = await parseSupplierFile(bytes);
     return { arquivo: filename, fonte, ...parsed };
   }
 

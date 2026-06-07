@@ -13,6 +13,7 @@ import {
 import type { Prisma } from "@prisma/client";
 import { extrairResumoFinanceiro } from "../lib/financeiro.js";
 import { calcularCotacao } from "./cotacao.js";
+import { excluirFotosCotacao, fotoUrlApi, lerFotoItem, salvarFotoItem } from "./fotos.js";
 import type { AppState } from "../state.js";
 
 const TENANT_SLUG = "default";
@@ -78,6 +79,7 @@ type CotacaoComRelacoes = CotacaoRow & {
     risco: unknown;
     anuencia: unknown;
     antidumping: boolean;
+    fotoPath?: string | null;
   }>;
   despesas: Array<{
     id: string;
@@ -125,6 +127,9 @@ export function mapRowParaDominio(row: CotacaoComRelacoes): {
       risco: (it.risco as Item["risco"]) ?? undefined,
       anuencia: (it.anuencia as string[]) ?? [],
       antidumping: it.antidumping,
+      ...(it.fotoPath
+        ? { fotoPath: it.fotoPath, fotoUrl: fotoUrlApi(row.id, it.ordem) }
+        : {}),
     }));
 
   const despesas = [...row.despesas]
@@ -239,6 +244,31 @@ export async function salvarCotacao(input: SalvarCotacaoInput) {
     },
     include: { itens: true, despesas: true },
   });
+
+  for (const [ordem, it] of itens.entries()) {
+    const itemRow = row.itens.find((i) => i.ordem === ordem);
+    if (!itemRow) continue;
+
+    let fotoPath: string | null = null;
+    if (it.fotoBase64) {
+      fotoPath = await salvarFotoItem(row.id, ordem, it.fotoBase64, it.fotoMime ?? "image/jpeg");
+    } else if (it.fotoPath) {
+      const existente = await lerFotoItem(it.fotoPath);
+      if (existente) {
+        fotoPath = await salvarFotoItem(
+          row.id,
+          ordem,
+          existente.buffer.toString("base64"),
+          existente.mime,
+        );
+      }
+    }
+
+    if (fotoPath) {
+      await prisma.item.update({ where: { id: itemRow.id }, data: { fotoPath } });
+      itemRow.fotoPath = fotoPath;
+    }
+  }
 
   return formatCotacaoSalva(row as CotacaoComRelacoes, input.provider);
 }
@@ -470,5 +500,6 @@ export async function excluirCotacao(id: string): Promise<boolean> {
   if (!row) return false;
 
   await prisma.cotacao.delete({ where: { id } });
+  await excluirFotosCotacao(id);
   return true;
 }

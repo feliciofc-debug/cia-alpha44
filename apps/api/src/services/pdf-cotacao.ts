@@ -6,6 +6,7 @@ import type { Cotacao, Item } from "@cia/shared";
 import { formatNcm } from "@cia/shared";
 import { extrairResumoFinanceiro } from "../lib/financeiro.js";
 import { gerarPdfOrcamentoClienteModelo } from "./pdf-orcamento-cliente.js";
+import { itensComFotosCarregadas } from "./fotos.js";
 import type { buscarCotacao } from "./cotacoes-persist.js";
 
 type CotacaoSalva = NonNullable<Awaited<ReturnType<typeof buscarCotacao>>>;
@@ -176,12 +177,18 @@ function salvaParaPayload(salva: CotacaoSalva): PayloadPdf {
 }
 
 export async function gerarPdfCotacao(salva: CotacaoSalva, tipo: TipoPdf): Promise<Buffer> {
-  return gerarPdfFromPayload(salvaParaPayload(salva), tipo);
+  const itens = await itensComFotosCarregadas(salva.itens);
+  return gerarPdfFromPayload({ ...salvaParaPayload(salva), itens }, tipo);
 }
 
 export async function gerarPdfFromPayload(payload: PayloadPdf, tipo: TipoPdf): Promise<Buffer> {
   if (!payload.resultado && tipo === "trade") {
     throw new Error("Cotação sem resultado fiscal — recalcule antes de gerar o PDF.");
   }
-  return tipo === "trade" ? gerarPdfTrade(payload) : gerarPdfCliente(payload);
+  const itens =
+    tipo === "cliente" && payload.itens.some((it) => it.fotoPath && !it.fotoBase64)
+      ? await itensComFotosCarregadas(payload.itens)
+      : payload.itens;
+  const enriched = { ...payload, itens };
+  return tipo === "trade" ? gerarPdfTrade(enriched) : gerarPdfCliente(enriched);
 }

@@ -4,6 +4,7 @@
 
 import * as XLSX from "xlsx";
 import type { LinhaCrua } from "./linha.js";
+import { associarFotosLinhas, extrairFotosXlsx } from "./xlsx-images.js";
 
 export type ColunaDetectada =
   | "descricao"
@@ -33,6 +34,8 @@ export interface LinhaFornecedor {
   fobTotalUS: number | null;
   ncm: string | null;
   raw: Record<string, unknown>;
+  fotoBase64?: string;
+  fotoMime?: string;
 }
 
 export interface ResultadoParse {
@@ -344,11 +347,12 @@ function parseRows(
   return { aba, headerRow, colunas, linhas, avisos };
 }
 
-export function parsePlanilhaBuffer(
+export async function parsePlanilhaBuffer(
   buffer: ArrayBuffer | Buffer,
   nomeAba?: string,
-): ResultadoParse {
-  const wb = XLSX.read(buffer, { type: "buffer", cellDates: true });
+): Promise<ResultadoParse> {
+  const buf = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
+  const wb = XLSX.read(buf, { type: "buffer", cellDates: true });
   const aba = nomeAba && wb.SheetNames.includes(nomeAba) ? nomeAba : wb.SheetNames[0]!;
   const ws = wb.Sheets[aba]!;
   const rows = XLSX.utils.sheet_to_json(ws, {
@@ -356,7 +360,20 @@ export function parsePlanilhaBuffer(
     raw: true,
     defval: null,
   }) as unknown[][];
-  return parseRows(rows, aba);
+
+  const parsed = parseRows(rows, aba);
+
+  try {
+    const fotos = await extrairFotosXlsx(buf);
+    if (fotos.size > 0) {
+      parsed.linhas = associarFotosLinhas(parsed.linhas, fotos);
+      parsed.avisos.push(`${fotos.size} foto(s) de produto extraída(s) da planilha.`);
+    }
+  } catch {
+    /* planilha sem imagens embutidas */
+  }
+
+  return parsed;
 }
 
 /** Texto extraído por OCR (PDF/imagem) → mesmo pipeline de colunas/linhas. */
@@ -405,6 +422,7 @@ function resultadoParaSupplier(parsed: ResultadoParse): ParsedSupplierFile {
     fobUnitarioUS: l.precoUnitario,
     fobTotalUS: l.fobTotalUS,
     dimensoes: null,
+    ...(l.fotoBase64 ? { fotoBase64: l.fotoBase64, fotoMime: l.fotoMime } : {}),
   }));
   return {
     abaUsada: parsed.aba,
@@ -433,8 +451,8 @@ export interface ParsedSupplierFile {
 }
 
 /** Planilha Excel/CSV (buffer do upload). */
-export function parseSupplierFile(bytes: Uint8Array): ParsedSupplierFile {
-  return resultadoParaSupplier(parsePlanilhaBuffer(Buffer.from(bytes)));
+export async function parseSupplierFile(bytes: Uint8Array): Promise<ParsedSupplierFile> {
+  return resultadoParaSupplier(await parsePlanilhaBuffer(Buffer.from(bytes)));
 }
 
 /** Texto OCR → estrutura de cotação. */

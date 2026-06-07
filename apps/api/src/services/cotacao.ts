@@ -54,6 +54,9 @@ export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise
       aliquotasOverride: false,
       anuencia: [],
       antidumping: false,
+      ...(l.fotoBase64
+        ? { fotoBase64: l.fotoBase64, fotoMime: l.fotoMime ?? "image/jpeg" }
+        : {}),
     };
   });
 

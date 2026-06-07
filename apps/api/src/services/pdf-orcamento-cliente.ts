@@ -107,6 +107,55 @@ function ncmMercadorias(itens: Item[]): string {
   return ncms.slice(0, 3).join(" / ") + (ncms.length > 3 ? " …" : "");
 }
 
+function buffersFotosItens(itens: Item[]): Buffer[] {
+  return itens
+    .filter((it) => it.fotoBase64)
+    .map((it) => Buffer.from(it.fotoBase64!, "base64"));
+}
+
+function desenharFotosCertificacao(
+  doc: PdfDoc,
+  fotos: Buffer[],
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+) {
+  if (fotos.length === 0) return;
+  const pad = 4;
+  const areaW = w - pad * 2;
+  const areaH = h - pad * 2;
+
+  if (fotos.length === 1) {
+    try {
+      doc.image(fotos[0]!, x + pad, y + pad, { fit: [areaW, areaH], align: "center", valign: "center" });
+    } catch {
+      /* formato inválido */
+    }
+    return;
+  }
+
+  const max = Math.min(fotos.length, 6);
+  const cols = max <= 2 ? max : 3;
+  const rows = Math.ceil(max / cols);
+  const cellW = areaW / cols;
+  const cellH = areaH / rows;
+
+  for (let i = 0; i < max; i++) {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    try {
+      doc.image(fotos[i]!, x + pad + col * cellW, y + pad + row * cellH, {
+        fit: [cellW - 3, cellH - 3],
+        align: "center",
+        valign: "center",
+      });
+    } catch {
+      /* skip */
+    }
+  }
+}
+
 export function gerarPdfOrcamentoClienteModelo(payload: PayloadOrcamentoCliente): Promise<Buffer> {
   const { cotacao, itens, resultado } = payload;
   const criadoEm = payload.criadoEm ?? new Date().toISOString();
@@ -196,6 +245,16 @@ export function gerarPdfOrcamentoClienteModelo(payload: PayloadOrcamentoCliente)
   const rx = m + contentW * 0.54;
   doc.fontSize(8).font("Helvetica-Bold").text(descricaoMercadorias(itens), rx, y + 22, { width: contentW * 0.4 });
   doc.fontSize(8).font("Helvetica").text(`NCM: ${ncmMercadorias(itens)}`, rx, y + 48, { width: contentW * 0.4 });
+  const fotoMerc = itens.find((it) => it.fotoBase64);
+  if (fotoMerc?.fotoBase64) {
+    try {
+      doc.image(Buffer.from(fotoMerc.fotoBase64, "base64"), rx, y + 62, {
+        fit: [contentW * 0.18, 36],
+      });
+    } catch {
+      /* skip */
+    }
+  }
   y += b2h + 6;
 
   const b3h = 148;
@@ -221,10 +280,15 @@ export function gerarPdfOrcamentoClienteModelo(payload: PayloadOrcamentoCliente)
     ly += 11;
   }
   const pctMarkup = `${(cotacao.params.markupPct * 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+  const fotosCert = buffersFotosItens(itens);
+  const certX = m + contentW * 0.54;
+  if (fotosCert.length > 0) {
+    desenharFotosCertificacao(doc, fotosCert, certX, y + 16, contentW * 0.42, b3h - 28);
+  }
   doc
     .fontSize(9)
     .font("Helvetica-Bold")
-    .text(pctMarkup, m + contentW * 0.54, y + b3h - 22, { width: contentW * 0.4, align: "right" });
+    .text(pctMarkup, certX, y + b3h - 22, { width: contentW * 0.4, align: "right" });
   y += b3h + 6;
 
   const b4h = 108;

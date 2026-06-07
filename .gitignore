@@ -16,4 +16,5 @@ tools/*.txt
 # uploads / saídas geradas
 uploads/
 out/
+data/fotos/
 *.tmp

@@ -25,6 +25,7 @@ import { obterSeriesMensais } from "./services/dashboard-series.js";
 import { gerarPdfRelatorioFaturamento } from "./services/pdf-relatorio-faturamento.js";
 import { gerarPdfCotacao, gerarPdfFromPayload } from "./services/pdf-cotacao.js";
 import { conferirNcmItens } from "./services/ncm-conferencia.js";
+import { lerFotoItem } from "./services/fotos.js";
 
 const PORT = Number(process.env.PORT ?? 3333);
 const HOST = process.env.HOST ?? "0.0.0.0";
@@ -239,6 +240,22 @@ export async function buildServer() {
       const row = await buscarCotacao(id);
       if (!row) return reply.status(404).send({ erro: "Cotação não encontrada." });
       return row;
+    } catch (e) {
+      return persistenciaErro(reply, e);
+    }
+  });
+
+  app.get("/api/cotacoes/:id/foto/:ordem", async (req, reply) => {
+    try {
+      const { id, ordem } = req.params as { id: string; ordem: string };
+      const row = await buscarCotacao(id);
+      if (!row) return reply.status(404).send({ erro: "Cotação não encontrada." });
+      const idx = Number(ordem);
+      const item = row.itens[idx];
+      if (!item?.fotoPath) return reply.status(404).send({ erro: "Foto não encontrada." });
+      const foto = await lerFotoItem(item.fotoPath);
+      if (!foto) return reply.status(404).send({ erro: "Arquivo de foto ausente." });
+      return reply.header("Content-Type", foto.mime).header("Cache-Control", "public, max-age=86400").send(foto.buffer);
     } catch (e) {
       return persistenciaErro(reply, e);
     }

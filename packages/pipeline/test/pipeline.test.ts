@@ -70,6 +70,20 @@ describe("Análise de risco", () => {
   });
 });
 
+describe("Fotos da planilha", () => {
+  it("associa imagens às linhas por número de linha Excel", async () => {
+    const { associarFotosLinhas } = await import("../src/xlsx-images.js");
+    const linhas = [{ linha: 9 }, { linha: 10 }];
+    const fotos = new Map([
+      [9, { linhaExcel: 9, buffer: Buffer.from("abc"), mime: "image/jpeg" }],
+      [10, { linhaExcel: 10, buffer: Buffer.from("def"), mime: "image/png" }],
+    ]);
+    const out = associarFotosLinhas(linhas, fotos);
+    expect(out[0]?.fotoBase64).toBe(Buffer.from("abc").toString("base64"));
+    expect(out[1]?.fotoMime).toBe("image/png");
+  });
+});
+
 describe("Parser OCR", () => {
   it("converte texto tabulado em linhas de item", () => {
     const texto = [
