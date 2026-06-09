@@ -243,6 +243,26 @@ export const api = {
   baixarPdfBlob: async (res: Response, fallback: string) => {
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
+      let parsed: {
+        erro?: string;
+        codigo?: string;
+        itensInvalidos?: { ordem: number; descricao: string; ncm: string }[];
+      } | null = null;
+      try {
+        parsed = JSON.parse(txt) as typeof parsed;
+      } catch {
+        /* resposta não-JSON */
+      }
+      if (parsed?.erro) {
+        let msg = parsed.erro;
+        if (parsed.codigo === "NCM_INVALIDO" && parsed.itensInvalidos?.length) {
+          const linhas = parsed.itensInvalidos
+            .slice(0, 5)
+            .map((x) => `#${x.ordem} ${x.descricao} (${x.ncm})`);
+          msg += " — " + linhas.join("; ");
+        }
+        throw new Error(msg);
+      }
       throw new Error(txt || `Falha ao gerar PDF (${res.status})`);
     }
     const blob = await res.blob();

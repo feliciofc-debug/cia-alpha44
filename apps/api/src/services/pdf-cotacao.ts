@@ -5,6 +5,8 @@ import type { ResultadoCotacao } from "@cia/fiscal-engine";
 import type { Cotacao, Item } from "@cia/shared";
 import { formatNcm } from "@cia/shared";
 import { extrairResumoFinanceiro } from "../lib/financeiro.js";
+import type { NcmCatalog } from "@cia/pipeline";
+import { auditarNcmsParaPdf } from "./validar-ncm-pdf.js";
 import { gerarPdfOrcamentoClienteModelo } from "./pdf-orcamento-cliente.js";
 import { itensComFotosCarregadas } from "./fotos.js";
 import type { buscarCotacao } from "./cotacoes-persist.js";
@@ -176,12 +178,16 @@ function salvaParaPayload(salva: CotacaoSalva): PayloadPdf {
   };
 }
 
-export async function gerarPdfCotacao(salva: CotacaoSalva, tipo: TipoPdf): Promise<Buffer> {
+export async function gerarPdfCotacao(salva: CotacaoSalva, tipo: TipoPdf, catalog: NcmCatalog): Promise<Buffer> {
   const itens = await itensComFotosCarregadas(salva.itens);
-  return gerarPdfFromPayload({ ...salvaParaPayload(salva), itens }, tipo);
+  return gerarPdfFromPayload({ ...salvaParaPayload(salva), itens }, tipo, catalog);
 }
 
-export async function gerarPdfFromPayload(payload: PayloadPdf, tipo: TipoPdf): Promise<Buffer> {
+export async function gerarPdfFromPayload(
+  payload: PayloadPdf,
+  tipo: TipoPdf,
+  catalog: NcmCatalog,
+): Promise<Buffer> {
   if (!payload.resultado && tipo === "trade") {
     throw new Error("Cotação sem resultado fiscal — recalcule antes de gerar o PDF.");
   }
@@ -189,6 +195,7 @@ export async function gerarPdfFromPayload(payload: PayloadPdf, tipo: TipoPdf): P
     tipo === "cliente" && payload.itens.some((it) => it.fotoPath && !it.fotoBase64)
       ? await itensComFotosCarregadas(payload.itens)
       : payload.itens;
+  auditarNcmsParaPdf(itens, catalog);
   const enriched = { ...payload, itens };
   return tipo === "trade" ? gerarPdfTrade(enriched) : gerarPdfCliente(enriched);
 }

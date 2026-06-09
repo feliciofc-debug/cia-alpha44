@@ -125,6 +125,8 @@ export function PreviewOrcamentoCliente({
   onBaixarPdf,
   salvo = true,
   criadoEm,
+  pdfBloqueado = false,
+  motivoBloqueioPdf,
 }: {
   cotacao: Cotacao;
   itens: Item[];
@@ -134,6 +136,9 @@ export function PreviewOrcamentoCliente({
   salvo?: boolean;
   /** Data da cotação salva — alinha preview com o PDF baixado. */
   criadoEm?: string;
+  /** Impede download quando há NCM inválido na cotação. */
+  pdfBloqueado?: boolean;
+  motivoBloqueioPdf?: string;
 }) {
   const [baixando, setBaixando] = useState(false);
 
@@ -304,15 +309,22 @@ export function PreviewOrcamentoCliente({
 
       {onBaixarPdf && (
         <div className="border-t border-slate-200 bg-slate-50 px-6 py-3 sm:flex sm:items-center sm:justify-between sm:gap-4">
-          <p className="mb-2 text-left text-xs text-slate-600 sm:mb-0">
-            {salvo
-              ? "Revise o layout acima. Quando estiver ok, baixe o PDF para enviar ao cliente."
-              : "Salve a cotação para manter o histórico; você ainda pode baixar um PDF de preview."}
-          </p>
+          {pdfBloqueado ? (
+            <p className="mb-2 text-left text-xs font-medium text-red-700 sm:mb-0">
+              {motivoBloqueioPdf ?? "Corrija os NCMs inválidos antes de gerar o PDF."}
+            </p>
+          ) : (
+            <p className="mb-2 text-left text-xs text-slate-600 sm:mb-0">
+              {salvo
+                ? "Revise o layout acima. Quando estiver ok, baixe o PDF para enviar ao cliente."
+                : "Salve a cotação para manter o histórico; você ainda pode baixar um PDF de preview."}
+            </p>
+          )}
           <button
             type="button"
-            className="btn-primary shrink-0 text-sm"
-            disabled={baixando}
+            className="btn-primary shrink-0 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={baixando || pdfBloqueado}
+            title={pdfBloqueado ? motivoBloqueioPdf : undefined}
             onClick={() => void handleBaixarPdf()}
           >
             {baixando ? "Gerando PDF…" : "Baixar PDF deste orçamento"}

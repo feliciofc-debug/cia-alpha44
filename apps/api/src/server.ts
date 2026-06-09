@@ -24,6 +24,7 @@ import { obterRelatorioFaturamento } from "./services/dashboard-relatorio.js";
 import { obterSeriesMensais } from "./services/dashboard-series.js";
 import { gerarPdfRelatorioFaturamento } from "./services/pdf-relatorio-faturamento.js";
 import { gerarPdfCotacao, gerarPdfFromPayload } from "./services/pdf-cotacao.js";
+import { NcmInvalidoPdfError } from "./services/validar-ncm-pdf.js";
 import { conferirNcmItens } from "./services/ncm-conferencia.js";
 import { lerFotoItem } from "./services/fotos.js";
 
@@ -331,7 +332,7 @@ export async function buildServer() {
       const row = await buscarCotacao(id);
       if (!row) return reply.status(404).send({ erro: "Cotação não encontrada." });
       const buf = await comTimeout(
-        gerarPdfCotacao(row, tipo),
+        gerarPdfCotacao(row, tipo, getState().ncmCatalog),
         PDF_GERACAO_TIMEOUT_MS,
         "Geração do PDF excedeu o tempo limite. Tente novamente.",
       );
@@ -341,6 +342,9 @@ export async function buildServer() {
         .header("Content-Disposition", `attachment; filename="cia-${tipo}-${nome}.pdf"`)
         .send(buf);
     } catch (e) {
+      if (e instanceof NcmInvalidoPdfError) {
+        return reply.status(422).send({ erro: e.message, codigo: e.codigo, itensInvalidos: e.itens });
+      }
       const msg = e instanceof Error ? e.message : "Falha ao gerar PDF.";
       return reply.status(422).send({ erro: msg });
     }
@@ -386,6 +390,7 @@ export async function buildServer() {
             resultado: parsed.data.resultado ?? null,
           },
           tipo,
+          getState().ncmCatalog,
         ),
         PDF_GERACAO_TIMEOUT_MS,
         "Geração do PDF excedeu o tempo limite. Tente novamente.",
@@ -396,6 +401,9 @@ export async function buildServer() {
         .header("Content-Disposition", `attachment; filename="cia-preview-${tipo}-${nome}.pdf"`)
         .send(buf);
     } catch (e) {
+      if (e instanceof NcmInvalidoPdfError) {
+        return reply.status(422).send({ erro: e.message, codigo: e.codigo, itensInvalidos: e.itens });
+      }
       const msg = e instanceof Error ? e.message : "Falha ao gerar PDF.";
       return reply.status(422).send({ erro: msg });
     }

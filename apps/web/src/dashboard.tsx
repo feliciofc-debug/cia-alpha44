@@ -18,6 +18,7 @@ import { ClientesView } from "./clientes-view.tsx";
 import { PainelKpisView } from "./painel-kpis.tsx";
 import { PreviewOrcamentoCliente } from "./preview-orcamento-cliente.tsx";
 import { cotacaoParaSalvar, itensParaSalvar } from "./lib/cotacao-payload.ts";
+import { pdfBloqueadoPorNcm, resumoBloqueioNcm } from "./lib/ncm.ts";
 import type { ClienteResumo, DashboardKpis, DashboardSeries } from "./lib/types.ts";
 
 type View = NavItem | "detalhe";
@@ -189,6 +190,8 @@ function AnalisePainel({
   }, [irParaOrcamento]);
   const itens = analise.itens;
   const qtdFotos = contarItensComFoto(itens);
+  const ncmBloqueiaPdf = pdfBloqueadoPorNcm(itens);
+  const motivoBloqueioPdf = resumoBloqueioNcm(itens);
   const provider = (analise as { provider?: string | null }).provider ?? "—";
   const canais = resumoCanais(itens);
   const financeiro =
@@ -386,7 +389,12 @@ function AnalisePainel({
       </div>
 
       {aba === "orcamento" ? (
-        <div id="preview-orcamento-cliente">
+        <div id="preview-orcamento-cliente" className="space-y-3">
+          {ncmBloqueiaPdf && (
+            <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+              {motivoBloqueioPdf}
+            </div>
+          )}
           <PreviewOrcamentoCliente
             cotacao={analise.cotacao}
             itens={itens}
@@ -394,6 +402,8 @@ function AnalisePainel({
             onBaixarPdf={onBaixarPdfCliente}
             salvo={Boolean(salvaId)}
             criadoEm={"criadoEm" in analise ? analise.criadoEm : undefined}
+            pdfBloqueado={ncmBloqueiaPdf}
+            motivoBloqueioPdf={motivoBloqueioPdf}
           />
         </div>
       ) : (
@@ -995,8 +1005,11 @@ export function Dashboard() {
                 </button>
                 <button
                   type="button"
-                  className="btn-ghost"
-                  disabled={pdfBaixando != null}
+                  className="btn-ghost disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={pdfBaixando != null || pdfBloqueadoPorNcm(detalhe.itens)}
+                  title={
+                    pdfBloqueadoPorNcm(detalhe.itens) ? resumoBloqueioNcm(detalhe.itens) : undefined
+                  }
                   onClick={() => void baixarPdf("trade")}
                 >
                   {pdfBaixando === "trade" ? "Gerando…" : "PDF trade"}
