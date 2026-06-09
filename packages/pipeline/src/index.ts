@@ -27,7 +27,15 @@ export {
   type ColunaMapeada,
   type ColunaDetectada,
 } from "./parser.js";
-export { loadComexSeed, loadTecCache, defaultSeedPath, tecCachePath } from "./seed.js";
+export { loadComexSeed, loadTecCache, loadNcmVigenteCache, defaultSeedPath, tecCachePath, ncmVigenteDataPath } from "./seed.js";
+export {
+  criarNcmCatalog,
+  loadNcmVigente,
+  normNcm8,
+  type NcmCatalog,
+  type NcmVigenteCache,
+} from "./ncm-catalog.js";
+export { resolveNcm, type ResolveNcmResult, type NcmFonte } from "./resolve-ncm.js";
 export {
   criarTecSource,
   type TecCache,

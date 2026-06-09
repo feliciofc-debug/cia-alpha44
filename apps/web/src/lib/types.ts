@@ -64,6 +64,10 @@ export interface Item {
   fotoMime?: string;
   fotoPath?: string;
   fotoUrl?: string;
+  ncmValido?: boolean;
+  ncmFonte?: "planilha" | "ia" | "pendente";
+  ncmDescricaoOficial?: string;
+  ncmAvisos?: string[];
 }
 
 export interface Despesa {
@@ -104,6 +108,7 @@ export interface Cotacao {
   destino: string;
   itens: Item[];
   despesas: Despesa[];
+  qtdContainers?: number;
   outrasDespesasBaseBRL?: number;
   params: ParamsSaida;
 }

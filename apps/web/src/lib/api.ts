@@ -1,4 +1,4 @@
-import { DESPESAS_PADRAO } from "./despesas.ts";
+import { despesasParaContainers, outrasDespesasBaseParaContainers } from "./despesas.ts";
 import { icmsSaidaParaDestino } from "./icms-uf.ts";
 import type {
   Cotacao,
@@ -50,6 +50,8 @@ export interface Meta {
   ocrProvider?: string;
   ocrDisponivel?: boolean;
   comexTotal: number;
+  ncmVigenteTotal?: number;
+  ncmVigenteAtualizado?: string | null;
   benefFiscal: string;
 }
 
@@ -101,6 +103,7 @@ export const api = {
     const benefFiscal = "ALAGOAS";
     const origem = "RJ";
     const destino = "SP";
+    const qtdContainers = 1;
     const cotacao: Cotacao = {
       empresaTrade: "Alpha 44",
       cliente: "Análise importação",
@@ -116,7 +119,9 @@ export const api = {
       origem,
       destino,
       itens,
-      despesas: DESPESAS_PADRAO.map((d) => ({ ...d })),
+      qtdContainers,
+      despesas: despesasParaContainers(qtdContainers),
+      outrasDespesasBaseBRL: outrasDespesasBaseParaContainers(qtdContainers),
       params: {
         markupPct: 0.06,
         pisSaida: 0.0165,

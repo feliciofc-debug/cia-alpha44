@@ -66,6 +66,8 @@ export async function buildServer() {
       siscomexConfigurado: s.siscomex.configurado,
       siscomexOperacional: s.siscomex.operacional,
       comexTotal: s.comexSeed.length,
+      ncmVigenteTotal: s.ncmCatalog.total,
+      ncmVigenteAtualizado: s.ncmCatalog.dataUltimaAtualizacao,
       benefFiscal: "ALAGOAS",
     };
   });
@@ -103,7 +105,7 @@ export async function buildServer() {
     if (!parsed.success) {
       return reply.status(400).send({ erro: "Body inválido", detalhe: parsed.error.flatten() });
     }
-    return conferirNcmItens(getState().siscomex, parsed.data.itens);
+    return conferirNcmItens(getState().siscomex, getState().ncmCatalog, parsed.data.itens);
   });
 
   app.get("/api/cambio", async (req) => {
@@ -333,6 +335,8 @@ export async function buildServer() {
     empresaTrade: z.string().optional(),
     cliente: z.string().optional(),
     markupPct: z.number().min(0).max(1).optional(),
+    qtdContainers: z.number().int().positive().optional(),
+    outrasDespesasBaseBRL: z.number().nonnegative().optional(),
     despesas: z.array(despesaBody).optional(),
     icmsAuto: z.boolean().optional(),
     params: z

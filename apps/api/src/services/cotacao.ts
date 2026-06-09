@@ -4,9 +4,13 @@ import { calcCotacao, type CotacaoFiscalInput } from "@cia/fiscal-engine";
 import {
   analisarRisco,
   calibrarFobKg,
+  criarNcmCatalog,
+  loadNcmVigenteCache,
   lookupBenchmark,
+  resolveNcm,
   resolvePesoLiqLinha,
   type LinhaCrua,
+  type NcmCatalog,
 } from "@cia/pipeline";
 import type { Cotacao, Item } from "@cia/shared";
 import type { AppState } from "../state.js";
@@ -33,8 +37,12 @@ export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise
 
   const itens: Item[] = linhas.map((l, i) => {
     const c = classificados[i];
-    const candidatos = c?.ncmCandidatos ?? [];
-    const ncm = l.ncm ?? candidatos[0]?.ncm ?? "";
+    const candidatosBrutos = c?.ncmCandidatos ?? [];
+    const resolvido = resolveNcm(state.ncmCatalog, {
+      ncmPlanilha: l.ncm,
+      candidatosIa: candidatosBrutos,
+    });
+    const ncm = resolvido.ncm;
     const tec = ncm ? state.tecSource.buscar(ncm) : null;
     const pesoLiq = resolvePesoLiqLinha(l);
     const fobTotal = l.fobTotalUS ?? 0;
@@ -44,7 +52,11 @@ export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise
       descPt: c?.descPt ?? l.descOriginal,
       descDuimp: c?.descDuimp ?? "",
       ncm,
-      ncmCandidatos: candidatos,
+      ncmCandidatos: resolvido.ncmCandidatos,
+      ncmValido: resolvido.valido,
+      ncmFonte: resolvido.fonte,
+      ncmDescricaoOficial: resolvido.descricaoOficial ?? undefined,
+      ncmAvisos: resolvido.avisos.length ? resolvido.avisos : undefined,
       pesoBrutoKg: l.pesoBrutoKg,
       pesoLiqKg: pesoLiq,
       qtd: l.qtd,

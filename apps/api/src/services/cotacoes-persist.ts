@@ -4,6 +4,7 @@ import { prisma, type CanalAduaneiro, type Cotacao as CotacaoRow } from "@cia/db
 import type { ResultadoCotacao } from "@cia/fiscal-engine";
 import {
   icmsSaidaParaDestino,
+  inferirQtdContainers,
   normalizarUf,
   type Cotacao,
   type Despesa,
@@ -160,6 +161,7 @@ export function mapRowParaDominio(row: CotacaoComRelacoes): {
     destino: row.destino,
     itens,
     despesas,
+    qtdContainers: inferirQtdContainers(despesas),
     outrasDespesasBaseBRL: numOrNull(row.outrasDespesasBaseBRL) ?? undefined,
     params,
     criadoEm: row.criadoEm.toISOString(),
@@ -397,6 +399,8 @@ export interface AtualizarCotacaoInput {
   empresaTrade?: string;
   cliente?: string;
   markupPct?: number;
+  qtdContainers?: number;
+  outrasDespesasBaseBRL?: number;
   despesas?: Despesa[];
   params?: Partial<ParamsSaida>;
   /** Se true, recalcula icmsSaida a partir de destino+benefício (ignora override manual). */
@@ -433,6 +437,7 @@ export async function atualizarCotacao(id: string, state: AppState, opts: Atuali
   const empresaTrade = opts.empresaTrade !== undefined ? opts.empresaTrade.trim() : cotacao.empresaTrade;
   const cliente = opts.cliente !== undefined ? opts.cliente.trim() || "Sem cliente" : cotacao.cliente;
   const despesas = opts.despesas ?? cotacao.despesas;
+  const outrasDespesasBaseBRL = opts.outrasDespesasBaseBRL ?? cotacao.outrasDespesasBaseBRL;
   const params = mergeParams(cotacao.params, destino, benefFiscal, opts);
 
   const atualizada: Cotacao = {
@@ -443,6 +448,8 @@ export async function atualizarCotacao(id: string, state: AppState, opts: Atuali
     empresaTrade,
     cliente,
     despesas,
+    outrasDespesasBaseBRL,
+    ...(opts.qtdContainers != null ? { qtdContainers: opts.qtdContainers } : {}),
     params,
   };
   const { resultado, itens } = calcularCotacao(atualizada, state);

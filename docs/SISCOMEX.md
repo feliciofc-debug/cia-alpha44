@@ -8,9 +8,15 @@ Integração **plugável** com o Portal Único (CLSF + TTCE), no mesmo padrão d
 
 | Endpoint | Função |
 |----------|--------|
-| `GET /api/meta` | Campos `siscomexConfigurado`, `siscomexOperacional` |
+| `GET /api/meta` | Campos `siscomexConfigurado`, `siscomexOperacional`, `ncmVigenteTotal` |
 | `GET /api/siscomex/status` | Status detalhado da integração |
-| `POST /api/ncm/conferir` | Cruza NCM planilha × IA (Siscomex entra quando ativo) |
+| `POST /api/ncm/conferir` | Cruza NCM planilha × IA × **tabela NCM vigente Siscomex** (cache local Classif) |
+
+A tabela NCM oficial (10.515 códigos de 8 dígitos) é baixada da API pública Classif e cacheada em `packages/pipeline/src/data/ncm-vigente.json`. Atualizar:
+
+```bash
+node tools/fetch-ncm-siscomex.cjs
+```
 
 Exemplo — conferência só planilha × IA (funciona hoje):
 

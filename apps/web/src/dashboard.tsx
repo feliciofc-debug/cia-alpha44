@@ -247,7 +247,22 @@ function AnalisePainel({
                     <div className="truncate font-medium text-white">{it.descPt || it.descOriginal}</div>
                     <div className="truncate text-slate-500">{it.descDuimp.slice(0, 80)}</div>
                   </td>
-                  <td className="p-2 whitespace-nowrap">{fmtNcm(it.ncm || "00000000")}</td>
+                  <td className="p-2 whitespace-nowrap">
+                    <span className={it.ncmValido === false ? "font-semibold text-red-400" : ""}>
+                      {fmtNcm(it.ncm || "00000000")}
+                    </span>
+                    {it.ncmFonte === "planilha" && (
+                      <span className="block text-[10px] text-emerald-500/80">planilha</span>
+                    )}
+                    {it.ncmValido === false && (
+                      <span className="block text-[10px] text-red-400">não vigente Siscomex</span>
+                    )}
+                    {it.ncmAvisos?.slice(0, 1).map((a, j) => (
+                      <span key={j} className="block max-w-[12rem] text-[10px] text-amber-400/90" title={a}>
+                        {a.slice(0, 60)}{a.length > 60 ? "…" : ""}
+                      </span>
+                    ))}
+                  </td>
                   <td className="p-2 whitespace-nowrap">{it.fobTotalUS > 0 ? it.fobTotalUS.toFixed(2) : "—"}</td>
                   <td className="p-2 whitespace-nowrap">
                     {fobKg.principal != null ? (
@@ -1093,7 +1108,7 @@ export function Dashboard() {
             )}
 
             <p className="mt-6 text-xs text-slate-500">
-              Upload → IA → salvar → histórico · {meta?.comexTotal.toLocaleString("pt-BR")} NCMs no benchmark
+              Upload → IA → salvar → histórico · {meta?.ncmVigenteTotal?.toLocaleString("pt-BR") ?? "—"} NCMs Siscomex · {meta?.comexTotal.toLocaleString("pt-BR")} no benchmark
             </p>
           </div>
         )}

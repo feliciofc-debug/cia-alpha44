@@ -1,4 +1,5 @@
 import { icmsSaidaParaDestino, UFS_BRASIL, UF_NOMES, type UfBrasil } from "./lib/icms-uf.ts";
+import { despesasParaContainers, totalDespesas } from "./lib/despesas.ts";
 import type { EditorDraft } from "./lib/editor-cotacao.ts";
 import { pct } from "./lib/format.ts";
 
@@ -122,9 +123,32 @@ export function PainelEditorCotacao({
         </div>
       </div>
 
-      <details className="rounded-lg border border-white/10 bg-ink-900/40 px-3 py-2">
+      <div>
+        <label className="label">Nº de containers — despesas locais × {draft.qtdContainers}</label>
+        <input
+          type="number"
+          min={1}
+          max={99}
+          step={1}
+          className="input max-w-[8rem]"
+          value={draft.qtdContainers}
+          onChange={(e) => {
+            const qtd = Math.max(1, Math.round(Number(e.target.value) || 1));
+            patch({
+              qtdContainers: qtd,
+              despesas: despesasParaContainers(qtd),
+            });
+          }}
+        />
+        <p className="mt-1 text-xs text-slate-500">
+          Valores padrão da planilha 66 por container — editáveis abaixo.
+        </p>
+      </div>
+
+      <details open className="rounded-lg border border-white/10 bg-ink-900/40 px-3 py-2">
         <summary className="cursor-pointer text-sm font-medium text-slate-300">
-          Despesas locais ({draft.despesas.length} itens)
+          Despesas locais ({draft.despesas.length} itens) — total R${" "}
+          {totalDespesas(draft.despesas).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
         </summary>
         <div className="mt-3 max-h-64 space-y-2 overflow-auto">
           {draft.despesas.map((d, i) => (

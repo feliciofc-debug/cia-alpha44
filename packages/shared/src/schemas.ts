@@ -94,6 +94,11 @@ export const itemSchema = z.object({
   fotoPath: z.string().optional(),
   /** URL da API para exibir foto salva (preenchido pelo backend). */
   fotoUrl: z.string().optional(),
+  /** NCM validado na tabela vigente Siscomex (Classif). */
+  ncmValido: z.boolean().optional(),
+  ncmFonte: z.enum(["planilha", "ia", "pendente"]).optional(),
+  ncmDescricaoOficial: z.string().optional(),
+  ncmAvisos: z.array(z.string()).optional(),
 });
 export type Item = z.infer<typeof itemSchema>;
 
@@ -141,21 +146,12 @@ export const cotacaoSchema = z.object({
   destino: z.string().default("SP"),
   itens: z.array(itemSchema),
   despesas: z.array(despesaSchema),
+  /** Número de containers — despesas locais são escaladas por este fator (default planilha 66). */
+  qtdContainers: z.number().int().positive().optional(),
   outrasDespesasBaseBRL: z.number().nonnegative().optional(),
   params: paramsSaidaSchema,
   criadoEm: z.string().optional(),
 });
 export type Cotacao = z.infer<typeof cotacaoSchema>;
 
-/** Despesas operacionais padrão (defaults editáveis na cotação). */
-export const DESPESAS_PADRAO: Despesa[] = [
-  { nome: "AFRMM", valorBRL: 0, entraBaseSaida: true, entraBaseNota: true },
-  { nome: "Armazenagem", valorBRL: 0, entraBaseSaida: true, entraBaseNota: true },
-  { nome: "Liberação BL", valorBRL: 0, entraBaseSaida: true, entraBaseNota: true },
-  { nome: "Registro ANVISA/INMETRO", valorBRL: 0, entraBaseSaida: true, entraBaseNota: true },
-  { nome: "Administrativo", valorBRL: 0, entraBaseSaida: true, entraBaseNota: false },
-  { nome: "Transp+Esc DTA", valorBRL: 0, entraBaseSaida: true, entraBaseNota: false },
-  { nome: "Transporte (destino)", valorBRL: 0, entraBaseSaida: true, entraBaseNota: true },
-  { nome: "Escolta", valorBRL: 0, entraBaseSaida: true, entraBaseNota: false },
-  { nome: "Despacho/Honorários", valorBRL: 0, entraBaseSaida: true, entraBaseNota: true },
-];
+export { DESPESAS_POR_CONTAINER, DESPESAS_PADRAO, despesasParaContainers, despesasComDefaults, despesasSemValor, outrasDespesasBaseParaContainers } from "./despesas.js";

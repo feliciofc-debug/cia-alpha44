@@ -1,4 +1,4 @@
-import { despesasParaEditor } from "./despesas.ts";
+import { despesasParaEditor, inferirQtdContainers, outrasDespesasBaseParaContainers } from "./despesas.ts";
 import { icmsSaidaParaDestino } from "./icms-uf.ts";
 import type { Cotacao, Despesa, ParamsSaida } from "./types.ts";
 
@@ -11,6 +11,7 @@ export interface EditorDraft {
   empresaTrade: string;
   cliente: string;
   markupPct: number;
+  qtdContainers: number;
   despesas: Despesa[];
   paramsAvancados: Pick<
     ParamsSaida,
@@ -29,7 +30,8 @@ export function editorFromCotacao(cotacao: Cotacao, clienteOverride?: string): E
     empresaTrade: cotacao.empresaTrade ?? "",
     cliente: clienteOverride ?? cotacao.cliente,
     markupPct: p.markupPct,
-    despesas: despesasParaEditor(cotacao.despesas),
+    qtdContainers: cotacao.qtdContainers ?? inferirQtdContainers(cotacao.despesas),
+    despesas: despesasParaEditor(cotacao.despesas, cotacao.qtdContainers ?? inferirQtdContainers(cotacao.despesas)),
     paramsAvancados: {
       pisSaida: p.pisSaida,
       cofinsSaida: p.cofinsSaida,
@@ -54,7 +56,9 @@ export function aplicarEditorNaCotacao(cotacao: Cotacao, draft: EditorDraft): Co
     benefFiscal: draft.benefFiscal,
     empresaTrade: draft.empresaTrade,
     cliente: draft.cliente,
+    qtdContainers: draft.qtdContainers,
     despesas: draft.despesas,
+    outrasDespesasBaseBRL: outrasDespesasBaseParaContainers(draft.qtdContainers),
     params: {
       ...cotacao.params,
       markupPct: draft.markupPct,
@@ -76,7 +80,9 @@ export function payloadAtualizar(draft: EditorDraft) {
     empresaTrade: draft.empresaTrade,
     cliente: draft.cliente,
     markupPct: draft.markupPct,
+    qtdContainers: draft.qtdContainers,
     despesas: draft.despesas,
+    outrasDespesasBaseBRL: outrasDespesasBaseParaContainers(draft.qtdContainers),
     icmsAuto: !draft.icmsManual,
     params: draft.icmsManual
       ? {
