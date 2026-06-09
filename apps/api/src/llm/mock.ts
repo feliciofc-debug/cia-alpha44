@@ -41,8 +41,13 @@ export function criarMockProvider(seed: ComexEntry[]): LlmProvider {
           }
         }
         const candidatos = [];
-        if (it.ncmInformado) {
-          candidatos.push({ ncm: it.ncmInformado, confianca: 0.6, descricaoOficial: "NCM informado na planilha" });
+        const desc = it.descOriginal ?? "";
+        if (/lustre|lumin[aá]ria|chandelier|wall lamp|aisle light|pendente|ceiling light/i.test(desc)) {
+          candidatos.push({
+            ncm: "94052100",
+            descricaoOficial: "Luminárias elétricas de teto/parede (LED)",
+            confianca: 0.88,
+          });
         }
         if (melhor && melhor.score >= 0.4) {
           candidatos.push({

@@ -16,8 +16,11 @@ export interface LinhaCrua {
   fotoMime?: string;
 }
 
-/** Peso líquido por linha (regra 4: bruto × 0,92 se não informado). */
+/** Peso para rateio fiscal/frete — planilhas chinesas (装箱单) trazem total líquido e bruto; Comex Plus rateia pelo bruto. */
 export function resolvePesoLiqLinha(l: LinhaCrua): number {
+  if (l.pesoBrutoKg !== null && l.pesoBrutoKg > 0 && l.pesoLiqKg !== null && l.pesoLiqKg > 0) {
+    return l.pesoBrutoKg;
+  }
   if (l.pesoLiqKg !== null && l.pesoLiqKg > 0) return l.pesoLiqKg;
   if (l.pesoBrutoKg !== null && l.pesoBrutoKg > 0) return l.pesoBrutoKg * 0.92;
   return 0;

@@ -106,7 +106,8 @@ export function normalizarUf(uf: string): UfBrasil | null {
 /** ICMS efetivo na cascata de saída conforme UF destino e benefício fiscal. */
 export function icmsSaidaParaDestino(destino: string, benefFiscal = "ALAGOAS"): number {
   const uf = normalizarUf(destino) ?? "SP";
-  if (benefFiscal.toUpperCase() === "ALAGOAS" && uf === "AL") {
+  const benef = benefFiscal.toUpperCase();
+  if (benef === "ALAGOAS" && uf === "AL") {
     return ICMS_BENEF_ALAGOAS;
   }
   return ICMS_INTERNO_UF[uf];

@@ -68,6 +68,10 @@ const COLUNA_IGNORAR = /产品图片|product\s*image|^\s*颜色|colour|color|使
 function detectarTipo(header: string): { tipo: ColunaDetectada; confianca: number } {
   const h = String(header).trim();
   if (!h) return { tipo: "desconhecido", confianca: 0 };
+  // "VALOR TOTAL FOB / KG" na planilha chinesa é valor total em US$, não preço por kg.
+  if (/total.*fob|fob.*total|valor\s*total\s*fob|fob\s*total/i.test(h)) {
+    return { tipo: "fob", confianca: 0.95 };
+  }
   if (/fob\s*\/?\s*kg|pre[cç]o\s*fob|preco\s*fob|usd\s*\/?\s*kg\s*imp|dol.*kg.*imp/i.test(h)) {
     return { tipo: "fob_kg", confianca: 0.92 };
   }
@@ -126,6 +130,31 @@ function encontrarHeader(rows: unknown[][]): number {
     }
   }
   return best;
+}
+
+/** Quando há várias colunas do mesmo tipo, prefere cabeçalho de total sobre unitário. */
+function escolherColuna(
+  colunas: ColunaMapeada[],
+  tipo: ColunaDetectada,
+  opts?: { prefer?: RegExp; avoid?: RegExp },
+): number | undefined {
+  const matches = colunas.filter((c) => c.tipo === tipo);
+  if (matches.length === 0) return undefined;
+  if (matches.length === 1) return matches[0]!.indice;
+
+  let best = matches[0]!;
+  let bestScore = -Infinity;
+  for (const c of matches) {
+    const h = c.header.replace(/\s+/g, " ");
+    let score = c.confianca;
+    if (opts?.prefer?.test(h)) score += 20;
+    if (opts?.avoid?.test(h)) score -= 20;
+    if (score > bestScore) {
+      bestScore = score;
+      best = c;
+    }
+  }
+  return best.indice;
 }
 
 /** Linha de item com espaços (OCR tabular). */
@@ -291,20 +320,38 @@ function parseRows(
     return { indice, header, tipo, confianca };
   });
 
-  const idx = (t: ColunaDetectada) => colunas.find((c) => c.tipo === t)?.indice;
-
-  // Preferir 产品配置 sobre 货号 (SKU curto) quando ambos existem.
+  const iDescPt = colunas.find((c) => /portugues|português/i.test(c.header))?.indice;
+  const iModel = colunas.find((c) => /model|modelo|产品型号/i.test(c.header))?.indice;
+  const iDescEn = colunas.find((c) => /英文|english.*trade|trade name/i.test(c.header) && !/^品名/i.test(c.header))?.indice;
   const iDesc =
     colunas.find((c) => /产品配置|product\s*config/i.test(c.header))?.indice ??
-    idx("descricao");
-  const iSku = colunas.find((c) => /货号|item\s*number/i.test(c.header) && c.indice !== iDesc)?.indice;
-  const iQtd = idx("qtd");
-  const iPeso = idx("peso");
-  const iPesoBruto = idx("peso_bruto");
-  const iPreco = idx("preco");
-  const iFob = idx("fob");
-  const iFobKg = idx("fob_kg");
-  const iNcm = idx("ncm");
+    escolherColuna(colunas, "descricao", {
+      prefer: /portugues|português|model|modelo|英文|english/i,
+      avoid: /^品名|product\s*image|imag/i,
+    });
+  const iSku = colunas.find((c) => /货号|item\s*number|REF|唛头/i.test(c.header))?.indice;
+  const iQtd = escolherColuna(colunas, "qtd", {
+    prefer: /总数量|qtd\s*tot|quantidade\s*total|total.*qty|total.*quant/i,
+    avoid: /每箱|per\s*case|por\s*caixa|quantity\s*per|装箱量|单箱个数/i,
+  });
+  const iPeso = escolherColuna(colunas, "peso", {
+    prefer: /总净重|total\s*net\s*weight|peso.*liq.*total|net weight.*total/i,
+    avoid: /单箱|per\s*box|net weight per|por\s*caixa/i,
+  });
+  const iPesoBruto = escolherColuna(colunas, "peso_bruto", {
+    prefer: /总毛重|total\s*gross|gross weight.*total/i,
+    avoid: /单箱|single\s*box|gross weight of a single|por\s*caixa/i,
+  });
+  const iPreco = escolherColuna(colunas, "preco");
+  const iFob = escolherColuna(colunas, "fob", {
+    prefer: /valor\s*total\s*fob|total.*fob|fob\s*total|amount|总价/i,
+    avoid: /\/\s*kg|fob\s*\/?\s*kg|usd\s*\/?\s*kg/i,
+  });
+  const iFobKg = escolherColuna(colunas, "fob_kg", {
+    prefer: /fob\s*\/?\s*kg|valor\s*fob\s*\/?\s*kg|usd\s*\/?\s*kg/i,
+    avoid: /total/i,
+  });
+  const iNcm = escolherColuna(colunas, "ncm");
 
   const ehReferenciaComex = colunas.some((c) => /cod subitem ncm/i.test(c.header));
   if (ehReferenciaComex) {
@@ -322,10 +369,19 @@ function parseRows(
     const row = rows[r] as unknown[] | undefined;
     if (!row) continue;
 
+    const parteModel = iModel !== undefined ? String(row[iModel] ?? "").trim() : "";
+    const partePt = iDescPt !== undefined ? String(row[iDescPt] ?? "").trim() : "";
+    const parteEn = iDescEn !== undefined ? String(row[iDescEn] ?? "").trim() : "";
     const parteDesc = iDesc !== undefined ? String(row[iDesc] ?? "").trim() : "";
     const parteSku = iSku !== undefined ? String(row[iSku] ?? "").trim() : "";
-    const descricao = [parteSku, parteDesc].filter(Boolean).join(" — ") || parteDesc || parteSku;
+    const descricao =
+      [parteModel, partePt || parteEn || parteDesc, parteSku !== parteModel ? parteSku : ""]
+        .filter(Boolean)
+        .join(" — ") ||
+      parteDesc ||
+      parteSku;
     if (!descricao || descricao.length < 2) continue;
+    if (/^total$/i.test(descricao.trim())) continue;
 
     const qtd = iQtd !== undefined ? num(row[iQtd]) : null;
     const pesoLiqKg = iPeso !== undefined ? num(row[iPeso]) : null;
@@ -338,6 +394,9 @@ function parseRows(
     }
     if (fobTotalUS === null && fobKgRef !== null && pesoLiqKg !== null && pesoLiqKg > 0) {
       fobTotalUS = fobKgRef * pesoLiqKg;
+    }
+    if (fobTotalUS === null && fobKgRef !== null && pesoBrutoKg !== null && pesoBrutoKg > 0) {
+      fobTotalUS = fobKgRef * pesoBrutoKg;
     }
     const ncmRaw = iNcm !== undefined ? String(row[iNcm] ?? "").trim() : "";
     const ncm = ncmRaw ? ncmRaw.replace(/\D/g, "").padStart(8, "0").slice(0, 8) : null;
@@ -365,6 +424,11 @@ function parseRows(
   }
 
   return { aba, headerRow, colunas, linhas, avisos };
+}
+
+/** Expõe parse interno para testes (matriz de linhas, sem imagens). */
+export function parsePlanilhaRows(rows: unknown[][], aba = "Sheet1"): ResultadoParse {
+  return parseRows(rows, aba);
 }
 
 export async function parsePlanilhaBuffer(
