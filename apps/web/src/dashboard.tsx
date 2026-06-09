@@ -222,7 +222,8 @@ function AnalisePainel({
               <th className="p-2">NCM</th>
               <th className="p-2">FOB US$</th>
               <th className="p-2">FOB US$/kg</th>
-              <th className="p-2">Benchmark</th>
+              <th className="p-2">Ref ComexStat</th>
+              <th className="p-2">Desvio ref</th>
               <th className="p-2">Canal</th>
             </tr>
           </thead>
@@ -282,12 +283,31 @@ function AnalisePainel({
                   <td className="p-2 whitespace-nowrap">
                     {it.benchmark?.mediaFobKg != null ? (
                       <>
-                        <span className="text-slate-300">{usdKg(it.benchmark.mediaFobKg)}</span>
+                        <span className="text-emerald-300">{usdKg(it.benchmark.mediaFobKg)}</span>
                         <span className="block text-[10px] text-slate-500">{it.benchmark.fonte}</span>
-                        {it.calibracao?.desvioBenchmarkPct != null && (
-                          <span className="block text-[10px] text-slate-500">
-                            desvio {it.calibracao.desvioBenchmarkPct.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%
+                      </>
+                    ) : (
+                      <span className="text-slate-500">sem ref</span>
+                    )}
+                  </td>
+                  <td className="p-2 whitespace-nowrap">
+                    {it.benchmark?.mediaFobKg != null ? (
+                      <>
+                        {it.calibracao?.desvioBenchmarkPct != null ? (
+                          <span
+                            className={
+                              Math.abs(it.calibracao.desvioBenchmarkPct) > 25
+                                ? "font-medium text-amber-300"
+                                : "text-slate-300"
+                            }
+                          >
+                            {it.calibracao.desvioBenchmarkPct.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%
                           </span>
+                        ) : (
+                          <span className="text-slate-500">—</span>
+                        )}
+                        {it.calibracao?.ajustado && (
+                          <span className="block text-[10px] text-amber-400">calibrado</span>
                         )}
                       </>
                     ) : (

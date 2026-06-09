@@ -14,6 +14,7 @@ export type ColunaDetectada =
   | "peso_bruto"
   | "preco"
   | "fob"
+  | "fob_kg"
   | "ncm"
   | "dimensoes"
   | "desconhecido";
@@ -67,6 +68,12 @@ const COLUNA_IGNORAR = /产品图片|product\s*image|^\s*颜色|colour|color|使
 function detectarTipo(header: string): { tipo: ColunaDetectada; confianca: number } {
   const h = String(header).trim();
   if (!h) return { tipo: "desconhecido", confianca: 0 };
+  if (/fob\s*\/?\s*kg|pre[cç]o\s*fob|preco\s*fob|usd\s*\/?\s*kg\s*imp|dol.*kg.*imp/i.test(h)) {
+    return { tipo: "fob_kg", confianca: 0.92 };
+  }
+  if (/subitem\s*ncm/i.test(h) && !/cod/i.test(h)) {
+    return { tipo: "descricao", confianca: 0.88 };
+  }
   for (const { tipo, re } of PADROES) {
     if (re.test(h)) return { tipo, confianca: 0.85 };
   }
@@ -296,7 +303,15 @@ function parseRows(
   const iPesoBruto = idx("peso_bruto");
   const iPreco = idx("preco");
   const iFob = idx("fob");
+  const iFobKg = idx("fob_kg");
   const iNcm = idx("ncm");
+
+  const ehReferenciaComex = colunas.some((c) => /cod subitem ncm/i.test(c.header));
+  if (ehReferenciaComex) {
+    avisos.push(
+      "Planilha de referência ComexStat (FOB/kg por NCM) — para cotar, envie a planilha do fornecedor (fatura/装箱单) com FOB e peso por item.",
+    );
+  }
 
   if (iDesc === undefined) {
     avisos.push("Coluna de descrição não detectada — revise o mapeamento manual.");
@@ -316,9 +331,13 @@ function parseRows(
     const pesoLiqKg = iPeso !== undefined ? num(row[iPeso]) : null;
     const pesoBrutoKg = iPesoBruto !== undefined ? num(row[iPesoBruto]) : null;
     const precoUnitario = iPreco !== undefined ? num(row[iPreco]) : null;
+    const fobKgRef = iFobKg !== undefined ? num(row[iFobKg]) : null;
     let fobTotalUS = iFob !== undefined ? num(row[iFob]) : null;
     if (fobTotalUS === null && precoUnitario !== null && qtd !== null) {
       fobTotalUS = precoUnitario * qtd;
+    }
+    if (fobTotalUS === null && fobKgRef !== null && pesoLiqKg !== null && pesoLiqKg > 0) {
+      fobTotalUS = fobKgRef * pesoLiqKg;
     }
     const ncmRaw = iNcm !== undefined ? String(row[iNcm] ?? "").trim() : "";
     const ncm = ncmRaw ? ncmRaw.replace(/\D/g, "").padStart(8, "0").slice(0, 8) : null;
