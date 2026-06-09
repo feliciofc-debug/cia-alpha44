@@ -1,4 +1,4 @@
-import { despesasParaEditor, inferirQtdContainers, outrasDespesasBaseParaContainers } from "./despesas.ts";
+import { despesasParaEditor, inferirQtdContainers, outrasDespesasBaseParaContainers, DEFAULT_FRETE_US, DEFAULT_SISCOMEX_BRL } from "./despesas.ts";
 import { icmsSaidaParaDestino } from "./icms-uf.ts";
 import type { Cotacao, Despesa, ParamsSaida } from "./types.ts";
 
@@ -10,6 +10,11 @@ export interface EditorDraft {
   benefFiscal: BeneficioFiscal;
   empresaTrade: string;
   cliente: string;
+  cambio: number;
+  freteTotalUS: number;
+  siscomex: number;
+  adicionaisVaUS: number;
+  reducaoBaseUS: number;
   markupPct: number;
   qtdContainers: number;
   despesas: Despesa[];
@@ -29,6 +34,11 @@ export function editorFromCotacao(cotacao: Cotacao, clienteOverride?: string): E
     benefFiscal: (cotacao.benefFiscal === "NENHUM" ? "NENHUM" : "ALAGOAS") as BeneficioFiscal,
     empresaTrade: cotacao.empresaTrade ?? "",
     cliente: clienteOverride ?? cotacao.cliente,
+    cambio: cotacao.cambio,
+    freteTotalUS: cotacao.freteTotalUS ?? DEFAULT_FRETE_US,
+    siscomex: cotacao.siscomex ?? DEFAULT_SISCOMEX_BRL,
+    adicionaisVaUS: cotacao.adicionaisVaUS ?? 0,
+    reducaoBaseUS: cotacao.reducaoBaseUS ?? 0,
     markupPct: p.markupPct,
     qtdContainers: cotacao.qtdContainers ?? inferirQtdContainers(cotacao.despesas),
     despesas: despesasParaEditor(cotacao.despesas, cotacao.qtdContainers ?? inferirQtdContainers(cotacao.despesas)),
@@ -56,6 +66,11 @@ export function aplicarEditorNaCotacao(cotacao: Cotacao, draft: EditorDraft): Co
     benefFiscal: draft.benefFiscal,
     empresaTrade: draft.empresaTrade,
     cliente: draft.cliente,
+    cambio: draft.cambio,
+    freteTotalUS: draft.freteTotalUS,
+    siscomex: draft.siscomex,
+    adicionaisVaUS: draft.adicionaisVaUS,
+    reducaoBaseUS: draft.reducaoBaseUS,
     qtdContainers: draft.qtdContainers,
     despesas: draft.despesas,
     outrasDespesasBaseBRL: outrasDespesasBaseParaContainers(draft.qtdContainers),
@@ -79,6 +94,11 @@ export function payloadAtualizar(draft: EditorDraft) {
     benefFiscal: draft.benefFiscal,
     empresaTrade: draft.empresaTrade,
     cliente: draft.cliente,
+    cambio: draft.cambio,
+    freteTotalUS: draft.freteTotalUS,
+    siscomex: draft.siscomex,
+    adicionaisVaUS: draft.adicionaisVaUS,
+    reducaoBaseUS: draft.reducaoBaseUS,
     markupPct: draft.markupPct,
     qtdContainers: draft.qtdContainers,
     despesas: draft.despesas,

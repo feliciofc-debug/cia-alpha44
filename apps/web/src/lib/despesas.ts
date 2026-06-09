@@ -16,6 +16,10 @@ export const DESPESAS_POR_CONTAINER: Despesa[] = [
 export const DESPESAS_PADRAO = DESPESAS_POR_CONTAINER;
 const OUTRAS_DESPESAS_BASE_POR_CONTAINER = 14_040;
 
+/** Defaults operacionais da planilha 66. */
+export const DEFAULT_FRETE_US = 3500;
+export const DEFAULT_SISCOMEX_BRL = 154.23;
+
 export function despesasParaContainers(qtdContainers: number): Despesa[] {
   const qtd = Math.max(1, Math.round(qtdContainers));
   return DESPESAS_POR_CONTAINER.map((d) => ({ ...d, valorBRL: d.valorBRL * qtd }));

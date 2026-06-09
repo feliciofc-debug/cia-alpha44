@@ -1,4 +1,4 @@
-import { despesasParaContainers, outrasDespesasBaseParaContainers } from "./despesas.ts";
+import { despesasParaContainers, outrasDespesasBaseParaContainers, DEFAULT_FRETE_US, DEFAULT_SISCOMEX_BRL } from "./despesas.ts";
 import { icmsSaidaParaDestino } from "./icms-uf.ts";
 import type {
   Cotacao,
@@ -98,7 +98,7 @@ export const api = {
       CLASSIFY_TIMEOUT_MS,
     ).then(handle<{ itens: Item[]; provider: string }>);
 
-    const comFob = itens.some((it) => it.fobTotalUS > 0);
+    const comFobPlanilha = itens.some((it) => it.fobTotalUS > 0);
     const cambio = await fetch(`${BASE}/api/cambio?moeda=USD`).then(handle<Cambio>);
     const benefFiscal = "ALAGOAS";
     const origem = "RJ";
@@ -110,10 +110,10 @@ export const api = {
       benefFiscal,
       moeda: "US$",
       cambio: cambio.cotacaoVenda ?? 5.2,
-      freteTotalUS: 0,
+      freteTotalUS: DEFAULT_FRETE_US,
       adicionaisVaUS: 0,
       reducaoBaseUS: 0,
-      siscomex: 154.23,
+      siscomex: DEFAULT_SISCOMEX_BRL,
       antidumpingBRL: 0,
       incoterm: "CFR",
       origem,
@@ -143,13 +143,17 @@ export const api = {
       },
       CLASSIFY_TIMEOUT_MS,
     ).then(handle<{ resultado: ResultadoCotacao; itens: Item[] }>);
+    const fobEngine = resultado.entrada.fobTotalUS;
+    const temResultado = fobEngine > 0 && resultado.totalBRL > 0;
     return {
       itens: itensCalc,
       provider,
-      resultado: comFob ? resultado : null,
-      avisoFiscal: comFob
-        ? null
-        : "Planilha sem FOB/preços — NCM e risco analisados; totais fiscais quando houver valores.",
+      resultado: temResultado ? resultado : null,
+      avisoFiscal: temResultado
+        ? !comFobPlanilha
+          ? "FOB estimado via benchmark ComexStat onde a planilha não tinha preço."
+          : null
+        : "Informe FOB na planilha ou confira peso/NCM para estimativa ComexStat.",
       cotacao: { ...cotacao, itens: itensCalc },
     };
   },

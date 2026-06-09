@@ -75,6 +75,54 @@ export function PainelEditorCotacao({
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div>
+          <label className="label">Câmbio USD (PTAX venda)</label>
+          <input
+            type="number"
+            min={0}
+            step={0.0001}
+            className="input"
+            value={draft.cambio}
+            onChange={(e) => patch({ cambio: Number(e.target.value) || 0 })}
+          />
+        </div>
+        <div>
+          <label className="label">Frete internacional (US$)</label>
+          <input
+            type="number"
+            min={0}
+            step={0.01}
+            className="input"
+            value={draft.freteTotalUS}
+            onChange={(e) => patch({ freteTotalUS: Number(e.target.value) || 0 })}
+          />
+          <p className="mt-1 text-xs text-slate-500">Planilha 66: US$ 3.500 / container</p>
+        </div>
+        <div>
+          <label className="label">Taxa Siscomex (R$)</label>
+          <input
+            type="number"
+            min={0}
+            step={0.01}
+            className="input"
+            value={draft.siscomex}
+            onChange={(e) => patch({ siscomex: Number(e.target.value) || 0 })}
+          />
+        </div>
+        <div>
+          <label className="label">Adicionais VA (US$)</label>
+          <input
+            type="number"
+            min={0}
+            step={0.01}
+            className="input"
+            value={draft.adicionaisVaUS}
+            onChange={(e) => patch({ adicionaisVaUS: Number(e.target.value) || 0 })}
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div>
           <label className="label">Origem (UF)</label>
           <select className="input" value={draft.origem} onChange={(e) => patch({ origem: e.target.value })}>
             {ufOpts}

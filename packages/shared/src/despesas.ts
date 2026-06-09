@@ -19,6 +19,10 @@ export const DESPESAS_POR_CONTAINER: Despesa[] = [
 /** Base M109 da planilha 66 por container (markup / impostos saída). */
 export const OUTRAS_DESPESAS_BASE_POR_CONTAINER = 14_040;
 
+/** Defaults operacionais da planilha 66 (1 container). */
+export const DEFAULT_FRETE_US = 3500;
+export const DEFAULT_SISCOMEX_BRL = 154.23;
+
 /** Alias legado — despesas para 1 container. */
 export const DESPESAS_PADRAO = DESPESAS_POR_CONTAINER;
 

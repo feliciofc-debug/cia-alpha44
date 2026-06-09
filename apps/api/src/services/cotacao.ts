@@ -87,12 +87,19 @@ export interface ResultadoCompleto {
   itens: Item[];
 }
 
+function fobUsadoNoEngine(it: Item, calibracao: ReturnType<typeof calibrarFobKg>): number {
+  if (calibracao.fobKgCalibrado > 0 && it.pesoLiqKg > 0) {
+    return calibracao.fobKgCalibrado * it.pesoLiqKg;
+  }
+  return it.fobTotalUS;
+}
+
 /** Enriquece itens (benchmark/calibragem/risco) e roda o engine fiscal. */
 export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCompleto {
   const itensEnriquecidos: Item[] = cotacao.itens.map((it) => {
     const fobKg = it.pesoLiqKg > 0 ? it.fobTotalUS / it.pesoLiqKg : null;
     const benchmark = lookupBenchmark(state.benchmarkIndex, it.ncm || "00000000");
-    const calibracao = calibrarFobKg({ fobKgOriginal: fobKg, benchmark });
+    const calibracao = calibrarFobKg({ fobKgOriginal: fobKg, benchmark, fobTotalUS: it.fobTotalUS, pesoLiqKg: it.pesoLiqKg });
     const risco = analisarRisco({
       benchmark,
       calibracao,
@@ -113,7 +120,7 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
     itens: itensEnriquecidos.map((it) => ({
       ref: it.ncm,
       ncm: it.ncm,
-      fobUS: it.fobTotalUS,
+      fobUS: fobUsadoNoEngine(it, it.calibracao!),
       pesoLiqKg: it.pesoLiqKg,
       aliqII: it.aliquotas.ii,
       aliqIPI: it.aliquotas.ipi,

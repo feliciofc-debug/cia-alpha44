@@ -398,6 +398,11 @@ export interface AtualizarCotacaoInput {
   benefFiscal?: Cotacao["benefFiscal"];
   empresaTrade?: string;
   cliente?: string;
+  cambio?: number;
+  freteTotalUS?: number;
+  siscomex?: number;
+  adicionaisVaUS?: number;
+  reducaoBaseUS?: number;
   markupPct?: number;
   qtdContainers?: number;
   outrasDespesasBaseBRL?: number;
@@ -449,6 +454,11 @@ export async function atualizarCotacao(id: string, state: AppState, opts: Atuali
     cliente,
     despesas,
     outrasDespesasBaseBRL,
+    ...(opts.cambio != null ? { cambio: opts.cambio } : {}),
+    ...(opts.freteTotalUS != null ? { freteTotalUS: opts.freteTotalUS } : {}),
+    ...(opts.siscomex != null ? { siscomex: opts.siscomex } : {}),
+    ...(opts.adicionaisVaUS != null ? { adicionaisVaUS: opts.adicionaisVaUS } : {}),
+    ...(opts.reducaoBaseUS != null ? { reducaoBaseUS: opts.reducaoBaseUS } : {}),
     ...(opts.qtdContainers != null ? { qtdContainers: opts.qtdContainers } : {}),
     params,
   };
@@ -468,6 +478,11 @@ export async function atualizarCotacao(id: string, state: AppState, opts: Atuali
         empresaTrade,
         cliente,
         params,
+        ...(opts.cambio != null ? { cambio: opts.cambio } : {}),
+        ...(opts.freteTotalUS != null ? { freteTotalUS: opts.freteTotalUS } : {}),
+        ...(opts.siscomex != null ? { siscomex: opts.siscomex } : {}),
+        ...(opts.adicionaisVaUS != null ? { adicionaisVaUS: opts.adicionaisVaUS } : {}),
+        ...(opts.reducaoBaseUS != null ? { reducaoBaseUS: opts.reducaoBaseUS } : {}),
         status: resultado ? "CALCULADA" : row.status,
         totalBRL: resultado?.totalBRL ?? null,
         totalUS: resultado?.totalUS ?? null,
