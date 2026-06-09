@@ -5,7 +5,7 @@ import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import { z } from "zod";
 import { cotacaoSchema, listarUfsFiscais } from "@cia/shared";
-import { getState, recarregarNcmCatalog } from "./state.js";
+import { getState, recarregarNcmCatalog, recarregarComexBenchmark } from "./state.js";
 import { buscarCambioPtax } from "./services/cambio.js";
 import { calcularCotacao, montarItens } from "./services/cotacao.js";
 import {
@@ -107,6 +107,60 @@ export async function buildServer() {
     const r = await s.testarConexao();
     if (!r.ok) return reply.status(502).send(r);
     return r;
+  });
+
+  app.get("/api/comexstat/status", async () => {
+    const { getComexStatStats, COMEXSTAT_CHINA_MARITIMO_2023S1 } = await import("@cia/pipeline");
+    const stats = getComexStatStats();
+    return {
+      fonte: "ComexStat API MDIC",
+      apiUrl: "https://api-comexstat.mdic.gov.br/general",
+      filtrosPadrao: COMEXSTAT_CHINA_MARITIMO_2023S1,
+      totalNcmsCache: stats.total,
+      contexto: stats.contexto,
+      mensagem: `${stats.total} NCMs em cache · FOB/kg = metricFOB ÷ metricKG (importação China marítima)`,
+    };
+  });
+
+  app.get("/api/comexstat/fob-kg/:ncm", async (req, reply) => {
+    const ncm = String((req.params as { ncm: string }).ncm ?? "").replace(/\D/g, "");
+    if (ncm.length !== 8) {
+      return reply.status(400).send({ erro: "NCM inválido (8 dígitos)." });
+    }
+    const { fetchComexStatFobKg, lookupBenchmark } = await import("@cia/pipeline");
+    const cache = lookupBenchmark(ncm);
+    if (cache.fonte === "ComexStat" && cache.mediaFobKg) {
+      return { ncm, fobKg: cache.mediaFobKg, cifKg: null, fonte: "cache", contexto: cache.nota };
+    }
+    try {
+      const live = await fetchComexStatFobKg(ncm);
+      if (!live) return reply.status(404).send({ erro: `Sem dados ComexStat para NCM ${ncm}.` });
+      const s = getState();
+      s.benchmarkIndex.comex.set(ncm, live);
+      return { ncm, fobKg: live.fobKg, cifKg: live.cifKg, desc: live.desc, fonte: "api", contexto: "ComexStat ao vivo" };
+    } catch (e) {
+      return reply.status(502).send({ erro: e instanceof Error ? e.message : "Falha na API ComexStat" });
+    }
+  });
+
+  app.post("/api/comexstat/atualizar", async (_req, reply) => {
+    try {
+      const { fetchComexStatSeed } = await import("@cia/pipeline");
+      const data = await fetchComexStatSeed();
+      recarregarComexBenchmark();
+      return {
+        ok: true,
+        total: data.total,
+        contexto: data.contexto,
+        geradoEm: data.geradoEm,
+        mensagem: "Benchmark ComexStat atualizado da API MDIC e recarregado em memória.",
+      };
+    } catch (e) {
+      return reply.status(502).send({
+        ok: false,
+        erro: e instanceof Error ? e.message : "Falha ao atualizar ComexStat",
+      });
+    }
   });
 
   app.post("/api/siscomex/atualizar-ncm", async (_req, reply) => {

@@ -29,6 +29,16 @@ export {
 } from "./parser.js";
 export { loadComexSeed, loadTecCache, loadNcmVigenteCache, defaultSeedPath, tecCachePath, ncmVigenteDataPath } from "./seed.js";
 export {
+  fetchComexStatImport,
+  fetchComexStatSeed,
+  fetchComexStatFobKg,
+  buildComexSeed,
+  comexRowsParaEntradas,
+  COMEXSTAT_CHINA_MARITIMO_2023S1,
+  type ComexStatFiltros,
+  type ComexStatApiRow,
+} from "./comexstat-api.js";
+export {
   criarNcmCatalog,
   loadNcmVigente,
   normNcm8,

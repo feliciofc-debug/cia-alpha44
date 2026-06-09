@@ -46,6 +46,15 @@ export function getState(): AppState {
   return state;
 }
 
+/** Recarrega benchmark ComexStat após `node tools/fetch-comexstat-api.cjs`. */
+export function recarregarComexBenchmark(): BenchmarkIndex {
+  const s = getState();
+  const comex = loadComexSeed();
+  s.comexSeed = comex.itens;
+  s.benchmarkIndex = buildBenchmarkIndex(comex.itens);
+  return s.benchmarkIndex;
+}
+
 /** Recarrega tabela NCM vigente Siscomex após `node tools/fetch-ncm-siscomex.cjs`. */
 export function recarregarNcmCatalog(): NcmCatalog {
   const s = getState();

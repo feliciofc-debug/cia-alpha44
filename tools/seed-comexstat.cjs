@@ -1,4 +1,5 @@
 // Gera o seed de benchmark ComexStat a partir de "IMPORTAÇÕES DA CHINA NOVO.xlsx".
+// Preferir API ao vivo: npm run seed:comexstat  (tools/fetch-comexstat-api.cjs)
 // Saída: packages/pipeline/src/data/comexstat-china-2023s1.json
 // Uso: node tools/seed-comexstat.cjs "<arquivo.xlsx>"
 const XLSX = require("xlsx");

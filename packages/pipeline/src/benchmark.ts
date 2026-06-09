@@ -124,7 +124,7 @@ function lookupFromMaps(
       pisoDefensavel: piso,
       teto,
       amostra: cs.amostra,
-      nota: `ComexStat — ${contexto} · ${cs.amostra} DI(s) · média US$ ${cs.fobKg.toFixed(4)}/kg`,
+      nota: `ComexStat — ${contexto} · ${cs.amostra > 1 ? `${cs.amostra} DI(s)` : "agregado semestre"} · média US$ ${cs.fobKg.toFixed(4)}/kg`,
     };
   }
 
