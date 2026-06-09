@@ -9,6 +9,8 @@ import {
   lookupBenchmark,
   resolveNcm,
   resolvePesoLiqLinha,
+  validarNcmItem,
+  detectarFamilia,
   type LinhaCrua,
   type NcmCatalog,
 } from "@cia/pipeline";
@@ -50,6 +52,12 @@ export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise
       candidatosIa: candidatosBrutos,
       descricao: c?.descPt || l.descOriginal,
     });
+    const validacao = validarNcmItem(
+      resolvido.ncm,
+      c?.descPt || l.descOriginal,
+      state.ncmCatalog,
+      resolvido.fonte,
+    );
     const ncm = resolvido.ncm;
     const tec =
       ncm && resolvido.valido
@@ -65,11 +73,13 @@ export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise
       descDuimp: c?.descDuimp ?? "",
       ncm,
       ncmCandidatos: resolvido.ncmCandidatos,
-      ncmValido: resolvido.valido,
+      ncmValido: resolvido.valido && validacao.ok,
       ncmFonte: resolvido.fonte,
       ncmDescricaoOficial: resolvido.descricaoOficial ?? undefined,
       ncmPlanilhaOriginal: resolvido.ncmPlanilhaOriginal ?? undefined,
-      ncmAvisos: resolvido.avisos.length ? resolvido.avisos : undefined,
+      ncmAvisos: [...resolvido.avisos, ...validacao.avisos].length
+        ? [...resolvido.avisos, ...validacao.avisos]
+        : undefined,
       pesoBrutoKg: l.pesoBrutoKg,
       pesoLiqKg: pesoLiq,
       qtd: l.qtd,
@@ -94,6 +104,10 @@ export interface ResultadoCompleto {
 }
 
 function fobUsadoNoEngine(it: Item, calibracao: ReturnType<typeof calibrarFobKg>): number {
+  // FOB explícito na planilha prevalece — ComexStat só eleva se faltava preço ou calibragem defensiva (ajustado).
+  if (it.fobTotalUS > 0 && calibracao.fobKgOriginal && calibracao.fobKgOriginal > 0 && !calibracao.ajustado) {
+    return it.fobTotalUS;
+  }
   if (calibracao.fobKgCalibrado > 0 && it.pesoLiqKg > 0) {
     return calibracao.fobKgCalibrado * it.pesoLiqKg;
   }

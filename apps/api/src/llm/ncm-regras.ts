@@ -23,6 +23,11 @@ RGI 4 — Mercadoria semelhante à de outra posição classifica-se junto com el
 RGI 5 — Estojos e embalagens especialmente adaptados classificam-se com a mercadoria (salvo Notas).
 
 RGI 6 — Subposições do mesmo nível comparadas entre si; aplicar RGI 1–5 no nível da subposição.
+
+CAPÍTULO 9405 (Iluminação) — orientação:
+- Lustres/luminárias elétricas de teto ou parede → preferir 9405.2x (ex.: 94052100 LED, 94051190 outros).
+- Nunca classificar luminária como 2106 (extrato), 8480 (máquina) ou 940599 (partes) salvo ser claramente parte/acessório.
+- NCM 94051093 está DESCONTINUADO — se aparecer na planilha, substituir por 94052100 ou 94051190 conforme LED/construção.
 `.trim();
 
 /** Passos que a IA deve seguir antes de escolher o NCM. */

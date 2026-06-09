@@ -1,9 +1,17 @@
 /**
  * Resolução de NCM — Siscomex (Classif) é a única fonte de códigos vigentes.
- * Planilha/IA só prevalecem se o código existir na tabela oficial.
+ * Planilha/IA só prevalecem se o código existir na tabela oficial e for coerente com o produto.
  */
 
 import type { NcmCandidato } from "@cia/shared";
+import {
+  candidatosSiscomexPorDescricao,
+  detectarFamilia,
+  enriquecerTextoClassificacao,
+  filtrarCandidatosIaCoerentes,
+  ncmCoerenteComFamilia,
+  type FamiliaProduto,
+} from "./classificar-ncm.js";
 import type { NcmCatalog } from "./ncm-catalog.js";
 import { normNcm8 } from "./ncm-catalog.js";
 
@@ -56,29 +64,54 @@ function candidatosDeBusca(
   }));
 }
 
+function prepararCandidatosIa(
+  catalog: NcmCatalog,
+  input: ResolveNcmInput,
+  familia: FamiliaProduto | null,
+  avisos: string[],
+): NcmCandidato[] {
+  const validos = filtrarCandidatosValidos(catalog, input.candidatosIa ?? []);
+  if (!familia) return validos;
+
+  const incoerentes = validos.filter((c) => !ncmCoerenteComFamilia(c.ncm, familia));
+  if (incoerentes.length) {
+    avisos.push(
+      `IA sugeriu NCM fora do capítulo ${familia.capitulo} (${familia.id}) — candidato(s) rejeitado(s): ${incoerentes.map((c) => c.ncm).join(", ")}.`,
+    );
+  }
+  return filtrarCandidatosIaCoerentes(catalog, validos, familia);
+}
+
 function escolherSubstituto(
   catalog: NcmCatalog,
   input: ResolveNcmInput,
+  familia: FamiliaProduto | null,
   capitulo4?: string,
 ): { ncm: string; fonte: NcmFonte; candidatos: NcmCandidato[] } | null {
-  const ia = filtrarCandidatosValidos(catalog, input.candidatosIa ?? []);
-  if (ia[0]) return { ncm: ia[0].ncm, fonte: "ia", candidatos: ia };
+  const cap = familia?.capitulo ?? capitulo4;
+  const ia = prepararCandidatosIa(catalog, input, familia, []);
 
-  const desc = [input.descricao, ...(input.candidatosIa ?? []).map((c) => c.descricaoOficial)]
-    .filter(Boolean)
-    .join(" ");
-  if (desc.trim()) {
-    const busca = candidatosDeBusca(catalog, desc, capitulo4);
-    if (busca[0]) return { ncm: busca[0].ncm, fonte: "siscomex", candidatos: busca };
+  const desc = enriquecerTextoClassificacao(input.descricao ?? "", familia);
+  const siscomex = familia
+    ? candidatosSiscomexPorDescricao(catalog, input.descricao ?? "", familia)
+    : candidatosDeBusca(catalog, desc, cap);
+
+  // Siscomex por família/descrição prevalece sobre IA incoerente ou fraca.
+  if (siscomex[0] && (!ia[0] || (ia[0].confianca ?? 0) < 0.75)) {
+    return { ncm: siscomex[0].ncm, fonte: "siscomex", candidatos: siscomex };
   }
 
-  if (capitulo4) {
-    const cap = catalog.listarPorCapitulo(capitulo4).slice(0, 5);
-    if (cap[0]) {
-      const candidatos = cap.map((c, i) => ({
+  if (ia[0]) return { ncm: ia[0].ncm, fonte: "ia", candidatos: ia };
+
+  if (siscomex[0]) return { ncm: siscomex[0].ncm, fonte: "siscomex", candidatos: siscomex };
+
+  if (cap) {
+    const capList = catalog.listarPorCapitulo(cap).slice(0, 5);
+    if (capList[0]) {
+      const candidatos = capList.map((c, i) => ({
         ncm: c.ncm,
         descricaoOficial: c.descricao,
-        confianca: 0.3 - i * 0.03,
+        confianca: 0.35 - i * 0.03,
       }));
       return { ncm: candidatos[0]!.ncm, fonte: "siscomex", candidatos };
     }
@@ -89,8 +122,9 @@ function escolherSubstituto(
 /** Escolhe NCM final — nunca retorna código ausente na tabela Siscomex vigente. */
 export function resolveNcm(catalog: NcmCatalog, input: ResolveNcmInput): ResolveNcmResult {
   const avisos: string[] = [];
+  const familia = detectarFamilia(input.descricao ?? "");
   const planilha = input.ncmPlanilha ? normNcm8(input.ncmPlanilha) : null;
-  const candidatosValidos = filtrarCandidatosValidos(catalog, input.candidatosIa ?? []);
+  const candidatosValidos = prepararCandidatosIa(catalog, input, familia, avisos);
 
   const invalidosIa = (input.candidatosIa ?? []).filter((c) => {
     const k = normNcm8(c.ncm);
@@ -104,6 +138,24 @@ export function resolveNcm(catalog: NcmCatalog, input: ResolveNcmInput): Resolve
   }
 
   if (planilha && catalog.existe(planilha)) {
+    if (familia && !ncmCoerenteComFamilia(planilha, familia)) {
+      avisos.push(
+        `NCM da planilha (${planilha}) incoerente com ${familia.id} (cap. ${familia.capitulo}) — buscando substituto Siscomex.`,
+      );
+      const sub = escolherSubstituto(catalog, input, familia, planilha.slice(0, 4));
+      if (sub) {
+        avisos.push(`Substituído por ${sub.ncm} (${sub.fonte}).`);
+        return {
+          ncm: sub.ncm,
+          fonte: sub.fonte,
+          valido: true,
+          descricaoOficial: catalog.descricao(sub.ncm),
+          avisos,
+          ncmCandidatos: sub.candidatos,
+          ncmPlanilhaOriginal: planilha,
+        };
+      }
+    }
     const iaTop = candidatosValidos[0]?.ncm;
     if (iaTop && iaTop !== planilha) {
       avisos.push(`IA sugeriu ${iaTop} — mantido NCM da planilha (${planilha}), validado Siscomex.`);
@@ -114,7 +166,9 @@ export function resolveNcm(catalog: NcmCatalog, input: ResolveNcmInput): Resolve
       valido: true,
       descricaoOficial: catalog.descricao(planilha),
       avisos,
-      ncmCandidatos: candidatosValidos.length ? candidatosValidos : candidatosDeBusca(catalog, input.descricao ?? "", planilha.slice(0, 4)),
+      ncmCandidatos: candidatosValidos.length
+        ? candidatosValidos
+        : candidatosSiscomexPorDescricao(catalog, input.descricao ?? "", familia),
     };
   }
 
@@ -122,12 +176,12 @@ export function resolveNcm(catalog: NcmCatalog, input: ResolveNcmInput): Resolve
     avisos.push(
       `NCM ${planilha} da planilha NÃO existe na NCM vigente Siscomex — código desatualizado ou incorreto.`,
     );
-    const sub = escolherSubstituto(catalog, input, planilha.slice(0, 4));
+    const sub = escolherSubstituto(catalog, input, familia, planilha.slice(0, 4));
     if (sub) {
       avisos.push(
         sub.fonte === "ia"
           ? `Substituído por NCM válido sugerido pela IA: ${sub.ncm}.`
-          : `Substituído por NCM vigente Siscomex (busca oficial): ${sub.ncm}.`,
+          : `Substituído por NCM vigente Siscomex (busca por família/descrição): ${sub.ncm}.`,
       );
       return {
         ncm: sub.ncm,
@@ -150,25 +204,16 @@ export function resolveNcm(catalog: NcmCatalog, input: ResolveNcmInput): Resolve
     };
   }
 
-  if (candidatosValidos[0]) {
-    avisos.push("Planilha sem NCM — usando sugestão da IA validada na tabela Siscomex.");
-    const escolhido = candidatosValidos[0];
-    return {
-      ncm: escolhido.ncm,
-      fonte: "ia",
-      valido: true,
-      descricaoOficial: catalog.descricao(escolhido.ncm),
-      avisos,
-      ncmCandidatos: candidatosValidos,
-    };
-  }
-
-  const sub = escolherSubstituto(catalog, input);
+  const sub = escolherSubstituto(catalog, input, familia);
   if (sub) {
-    avisos.push(`NCM inferido pela tabela Siscomex a partir da descrição: ${sub.ncm}.`);
+    avisos.push(
+      sub.fonte === "ia"
+        ? `NCM sugerido pela IA (validado Siscomex): ${sub.ncm}.`
+        : `NCM inferido pela tabela Siscomex (${familia?.id ?? "busca"}): ${sub.ncm}.`,
+    );
     return {
       ncm: sub.ncm,
-      fonte: "siscomex",
+      fonte: sub.fonte,
       valido: true,
       descricaoOficial: catalog.descricao(sub.ncm),
       avisos,

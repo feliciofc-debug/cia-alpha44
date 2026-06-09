@@ -47,6 +47,15 @@ export {
 } from "./ncm-catalog.js";
 export { resolveNcm, type ResolveNcmResult, type NcmFonte } from "./resolve-ncm.js";
 export {
+  detectarFamilia,
+  candidatosSiscomexPorDescricao,
+  validarNcmItem,
+  ncmCoerenteComFamilia,
+  enriquecerTextoClassificacao,
+  FAMILIAS_PRODUTO,
+  type FamiliaProduto,
+} from "./classificar-ncm.js";
+export {
   criarTecSource,
   type TecCache,
   type TecEntry,

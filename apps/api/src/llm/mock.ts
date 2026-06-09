@@ -7,7 +7,7 @@
  * explícito que é heurística sem IA — coerente com a regra de honestidade.
  */
 
-import type { ComexEntry } from "@cia/pipeline";
+import { detectarFamilia, type ComexEntry } from "@cia/pipeline";
 import type { ClassifyItemInput, ClassifyItemOutput, LlmProvider } from "./types.js";
 
 function tokens(s: string): string[] {
@@ -42,6 +42,9 @@ export function criarMockProvider(seed: ComexEntry[]): LlmProvider {
         }
         const candidatos = [];
         const desc = it.descOriginal ?? "";
+        const familia = detectarFamilia(desc);
+        const capEsperado = familia?.capitulo ?? it.ncmInformado?.replace(/\D/g, "").slice(0, 4);
+
         if (/lustre|lumin[aá]ria|chandelier|wall lamp|aisle light|pendente|ceiling light/i.test(desc)) {
           candidatos.push({
             ncm: "94052100",
@@ -49,7 +52,7 @@ export function criarMockProvider(seed: ComexEntry[]): LlmProvider {
             confianca: 0.88,
           });
         }
-        if (melhor && melhor.score >= 0.4) {
+        if (melhor && melhor.score >= 0.4 && (!capEsperado || melhor.ncm.startsWith(capEsperado))) {
           candidatos.push({
             ncm: melhor.ncm,
             descricaoOficial: melhor.desc,
