@@ -40,7 +40,9 @@ async function classificarEmLotes(
 export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise<{ itens: Item[]; provider: string }> {
   const classificados = await classificarEmLotes(state, linhas);
 
-  const itens: Item[] = linhas.map((l, i) => {
+  const itens: Item[] = [];
+  for (let i = 0; i < linhas.length; i++) {
+    const l = linhas[i]!;
     const c = classificados[i];
     const candidatosBrutos = c?.ncmCandidatos ?? [];
     const resolvido = resolveNcm(state.ncmCatalog, {
@@ -49,11 +51,15 @@ export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise
       descricao: c?.descPt || l.descOriginal,
     });
     const ncm = resolvido.ncm;
-    const tec = ncm && resolvido.valido ? state.tecSource.buscar(ncm) : null;
+    const tec =
+      ncm && resolvido.valido
+        ? await (state.tecSource.buscarAsync?.(ncm) ??
+            Promise.resolve(state.tecSource.buscar(ncm)))
+        : null;
     const pesoLiq = resolvePesoLiqLinha(l);
     const fobTotal = l.fobTotalUS ?? 0;
 
-    return {
+    itens.push({
       descOriginal: l.descOriginal,
       descPt: c?.descPt ?? l.descOriginal,
       descDuimp: c?.descDuimp ?? "",
@@ -76,8 +82,8 @@ export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise
       ...(l.fotoBase64
         ? { fotoBase64: l.fotoBase64, fotoMime: l.fotoMime ?? "image/jpeg" }
         : {}),
-    };
-  });
+    });
+  }
 
   return { itens, provider: state.provider.nome };
 }

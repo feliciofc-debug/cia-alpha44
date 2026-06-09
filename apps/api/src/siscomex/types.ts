@@ -24,6 +24,8 @@ export interface NcmTratamentoTributario {
   ncm: string;
   aliquotaII: number | null;
   aliquotaIPI: number | null;
+  aliquotaPIS?: number | null;
+  aliquotaCOFINS?: number | null;
   fonte: "portal-unico-ttce" | "indisponivel";
   dataConsulta: string | null;
   avisos: string[];
@@ -50,6 +52,8 @@ export interface SiscomexProvider {
   config: SiscomexConfig;
   /** Consulta classificação fiscal (CLSF) — no-op até certificado + SISCOMEX_ATIVO. */
   consultarClassificacao(ncm: string): Promise<NcmClassificacaoOficial>;
-  /** Consulta tratamento tributário (TTCE) — no-op até certificado + SISCOMEX_ATIVO. */
+  /** Consulta tratamento tributário (TTCE) — alíquotas ao vivo com certificado. */
   consultarTratamentoTributario(ncm: string, dataRef?: string): Promise<NcmTratamentoTributario>;
+  /** Testa autenticação mTLS + JWT (opcional). */
+  testarConexao?(): Promise<{ ok: boolean; mensagem: string; ambiente: string }>;
 }

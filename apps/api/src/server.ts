@@ -75,6 +75,7 @@ export async function buildServer() {
   app.get("/api/siscomex/status", async () => {
     const s = getState().siscomex;
     const cat = getState().ncmCatalog;
+    const teste = s.testarConexao ? await s.testarConexao() : null;
     return {
       provider: s.nome,
       configurado: s.configurado,
@@ -84,12 +85,28 @@ export async function buildServer() {
       ncmVigenteTotal: cat.total,
       ncmVigenteAtualizado: cat.dataUltimaAtualizacao,
       ncmFonte: cat.fonte,
+      conexao: teste,
       mensagem: s.operacional
-        ? "Portal Único ativo — consultas CLSF/TTCE habilitadas."
+        ? teste?.ok
+          ? "Portal Único ativo — CLSF + TTCE ao vivo."
+          : `Portal Único ativo mas conexão falhou: ${teste?.mensagem ?? "—"}`
         : s.configurado
-          ? "Credenciais detectadas — aguardando SISCOMEX_ATIVO=true e homologação."
-          : "Inativo — configure certificado ou chaves de acesso (ver docs/SISCOMEX.md).",
+          ? "Certificado OK — defina SISCOMEX_ATIVO=true para consultas ao vivo."
+          : "Inativo — configure certificado (ver docs/SISCOMEX.md).",
     };
+  });
+
+  app.post("/api/siscomex/testar", async (_req, reply) => {
+    const s = getState().siscomex;
+    if (!s.configurado) {
+      return reply.status(503).send({ ok: false, erro: "Certificado não configurado." });
+    }
+    if (!s.testarConexao) {
+      return reply.status(501).send({ ok: false, erro: "Provider sem teste de conexão." });
+    }
+    const r = await s.testarConexao();
+    if (!r.ok) return reply.status(502).send(r);
+    return r;
   });
 
   app.post("/api/siscomex/atualizar-ncm", async (_req, reply) => {

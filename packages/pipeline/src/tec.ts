@@ -31,6 +31,8 @@ export interface AliquotaResult {
 /** Adapter de fonte de alíquotas (cache local hoje; Classif TT amanhã). */
 export interface AliquotaSource {
   buscar(ncm: string): AliquotaResult;
+  /** Consulta ao vivo (TTCE/Siscomex) quando disponível. */
+  buscarAsync?(ncm: string): Promise<AliquotaResult>;
 }
 
 function normNcm(ncm: string): string {

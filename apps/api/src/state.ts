@@ -16,6 +16,7 @@ import { escolherProvider, comFallback, type LlmProvider } from "./llm/index.js"
 import { criarMockProvider } from "./llm/mock.js";
 import { escolherOcrProvider, type OcrProvider } from "./ocr/index.js";
 import { escolherSiscomexProvider, type SiscomexProvider } from "./siscomex/index.js";
+import { criarTecSourceHibrido } from "./siscomex/tec-hybrid.js";
 
 export interface AppState {
   comexSeed: ComexEntry[];
@@ -34,12 +35,13 @@ export function getState(): AppState {
   const comex = loadComexSeed();
   const tec = loadTecCache();
   const benchmarkIndex = buildBenchmarkIndex(comex.itens);
-  const tecSource = criarTecSource(tec);
+  const siscomex = escolherSiscomexProvider();
+  const tecBase = criarTecSource(tec);
+  const tecSource = siscomex.operacional ? criarTecSourceHibrido(tecBase, siscomex) : tecBase;
   const ncmCatalog = criarNcmCatalog(loadNcmVigenteCache());
   const mock = criarMockProvider(comex.itens);
   const provider = comFallback(escolherProvider(comex.itens), mock);
   const ocr = escolherOcrProvider();
-  const siscomex = escolherSiscomexProvider();
   state = { comexSeed: comex.itens, benchmarkIndex, tecSource, ncmCatalog, provider, ocr, siscomex };
   return state;
 }
