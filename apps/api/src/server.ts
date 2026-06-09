@@ -5,7 +5,7 @@ import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import { z } from "zod";
 import { cotacaoSchema, listarUfsFiscais } from "@cia/shared";
-import { getState } from "./state.js";
+import { getState, recarregarNcmCatalog } from "./state.js";
 import { buscarCambioPtax } from "./services/cambio.js";
 import { calcularCotacao, montarItens } from "./services/cotacao.js";
 import {
@@ -74,18 +74,42 @@ export async function buildServer() {
 
   app.get("/api/siscomex/status", async () => {
     const s = getState().siscomex;
+    const cat = getState().ncmCatalog;
     return {
       provider: s.nome,
       configurado: s.configurado,
       operacional: s.operacional,
       ambiente: s.config.ambiente,
       modoAuth: s.config.modoAuth,
+      ncmVigenteTotal: cat.total,
+      ncmVigenteAtualizado: cat.dataUltimaAtualizacao,
+      ncmFonte: cat.fonte,
       mensagem: s.operacional
         ? "Portal Único ativo — consultas CLSF/TTCE habilitadas."
         : s.configurado
           ? "Credenciais detectadas — aguardando SISCOMEX_ATIVO=true e homologação."
           : "Inativo — configure certificado ou chaves de acesso (ver docs/SISCOMEX.md).",
     };
+  });
+
+  app.post("/api/siscomex/atualizar-ncm", async (_req, reply) => {
+    try {
+      const { execSync } = await import("node:child_process");
+      const { fileURLToPath } = await import("node:url");
+      const { dirname, join } = await import("node:path");
+      const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+      execSync("node tools/fetch-ncm-siscomex.cjs", { cwd: root, stdio: "pipe" });
+      const cat = recarregarNcmCatalog();
+      return {
+        ok: true,
+        total: cat.total,
+        dataUltimaAtualizacao: cat.dataUltimaAtualizacao,
+        fonte: cat.fonte,
+      };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Falha ao atualizar NCM.";
+      return reply.status(500).send({ ok: false, erro: msg });
+    }
   });
 
   const conferirNcmBody = z.object({

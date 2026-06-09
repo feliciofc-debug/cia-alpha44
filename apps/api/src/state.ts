@@ -43,3 +43,10 @@ export function getState(): AppState {
   state = { comexSeed: comex.itens, benchmarkIndex, tecSource, ncmCatalog, provider, ocr, siscomex };
   return state;
 }
+
+/** Recarrega tabela NCM vigente Siscomex após `node tools/fetch-ncm-siscomex.cjs`. */
+export function recarregarNcmCatalog(): NcmCatalog {
+  const s = getState();
+  s.ncmCatalog = criarNcmCatalog(loadNcmVigenteCache());
+  return s.ncmCatalog;
+}

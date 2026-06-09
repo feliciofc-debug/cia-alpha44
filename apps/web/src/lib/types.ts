@@ -65,7 +65,8 @@ export interface Item {
   fotoPath?: string;
   fotoUrl?: string;
   ncmValido?: boolean;
-  ncmFonte?: "planilha" | "ia" | "pendente";
+  ncmFonte?: "planilha" | "ia" | "siscomex" | "pendente";
+  ncmPlanilhaOriginal?: string;
   ncmDescricaoOficial?: string;
   ncmAvisos?: string[];
 }

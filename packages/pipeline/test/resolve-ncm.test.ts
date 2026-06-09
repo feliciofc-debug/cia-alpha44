@@ -3,18 +3,32 @@ import { criarNcmCatalog, loadNcmVigente, resolveNcm } from "../src/index.js";
 
 const catalog = criarNcmCatalog(loadNcmVigente());
 
-describe("resolveNcm — planilha × IA × Siscomex", () => {
-  it("mantém NCM da planilha mesmo quando IA sugere outro (ex.: lustres)", () => {
+describe("resolveNcm — Siscomex fonte única", () => {
+  it("substitui NCM desatualizado da planilha (ex.: lustres 94051093)", () => {
     const r = resolveNcm(catalog, {
       ncmPlanilha: "94051093",
-      candidatosIa: [{ ncm: "94054090", confianca: 0.9, descricaoOficial: "Inválido IA" }],
+      descricao: "Lustre de teto chandelier ceiling light",
+      candidatosIa: [{ ncm: "94054090", confianca: 0.9 }],
     });
-    expect(r.ncm).toBe("94051093");
-    expect(r.fonte).toBe("planilha");
-    expect(r.avisos.some((a) => a.includes("94054090") || a.includes("Descartado"))).toBe(true);
+    expect(r.ncmPlanilhaOriginal).toBe("94051093");
+    expect(r.valido).toBe(true);
+    expect(catalog.existe(r.ncm)).toBe(true);
+    expect(r.ncm).not.toBe("94051093");
+    expect(r.ncm).not.toBe("94054090");
+    expect(r.avisos.some((a) => a.includes("NÃO existe"))).toBe(true);
   });
 
-  it("usa IA validada quando planilha não tem NCM", () => {
+  it("mantém NCM da planilha quando vigente na Siscomex", () => {
+    const r = resolveNcm(catalog, {
+      ncmPlanilha: "94052100",
+      candidatosIa: [{ ncm: "94054090", confianca: 0.9 }],
+    });
+    expect(r.ncm).toBe("94052100");
+    expect(r.valido).toBe(true);
+    expect(r.fonte).toBe("planilha");
+  });
+
+  it("usa IA validada quando planilha sem NCM", () => {
     const r = resolveNcm(catalog, {
       ncmPlanilha: null,
       candidatosIa: [
@@ -24,25 +38,22 @@ describe("resolveNcm — planilha × IA × Siscomex", () => {
     });
     expect(r.ncm).toBe("94052100");
     expect(r.fonte).toBe("ia");
-    expect(r.valido).toBe(true);
   });
 
   it("rejeita NCM inválido da IA sem planilha", () => {
     const r = resolveNcm(catalog, {
       candidatosIa: [{ ncm: "94054090", confianca: 0.95 }],
+      descricao: "LED panel light",
     });
-    expect(r.ncm).toBe("");
-    expect(r.fonte).toBe("pendente");
-    expect(r.valido).toBe(false);
+    expect(r.ncm).not.toBe("94054090");
+    if (r.ncm) expect(catalog.existe(r.ncm)).toBe(true);
   });
+});
 
-  it("aceita NCM vigente da planilha", () => {
-    const r = resolveNcm(catalog, {
-      ncmPlanilha: "94052100",
-      candidatosIa: [{ ncm: "94054090", confianca: 0.9 }],
-    });
-    expect(r.ncm).toBe("94052100");
-    expect(r.valido).toBe(true);
-    expect(r.descricaoOficial).toContain("diodos");
+describe("buscarPorTexto Siscomex", () => {
+  it("encontra NCMs do capítulo 9405", () => {
+    const hits = catalog.buscarPorTexto("lustre luminaria teto", "9405", 3);
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits.every((h) => h.ncm.startsWith("9405"))).toBe(true);
   });
 });

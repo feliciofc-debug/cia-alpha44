@@ -22,7 +22,12 @@ async function classificarEmLotes(
   state: AppState,
   linhas: LinhaCrua[],
 ): Promise<Awaited<ReturnType<AppState["provider"]["classify"]>>> {
-  const inputs = linhas.map((l) => ({ descOriginal: l.descOriginal, ncmInformado: l.ncm }));
+  const { contextoSiscomexParaItem } = await import("../llm/ncm-contexto-siscomex.js");
+  const inputs = linhas.map((l) => ({
+    descOriginal: l.descOriginal,
+    ncmInformado: l.ncm,
+    contexto: contextoSiscomexParaItem(state.ncmCatalog, l.descOriginal, l.ncm),
+  }));
   const saida: Awaited<ReturnType<AppState["provider"]["classify"]>> = [];
   for (let i = 0; i < inputs.length; i += CLASSIFY_LOTE) {
     const parte = await state.provider.classify(inputs.slice(i, i + CLASSIFY_LOTE));
@@ -41,9 +46,10 @@ export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise
     const resolvido = resolveNcm(state.ncmCatalog, {
       ncmPlanilha: l.ncm,
       candidatosIa: candidatosBrutos,
+      descricao: c?.descPt || l.descOriginal,
     });
     const ncm = resolvido.ncm;
-    const tec = ncm ? state.tecSource.buscar(ncm) : null;
+    const tec = ncm && resolvido.valido ? state.tecSource.buscar(ncm) : null;
     const pesoLiq = resolvePesoLiqLinha(l);
     const fobTotal = l.fobTotalUS ?? 0;
 
@@ -56,6 +62,7 @@ export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise
       ncmValido: resolvido.valido,
       ncmFonte: resolvido.fonte,
       ncmDescricaoOficial: resolvido.descricaoOficial ?? undefined,
+      ncmPlanilhaOriginal: resolvido.ncmPlanilhaOriginal ?? undefined,
       ncmAvisos: resolvido.avisos.length ? resolvido.avisos : undefined,
       pesoBrutoKg: l.pesoBrutoKg,
       pesoLiqKg: pesoLiq,

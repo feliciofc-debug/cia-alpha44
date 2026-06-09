@@ -96,7 +96,8 @@ export const itemSchema = z.object({
   fotoUrl: z.string().optional(),
   /** NCM validado na tabela vigente Siscomex (Classif). */
   ncmValido: z.boolean().optional(),
-  ncmFonte: z.enum(["planilha", "ia", "pendente"]).optional(),
+  ncmFonte: z.enum(["planilha", "ia", "siscomex", "pendente"]).optional(),
+  ncmPlanilhaOriginal: z.string().optional(),
   ncmDescricaoOficial: z.string().optional(),
   ncmAvisos: z.array(z.string()).optional(),
 });

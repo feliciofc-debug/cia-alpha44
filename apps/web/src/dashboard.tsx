@@ -249,18 +249,27 @@ function AnalisePainel({
                     <div className="truncate text-slate-500">{it.descDuimp.slice(0, 80)}</div>
                   </td>
                   <td className="p-2 whitespace-nowrap">
-                    <span className={it.ncmValido === false ? "font-semibold text-red-400" : ""}>
+                    <span className={it.ncmValido === false ? "font-semibold text-red-400" : "text-emerald-300"}>
                       {fmtNcm(it.ncm || "00000000")}
                     </span>
-                    {it.ncmFonte === "planilha" && (
-                      <span className="block text-[10px] text-emerald-500/80">planilha</span>
+                    {it.ncmPlanilhaOriginal && it.ncmPlanilhaOriginal !== it.ncm && (
+                      <span className="block text-[10px] text-red-400/80 line-through">
+                        planilha: {fmtNcm(it.ncmPlanilhaOriginal)}
+                      </span>
                     )}
-                    {it.ncmValido === false && (
-                      <span className="block text-[10px] text-red-400">não vigente Siscomex</span>
+                    {it.ncmFonte && (
+                      <span className="block text-[10px] text-slate-500">
+                        {it.ncmFonte === "siscomex" ? "Siscomex vigente" : it.ncmFonte}
+                      </span>
+                    )}
+                    {it.ncmDescricaoOficial && (
+                      <span className="block max-w-[12rem] text-[10px] text-slate-500 truncate" title={it.ncmDescricaoOficial}>
+                        {it.ncmDescricaoOficial.slice(0, 50)}
+                      </span>
                     )}
                     {it.ncmAvisos?.slice(0, 1).map((a, j) => (
                       <span key={j} className="block max-w-[12rem] text-[10px] text-amber-400/90" title={a}>
-                        {a.slice(0, 60)}{a.length > 60 ? "…" : ""}
+                        {a.slice(0, 70)}{a.length > 70 ? "…" : ""}
                       </span>
                     ))}
                   </td>
