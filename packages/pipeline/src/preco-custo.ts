@@ -27,12 +27,13 @@ export function precoCustoUnitarioUSD(tipo: TipoPrecoCusto): number {
 }
 
 /** Detecta se a linha é moto ou patinete elétrico (descrição + NCM). */
-export function detectarPrecoCusto(descricao: string, ncm?: string | null): TipoPrecoCusto | null {
-  const d = descricao.trim();
+export function detectarPrecoCusto(descricao: string, ncm?: string | null, descPt?: string | null): TipoPrecoCusto | null {
+  const d = `${descricao} ${descPt ?? ""}`.trim();
   if (!d) return null;
 
   if (RE_MOTO.test(d) && !/patinete|kick\s*scooter/i.test(d)) return "moto_eletrica";
   if (RE_PATINETE.test(d) && !RE_MOTO.test(d)) return "patinete_eletrico";
+  if (/patinete/i.test(d) || (/scooter/i.test(d) && /el[eé]tr/i.test(d))) return "patinete_eletrico";
 
   const key = ncm8(ncm);
   if (key.startsWith("8711")) return "moto_eletrica";
