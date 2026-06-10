@@ -11,7 +11,7 @@ import {
   payloadAtualizar,
   type EditorDraft,
 } from "./lib/editor-cotacao.ts";
-import type { Canal, CotacaoResumo, CotacaoSalva, Item, ResultadoCotacao } from "./lib/types.ts";
+import type { Aliquotas, Canal, CotacaoResumo, CotacaoSalva, Item, ResultadoCotacao } from "./lib/types.ts";
 import { PainelEditorCotacao } from "./painel-editor.tsx";
 import { AppShell, type NavItem } from "./app-shell.tsx";
 import { ClientesView } from "./clientes-view.tsx";
@@ -65,6 +65,40 @@ function fmtData(iso: string) {
 }
 
 type AnaliseView = AnaliseCompleta | CotacaoSalva;
+
+type AliquotaCampo = keyof Aliquotas;
+
+function InputAliquotaImport({
+  value,
+  disabled,
+  onCommit,
+}: {
+  value: number;
+  disabled?: boolean;
+  onCommit: (v: number) => void;
+}) {
+  const [local, setLocal] = useState(String((value * 100).toFixed(2)));
+  useEffect(() => {
+    setLocal(String((value * 100).toFixed(2)));
+  }, [value]);
+  return (
+    <input
+      type="number"
+      min={0}
+      max={100}
+      step={0.01}
+      disabled={disabled}
+      title="Alíquota de importação (%)"
+      className="w-[4.25rem] rounded border border-white/15 bg-ink-900/80 px-1 py-0.5 text-xs text-white disabled:opacity-50"
+      value={local}
+      onChange={(e) => setLocal(e.target.value)}
+      onBlur={() => {
+        const v = Math.min(100, Math.max(0, Number(local) || 0)) / 100;
+        onCommit(v);
+      }}
+    />
+  );
+}
 
 function ResumoFinanceiroPainel({
   financeiro,
@@ -164,6 +198,8 @@ function AnalisePainel({
   aplicandoEditor,
   onBaixarPdfCliente,
   irParaOrcamento,
+  onAlterarAliquota,
+  recalculandoAliquota,
 }: {
   analise: AnaliseView;
   onSalvar?: () => void;
@@ -176,6 +212,8 @@ function AnalisePainel({
   onBaixarPdfCliente?: () => void | Promise<void>;
   /** Incrementar para abrir a aba Orçamento cliente e rolar até o preview. */
   irParaOrcamento?: number;
+  onAlterarAliquota?: (idx: number, campo: AliquotaCampo, valor: number) => void | Promise<void>;
+  recalculandoAliquota?: boolean;
 }) {
   const [aba, setAba] = useState<"orcamento" | "tecnica">(
     salvaId && contarItensComFoto(analise.itens) === 0 ? "tecnica" : "orcamento",
@@ -216,13 +254,22 @@ function AnalisePainel({
         )}
       </div>
 
-      <div className="max-h-96 overflow-auto rounded-xl border border-white/10">
-        <table className="w-full text-left text-xs">
-          <thead className="sticky top-0 bg-ink-800 text-slate-400">
+      <div className="max-h-[28rem] overflow-auto rounded-xl border border-white/10">
+        <p className="sticky top-0 z-10 border-b border-white/10 bg-ink-800/95 px-3 py-2 text-xs text-slate-400">
+          Alíquotas de importação editáveis (II, IPI, PIS, COFINS, ICMS) — altere e saia do campo para recalcular.
+          {recalculandoAliquota && <span className="ml-2 text-brand-300">Recalculando…</span>}
+        </p>
+        <table className="w-full min-w-[1100px] text-left text-xs">
+          <thead className="sticky top-8 bg-ink-800 text-slate-400">
             <tr>
               <th className="p-2 w-14">Foto</th>
               <th className="p-2">Descrição (PT)</th>
               <th className="p-2">NCM</th>
+              <th className="p-2">II %</th>
+              <th className="p-2">IPI %</th>
+              <th className="p-2">PIS %</th>
+              <th className="p-2">COFINS %</th>
+              <th className="p-2">ICMS imp. %</th>
               <th className="p-2">FOB US$</th>
               <th className="p-2">FOB US$/kg</th>
               <th className="p-2">Ref ComexStat</th>
@@ -276,6 +323,22 @@ function AnalisePainel({
                       </span>
                     ))}
                   </td>
+                  {(["ii", "ipi", "pis", "cofins", "icmsEntrada"] as const).map((campo) => (
+                    <td key={campo} className="p-2 align-top">
+                      {onAlterarAliquota ? (
+                        <InputAliquotaImport
+                          value={it.aliquotas[campo]}
+                          disabled={recalculandoAliquota}
+                          onCommit={(v) => void onAlterarAliquota(i, campo, v)}
+                        />
+                      ) : (
+                        <span>{pct(it.aliquotas[campo])}</span>
+                      )}
+                      {it.aliquotasOverride && (
+                        <span className="block text-[9px] text-brand-300/80">manual</span>
+                      )}
+                    </td>
+                  ))}
                   <td className="p-2 whitespace-nowrap">{it.fobTotalUS > 0 ? it.fobTotalUS.toFixed(2) : "—"}</td>
                   <td className="p-2 whitespace-nowrap">
                     {fobKg.principal != null ? (
@@ -384,7 +447,7 @@ function AnalisePainel({
           }`}
           onClick={() => setAba("tecnica")}
         >
-          Análise técnica
+          Detalhamento técnico
         </button>
       </div>
 
@@ -501,6 +564,7 @@ export function Dashboard() {
   const [excluindoId, setExcluindoId] = useState<string | null>(null);
   const [editorDraft, setEditorDraft] = useState<EditorDraft | null>(null);
   const [aplicandoEditor, setAplicandoEditor] = useState(false);
+  const [recalculandoAliquota, setRecalculandoAliquota] = useState(false);
   const [pdfBaixando, setPdfBaixando] = useState<"cliente" | "trade" | null>(null);
   const [irParaOrcamento, setIrParaOrcamento] = useState(0);
   const [kpis, setKpis] = useState<DashboardKpis | null>(null);
@@ -639,7 +703,7 @@ export function Dashboard() {
     setAplicandoEditor(true);
     setErro("");
     try {
-      const cotacao = aplicarEditorNaCotacao(analise.cotacao, editorDraft);
+      const cotacao = { ...aplicarEditorNaCotacao(analise.cotacao, editorDraft), itens: analise.itens };
       const { resultado, itens } = await api.calcular(cotacao);
       setAnalise({ ...analise, cotacao, resultado, itens });
       setCliente(editorDraft.cliente);
@@ -647,6 +711,39 @@ export function Dashboard() {
       setErro(e instanceof Error ? e.message : "Falha ao recalcular.");
     } finally {
       setAplicandoEditor(false);
+    }
+  }
+
+  async function alterarAliquotaItem(idx: number, campo: AliquotaCampo, valor: number) {
+    const base = analise ?? detalhe;
+    if (!base) return;
+    const itens = base.itens.map((it, i) =>
+      i === idx ? { ...it, aliquotas: { ...it.aliquotas, [campo]: valor }, aliquotasOverride: true } : it,
+    );
+    const draft = editorDraft ?? editorFromCotacao(base.cotacao, "cliente" in base ? base.cotacao.cliente : cliente);
+    const cotacao = { ...aplicarEditorNaCotacao(base.cotacao, draft), itens };
+    setRecalculandoAliquota(true);
+    setErro("");
+    try {
+      if (detalhe?.id) {
+        const atualizada = await api.atualizarCotacao(detalhe.id, {
+          ...payloadAtualizar(draft),
+          itensAliquotas: itens.map((it, ordem) => ({
+            ordem,
+            aliquotas: it.aliquotas,
+            aliquotasOverride: it.aliquotasOverride,
+          })),
+        });
+        setDetalhe(atualizada);
+        setEditorDraft(editorFromCotacao(atualizada.cotacao));
+        return;
+      }
+      const { resultado, itens: itensNovos } = await api.calcular(cotacao);
+      if (analise) setAnalise({ ...analise, cotacao, resultado, itens: itensNovos });
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao recalcular alíquotas.");
+    } finally {
+      setRecalculandoAliquota(false);
     }
   }
 
@@ -1055,6 +1152,8 @@ export function Dashboard() {
                 aplicandoEditor={aplicandoEditor}
                 onBaixarPdfCliente={baixarPdfClienteOrcamento}
                 irParaOrcamento={irParaOrcamento}
+                onAlterarAliquota={alterarAliquotaItem}
+                recalculandoAliquota={recalculandoAliquota}
               />
             </div>
           </div>
@@ -1140,6 +1239,8 @@ export function Dashboard() {
                   onAplicarEditor={() => void aplicarEditorAnalise()}
                   aplicandoEditor={aplicandoEditor}
                   onBaixarPdfCliente={baixarPdfClienteOrcamento}
+                  onAlterarAliquota={alterarAliquotaItem}
+                  recalculandoAliquota={recalculandoAliquota}
                 />
                 {salvaId && (
                   <button type="button" className="btn-ghost mt-4 w-full" onClick={() => void abrirCotacao(salvaId)}>

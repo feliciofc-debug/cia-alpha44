@@ -23,6 +23,14 @@ export {
   rotuloPrecoCusto,
   type TipoPrecoCusto,
 } from "./preco-custo.js";
+export {
+  preencherFobKgPlanilha,
+  preencherFobKgItens,
+  fobKgNcmMaisProximo,
+  fobKgDaLinha,
+  indiceFobKgPlanilha,
+  type ReferenciaFobKgPlanilha,
+} from "./fob-kg-planilha.js";
 export { calibrarFobKg, calcFobKg, type CalibradorInput } from "./calibrador.js";
 export { analisarRisco, type RiscoInput } from "./risco.js";
 export {

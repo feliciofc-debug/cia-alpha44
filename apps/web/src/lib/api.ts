@@ -243,13 +243,14 @@ export const api = {
   baixarPdfBlob: async (res: Response, fallback: string) => {
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
-      let parsed: {
+      type PdfErroJson = {
         erro?: string;
         codigo?: string;
         itensInvalidos?: { ordem: number; descricao: string; ncm: string }[];
-      } | null = null;
+      };
+      let parsed: PdfErroJson | null = null;
       try {
-        parsed = JSON.parse(txt) as typeof parsed;
+        parsed = JSON.parse(txt) as PdfErroJson;
       } catch {
         /* resposta não-JSON */
       }

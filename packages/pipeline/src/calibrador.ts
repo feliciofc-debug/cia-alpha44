@@ -13,38 +13,46 @@ export interface CalibradorInput {
   fobTotalUS?: number | null;
   pesoLiqKg?: number;
   benchmark: Benchmark;
+  /** FOB/kg de linha com NCM mais próximo na mesma planilha (antes do ComexStat). */
+  fobKgPlanilhaReferencia?: number | null;
   /** Menor preço B2B internacional informado (opcional). */
   menorPrecoB2BKg?: number | null;
 }
 
 export function calcFobKg(input: CalibradorInput): number {
   const fobKgInformado = input.fobKgInformado ?? input.fobKgOriginal ?? null;
-  const { fobTotalUS, pesoLiqKg = 0 } = input;
+  const { fobTotalUS, pesoLiqKg = 0, fobKgPlanilhaReferencia } = input;
   if (fobKgInformado !== null && fobKgInformado > 0) return fobKgInformado;
   if (fobTotalUS && fobTotalUS > 0 && pesoLiqKg > 0) return fobTotalUS / pesoLiqKg;
+  if (fobKgPlanilhaReferencia != null && fobKgPlanilhaReferencia > 0) return fobKgPlanilhaReferencia;
   return 0;
 }
 
 export function calibrarFobKg(input: CalibradorInput): Calibracao {
   const fobKgOriginal = calcFobKg(input);
-  const { benchmark, menorPrecoB2BKg } = input;
+  const { benchmark, menorPrecoB2BKg, fobKgPlanilhaReferencia } = input;
+  const refPlanilha = fobKgPlanilhaReferencia != null && fobKgPlanilhaReferencia > 0 ? fobKgPlanilhaReferencia : null;
 
   if (benchmark.fonte === "sem base" || benchmark.pisoDefensavel === null) {
-    const calibrado = fobKgOriginal > 0 ? fobKgOriginal : (menorPrecoB2BKg ?? 0);
+    const calibrado = fobKgOriginal > 0 ? fobKgOriginal : (refPlanilha ?? menorPrecoB2BKg ?? 0);
+    const justificativa =
+      refPlanilha && fobKgOriginal <= 0
+        ? `FOB/KG US$ ${calibrado.toFixed(4)}/kg da planilha (NCM mais próximo na carga)`
+        : benchmark.nota;
     return {
-      fobKgOriginal: fobKgOriginal || null,
+      fobKgOriginal: fobKgOriginal || refPlanilha || null,
       fobKgCalibrado: calibrado,
       desvioBenchmarkPct: null,
       ajustado: false,
-      justificativa: benchmark.nota,
+      justificativa,
     };
   }
 
   const piso = benchmark.pisoDefensavel;
   const b2b = menorPrecoB2BKg && menorPrecoB2BKg > 0 ? menorPrecoB2BKg : fobKgOriginal;
-  const alvo = Math.max(b2b > 0 ? b2b : piso, piso);
+  const alvo = Math.max(b2b > 0 ? b2b : refPlanilha ?? piso, piso);
 
-  let calibrado = fobKgOriginal > 0 ? fobKgOriginal : alvo;
+  let calibrado = fobKgOriginal > 0 ? fobKgOriginal : (refPlanilha ?? alvo);
   let ajustado = false;
 
   if (calibrado < piso) {

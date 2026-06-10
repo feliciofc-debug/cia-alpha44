@@ -12,6 +12,8 @@ import {
   validarNcmItem,
   detectarFamilia,
   aplicarPrecoCustoLinhas,
+  preencherFobKgPlanilha,
+  preencherFobKgItens,
   type LinhaCrua,
   type NcmCatalog,
 } from "@cia/pipeline";
@@ -41,7 +43,8 @@ async function classificarEmLotes(
 
 /** Converte linhas cruas do parser em itens de domínio (tradução+NCM via IA, alíquotas via TEC). */
 export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise<{ itens: Item[]; provider: string }> {
-  const linhasNorm = aplicarPrecoCustoLinhas(linhas);
+  const comPrecoCusto = aplicarPrecoCustoLinhas(linhas);
+  const { linhas: linhasNorm } = preencherFobKgPlanilha(comPrecoCusto);
   const classificados = await classificarEmLotes(state, linhasNorm);
 
   const itens: Item[] = [];
@@ -118,18 +121,43 @@ function fobUsadoNoEngine(it: Item, calibracao: ReturnType<typeof calibrarFobKg>
 
 /** Enriquece itens (benchmark/calibragem/risco) e roda o engine fiscal. */
 export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCompleto {
-  const itensEnriquecidos: Item[] = cotacao.itens.map((it) => {
-    const fobKg = it.pesoLiqKg > 0 ? it.fobTotalUS / it.pesoLiqKg : null;
+  const { itens: itensComFob, refsPorIndice } = preencherFobKgItens(cotacao.itens);
+
+  const itensEnriquecidos: Item[] = itensComFob.map((it, i) => {
+    const refPlanilha = refsPorIndice.get(i);
+    const fobKg = it.pesoLiqKg > 0 && it.fobTotalUS > 0 ? it.fobTotalUS / it.pesoLiqKg : null;
     const benchmark = lookupBenchmark(state.benchmarkIndex, it.ncm || "00000000");
-    const calibracao = calibrarFobKg({ fobKgOriginal: fobKg, benchmark, fobTotalUS: it.fobTotalUS, pesoLiqKg: it.pesoLiqKg });
+    const calibracao = calibrarFobKg({
+      fobKgOriginal: fobKg,
+      fobKgPlanilhaReferencia: refPlanilha?.fobKg ?? null,
+      benchmark,
+      fobTotalUS: it.fobTotalUS,
+      pesoLiqKg: it.pesoLiqKg,
+    });
+    const calibracaoFinal =
+      refPlanilha && !fobKg
+        ? {
+            ...calibracao,
+            justificativa: `FOB/kg US$ ${refPlanilha.fobKg.toFixed(4)} da planilha (NCM ref. ${refPlanilha.ncm}). ${calibracao.justificativa}`,
+          }
+        : calibracao;
     const risco = analisarRisco({
       benchmark,
-      calibracao,
-      fobKgFinal: fobKg ?? calibracao.fobKgCalibrado,
+      calibracao: calibracaoFinal,
+      fobKgFinal: fobKg ?? calibracaoFinal.fobKgCalibrado,
       anuencia: it.anuencia,
       antidumping: it.antidumping,
     });
-    return { ...it, benchmark, calibracao, risco, fotoBase64: it.fotoBase64, fotoMime: it.fotoMime, fotoPath: it.fotoPath };
+    return {
+      ...it,
+      fobTotalUS: it.fobTotalUS,
+      benchmark,
+      calibracao: calibracaoFinal,
+      risco,
+      fotoBase64: it.fotoBase64,
+      fotoMime: it.fotoMime,
+      fotoPath: it.fotoPath,
+    };
   });
 
   const engineInput: CotacaoFiscalInput = {

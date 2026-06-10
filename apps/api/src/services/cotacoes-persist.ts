@@ -410,6 +410,12 @@ export interface AtualizarCotacaoInput {
   params?: Partial<ParamsSaida>;
   /** Se true, recalcula icmsSaida a partir de destino+benefício (ignora override manual). */
   icmsAuto?: boolean;
+  /** Override de alíquotas de importação por item (ordem = índice na cotação). */
+  itensAliquotas?: Array<{
+    ordem: number;
+    aliquotas: Item["aliquotas"];
+    aliquotasOverride?: boolean;
+  }>;
 }
 
 function mergeParams(
@@ -435,7 +441,20 @@ export async function atualizarCotacao(id: string, state: AppState, opts: Atuali
   });
   if (!row) return null;
 
-  const { cotacao } = mapRowParaDominio(row);
+  const { cotacao, itens: itensAtuais } = mapRowParaDominio(row);
+  const itensDom =
+    opts.itensAliquotas?.length
+      ? itensAtuais.map((it, ordem) => {
+          const patch = opts.itensAliquotas!.find((p) => p.ordem === ordem);
+          if (!patch) return it;
+          return {
+            ...it,
+            aliquotas: patch.aliquotas,
+            aliquotasOverride: patch.aliquotasOverride ?? true,
+          };
+        })
+      : itensAtuais;
+
   const origem = opts.origem ? (normalizarUf(opts.origem) ?? cotacao.origem) : cotacao.origem;
   const destino = opts.destino ? (normalizarUf(opts.destino) ?? cotacao.destino) : cotacao.destino;
   const benefFiscal = opts.benefFiscal ?? cotacao.benefFiscal;
@@ -461,6 +480,7 @@ export async function atualizarCotacao(id: string, state: AppState, opts: Atuali
     ...(opts.reducaoBaseUS != null ? { reducaoBaseUS: opts.reducaoBaseUS } : {}),
     ...(opts.qtdContainers != null ? { qtdContainers: opts.qtdContainers } : {}),
     params,
+    itens: itensDom,
   };
   const { resultado, itens } = calcularCotacao(atualizada, state);
   const canal = canalPredominante(itens);
@@ -468,6 +488,19 @@ export async function atualizarCotacao(id: string, state: AppState, opts: Atuali
   const updated = await prisma.$transaction(async (tx) => {
     if (opts.despesas) {
       await tx.despesa.deleteMany({ where: { cotacaoId: id } });
+    }
+    if (opts.itensAliquotas?.length) {
+      for (const patch of opts.itensAliquotas) {
+        const itemRow = row.itens.find((i) => i.ordem === patch.ordem);
+        if (!itemRow) continue;
+        await tx.item.update({
+          where: { id: itemRow.id },
+          data: {
+            aliquotas: patch.aliquotas as Prisma.InputJsonValue,
+            aliquotasOverride: patch.aliquotasOverride ?? true,
+          },
+        });
+      }
     }
     return tx.cotacao.update({
       where: { id },
