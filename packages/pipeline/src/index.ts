@@ -13,6 +13,16 @@ export {
   type HistoricoEntry,
 } from "./benchmark.js";
 export { resolvePesoLiqLinha, type LinhaCrua } from "./linha.js";
+export {
+  PRECO_CUSTO_MOTO_USD,
+  PRECO_CUSTO_PATINETE_USD,
+  aplicarPrecoCustoLinha,
+  aplicarPrecoCustoLinhas,
+  detectarPrecoCusto,
+  precoCustoUnitarioUSD,
+  rotuloPrecoCusto,
+  type TipoPrecoCusto,
+} from "./preco-custo.js";
 export { calibrarFobKg, calcFobKg, type CalibradorInput } from "./calibrador.js";
 export { analisarRisco, type RiscoInput } from "./risco.js";
 export {

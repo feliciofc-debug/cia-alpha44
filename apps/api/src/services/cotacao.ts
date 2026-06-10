@@ -11,6 +11,7 @@ import {
   resolvePesoLiqLinha,
   validarNcmItem,
   detectarFamilia,
+  aplicarPrecoCustoLinhas,
   type LinhaCrua,
   type NcmCatalog,
 } from "@cia/pipeline";
@@ -40,11 +41,12 @@ async function classificarEmLotes(
 
 /** Converte linhas cruas do parser em itens de domínio (tradução+NCM via IA, alíquotas via TEC). */
 export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise<{ itens: Item[]; provider: string }> {
-  const classificados = await classificarEmLotes(state, linhas);
+  const linhasNorm = aplicarPrecoCustoLinhas(linhas);
+  const classificados = await classificarEmLotes(state, linhasNorm);
 
   const itens: Item[] = [];
-  for (let i = 0; i < linhas.length; i++) {
-    const l = linhas[i]!;
+  for (let i = 0; i < linhasNorm.length; i++) {
+    const l = linhasNorm[i]!;
     const c = classificados[i];
     const candidatosBrutos = c?.ncmCandidatos ?? [];
     const resolvido = resolveNcm(state.ncmCatalog, {

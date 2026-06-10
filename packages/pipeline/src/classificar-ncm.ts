@@ -39,6 +39,20 @@ export const FAMILIAS_PRODUTO: FamiliaProduto[] = [
     re: /transformador|fonte|power\s*supply|conversor|inversor|变压器/i,
     termosBusca: "transformador conversor estatico fonte alimentacao",
   },
+  {
+    id: "moto_eletrica",
+    capitulo: "8711",
+    re: /moto\s*el[eé]tr|motocicleta|electric\s*motorcycle|motorcycle|ciclomotor|摩托车/i,
+    termosBusca: "motocicleta eletrica motorcycle ciclomotor",
+    ncmPreferidos: ["87116000", "87119000"],
+  },
+  {
+    id: "patinete_eletrico",
+    capitulo: "9503",
+    re: /patinete|kick\s*scooter|e-?scooter|scooter\s*el[eé]tr|hoverboard|电动滑板|滑板车/i,
+    termosBusca: "patinete scooter eletrico brinquedo",
+    ncmPreferidos: ["95030099", "95030031"],
+  },
 ];
 
 export function detectarFamilia(descricao: string): FamiliaProduto | null {

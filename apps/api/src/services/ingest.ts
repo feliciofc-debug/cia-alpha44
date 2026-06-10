@@ -1,6 +1,14 @@
 /** Ingestão unificada: Excel, CSV, PDF e imagem → linhas para cotação. */
 
-import { parseSupplierFile, parseSupplierOcrText, type ParsedSupplierFile } from "@cia/pipeline";
+import {
+  aplicarPrecoCustoLinha,
+  detectarPrecoCusto,
+  precoCustoUnitarioUSD,
+  parseSupplierFile,
+  parseSupplierOcrText,
+  rotuloPrecoCusto,
+  type ParsedSupplierFile,
+} from "@cia/pipeline";
 import type { OcrProvider } from "../ocr/types.js";
 import { extrairTextoPdf } from "./pdf-text.js";
 
@@ -22,6 +30,22 @@ export function tipoIngestao(filename: string): FonteIngestao | null {
   return null;
 }
 
+function aplicarPrecosCusto(parsed: ParsedSupplierFile): ParsedSupplierFile {
+  const avisos = [...parsed.avisos];
+  const linhas = parsed.linhas.map((l) => {
+    const tipoAntes = detectarPrecoCusto(l.descOriginal, l.ncm);
+    if (!tipoAntes) return l;
+    const next = aplicarPrecoCustoLinha(l);
+    const unit = precoCustoUnitarioUSD(tipoAntes);
+    const qtd = next.qtd ?? 1;
+    avisos.push(
+      `Preço custo ${rotuloPrecoCusto(tipoAntes)}: US$ ${unit.toFixed(2)}/un × ${qtd} = US$ ${(next.fobTotalUS ?? 0).toFixed(2)} — ${l.descOriginal.slice(0, 60)}`,
+    );
+    return next;
+  });
+  return { ...parsed, linhas, avisos };
+}
+
 export async function ingerirArquivo(
   filename: string,
   bytes: Uint8Array,
@@ -33,7 +57,7 @@ export async function ingerirArquivo(
   }
 
   if (fonte === "planilha") {
-    const parsed = await parseSupplierFile(bytes);
+    const parsed = aplicarPrecosCusto(await parseSupplierFile(bytes));
     return { arquivo: filename, fonte, ...parsed };
   }
 
@@ -44,11 +68,12 @@ export async function ingerirArquivo(
     if (nativo && nativo.length > 60) {
       const parsedNativo = parseSupplierOcrText(nativo, filename);
       if (parsedNativo.totalLinhas > 0) {
+        const parsedNativoCusto = aplicarPrecosCusto(parsedNativo);
         return {
           arquivo: filename,
           fonte,
-          ...parsedNativo,
-          avisos: ["Texto extraído do PDF (sem OCR externo).", ...parsedNativo.avisos],
+          ...parsedNativoCusto,
+          avisos: ["Texto extraído do PDF (sem OCR externo).", ...parsedNativoCusto.avisos],
         };
       }
       avisosIngest.push("PDF com texto nativo, mas parser não encontrou itens — tentando OCR.");
@@ -60,7 +85,7 @@ export async function ingerirArquivo(
   }
 
   const ocrOut = await ocr.extrair(bytes, filename);
-  const parsed = parseSupplierOcrText(ocrOut.texto, filename);
+  const parsed = aplicarPrecosCusto(parseSupplierOcrText(ocrOut.texto, filename));
   return {
     arquivo: filename,
     fonte,
