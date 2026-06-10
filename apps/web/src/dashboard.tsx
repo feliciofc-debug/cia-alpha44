@@ -635,6 +635,8 @@ export function Dashboard() {
     } else if (n === "clientes") {
       setView("clientes");
       void carregarClientes(busca || undefined);
+    } else if (n === "referencia") {
+      setView("referencia");
     }
   }
 
