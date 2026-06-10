@@ -2,6 +2,8 @@ export {
   lookupBenchmark,
   buildBenchmarkIndex,
   registrarHistorico,
+  substituirHistoricoBenchmark,
+  getHistoricoBenchmarkStats,
   normalizarNcm,
   calcPisoDefensavel,
   calcTetoHeuristico,
@@ -56,6 +58,18 @@ export {
   type ComexStatFiltros,
   type ComexStatApiRow,
 } from "./comexstat-api.js";
+export {
+  parseBenchmarkPlanilhaBuffer,
+  historicoFromPlanilhaSeed,
+  type BenchmarkPlanilhaSeed,
+  type BenchmarkPlanilhaEntry,
+} from "./benchmark-planilha.js";
+export {
+  loadBenchmarkPlanilha,
+  saveBenchmarkPlanilha,
+  benchmarkPlanilhaStats,
+  defaultBenchmarkPlanilhaPath,
+} from "./benchmark-historico-store.js";
 export {
   criarNcmCatalog,
   loadNcmVigente,

@@ -16,6 +16,7 @@ import { PainelEditorCotacao } from "./painel-editor.tsx";
 import { AppShell, type NavItem } from "./app-shell.tsx";
 import { ClientesView } from "./clientes-view.tsx";
 import { PainelKpisView } from "./painel-kpis.tsx";
+import { BenchmarkReferenciaView } from "./benchmark-referencia-view.tsx";
 import { PreviewOrcamentoCliente } from "./preview-orcamento-cliente.tsx";
 import { cotacaoParaSalvar, itensParaSalvar } from "./lib/cotacao-payload.ts";
 import { pdfBloqueadoPorNcm, resumoBloqueioNcm } from "./lib/ncm.ts";
@@ -925,6 +926,10 @@ export function Dashboard() {
           <p className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-300">
             {erro}
           </p>
+        )}
+
+        {view === "referencia" && (
+          <BenchmarkReferenciaView />
         )}
 
         {view === "painel" && (

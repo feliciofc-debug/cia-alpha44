@@ -63,6 +63,17 @@ export interface Cambio {
   fonte: "PTAX" | "indisponível";
 }
 
+export interface BenchmarkPlanilhaStatus {
+  carregado: boolean;
+  total: number;
+  arquivo: string | null;
+  atualizadoEm: string | null;
+  contexto: string | null;
+  fonte?: string;
+  path?: string;
+  prioridade?: string;
+}
+
 export const api = {
   meta: () => fetchComTimeout(`${BASE}/api/meta`, {}, API_TIMEOUT_MS).then(handle<Meta>),
   cambio: (moeda = "USD") =>
@@ -304,6 +315,34 @@ export const api = {
       PDF_TIMEOUT_MS,
     );
     return api.baixarPdfBlob(res, `cia-preview-${tipo}.pdf`);
+  },
+
+  benchmarkPlanilhaStatus: () =>
+    fetchComTimeout(`${BASE}/api/benchmark/planilha/status`, {}, API_TIMEOUT_MS).then(
+      handle<BenchmarkPlanilhaStatus>,
+    ),
+
+  uploadBenchmarkPlanilha: async (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetchComTimeout(`${BASE}/api/benchmark/planilha/upload`, { method: "POST", body: fd }, PARSE_TIMEOUT_MS);
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      try {
+        const j = JSON.parse(txt) as { erro?: string };
+        if (j.erro) throw new Error(j.erro);
+      } catch (e) {
+        if (e instanceof Error && e.message !== txt) throw e;
+      }
+      throw new Error(txt || `Upload falhou (${res.status})`);
+    }
+    return res.json() as Promise<{
+      ok: boolean;
+      total: number;
+      mensagem: string;
+      arquivo: string;
+      atualizadoEm: string;
+    }>;
   },
 
   listarUfs: (benefFiscal = "ALAGOAS") =>

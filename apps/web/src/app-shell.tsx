@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 
-export type NavItem = "painel" | "lista" | "clientes" | "nova";
+export type NavItem = "painel" | "lista" | "clientes" | "nova" | "referencia";
 
 const NAV: { id: NavItem; label: string; icon: string }[] = [
   { id: "painel", label: "Painel", icon: "◉" },
   { id: "lista", label: "Cotações", icon: "☰" },
   { id: "clientes", label: "Clientes", icon: "◎" },
+  { id: "referencia", label: "FOB/kg ref.", icon: "📊" },
   { id: "nova", label: "Nova cotação", icon: "+" },
 ];
 

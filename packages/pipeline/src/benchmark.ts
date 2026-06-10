@@ -56,6 +56,20 @@ export function registrarHistorico(entries: HistoricoEntry[]): void {
   }
 }
 
+/** Substitui todo o histórico operacional (planilha mensual FOB/kg). */
+export function substituirHistoricoBenchmark(entries: HistoricoEntry[]): void {
+  historicoIndex.clear();
+  for (const e of entries) {
+    const ncm = normalizarNcm(e.ncm);
+    if (!ncm || ncm === "00000000" || e.fobKg <= 0) continue;
+    historicoIndex.set(ncm, { ncm, fobKg: e.fobKg, amostra: e.amostra > 0 ? e.amostra : 1 });
+  }
+}
+
+export function getHistoricoBenchmarkStats(): { total: number } {
+  return { total: historicoIndex.size };
+}
+
 export function normalizarNcm(ncm: string): string {
   return ncm.replace(/\D/g, "").padStart(8, "0").slice(0, 8);
 }

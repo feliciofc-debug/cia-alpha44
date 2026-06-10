@@ -4,9 +4,13 @@ import {
   buildBenchmarkIndex,
   criarNcmCatalog,
   criarTecSource,
+  historicoFromPlanilhaSeed,
+  loadBenchmarkPlanilha,
   loadComexSeed,
   loadNcmVigenteCache,
   loadTecCache,
+  substituirHistoricoBenchmark,
+  defaultBenchmarkPlanilhaPath,
   type AliquotaSource,
   type BenchmarkIndex,
   type ComexEntry,
@@ -30,9 +34,25 @@ export interface AppState {
 
 let state: AppState | null = null;
 
+function benchmarkPlanilhaPath(): string {
+  return process.env.BENCHMARK_PLANILHA_PATH ?? defaultBenchmarkPlanilhaPath();
+}
+
+function carregarHistoricoPlanilha(): void {
+  try {
+    const seed = loadBenchmarkPlanilha(benchmarkPlanilhaPath());
+    if (seed?.itens.length) {
+      substituirHistoricoBenchmark(historicoFromPlanilhaSeed(seed));
+    }
+  } catch {
+    /* primeira execução sem upload */
+  }
+}
+
 export function getState(): AppState {
   if (state) return state;
   const comex = loadComexSeed();
+  carregarHistoricoPlanilha();
   const tec = loadTecCache();
   const benchmarkIndex = buildBenchmarkIndex(comex.itens);
   const siscomex = escolherSiscomexProvider();

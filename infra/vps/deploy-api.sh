@@ -67,6 +67,12 @@ else
   echo "   (mantido $ENV_API existente — use set-claude-key.sh para a chave)"
 fi
 
+mkdir -p /var/lib/cia-alpha44
+if ! grep -q '^BENCHMARK_PLANILHA_PATH=' "$ENV_API" 2>/dev/null; then
+  echo "BENCHMARK_PLANILHA_PATH=/var/lib/cia-alpha44/benchmark-fob-kg.json" >> "$ENV_API"
+  echo "   (+ BENCHMARK_PLANILHA_PATH em $ENV_API)"
+fi
+
 echo ">> Migrate..."
 set -a
 # shellcheck disable=SC1091

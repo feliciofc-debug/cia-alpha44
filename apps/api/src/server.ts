@@ -17,6 +17,7 @@ import {
   PersistenciaIndisponivelError,
   salvarCotacao,
 } from "./services/cotacoes-persist.js";
+import { importarBenchmarkPlanilha, statusBenchmarkPlanilha } from "./services/benchmark-planilha.js";
 import { ingerirArquivo } from "./services/ingest.js";
 import { listarClientesDashboard } from "./services/dashboard-clientes.js";
 import { obterDashboardKpis } from "./services/dashboard-kpis.js";
@@ -161,6 +162,34 @@ export async function buildServer() {
         ok: false,
         erro: e instanceof Error ? e.message : "Falha ao atualizar ComexStat",
       });
+    }
+  });
+
+  app.get("/api/benchmark/planilha/status", async () => statusBenchmarkPlanilha());
+
+  app.post("/api/benchmark/planilha/upload", async (req, reply) => {
+    const file = await req.file();
+    if (!file) {
+      return reply.status(400).send({ erro: "Envie a planilha no campo 'file' (.xlsx ou .csv)." });
+    }
+    const nome = file.filename.toLowerCase();
+    if (!/\.(xlsx|xls|csv)$/.test(nome)) {
+      return reply.status(400).send({ erro: "Formato inválido. Use .xlsx ou .csv." });
+    }
+    try {
+      const buf = await file.toBuffer();
+      const seed = await importarBenchmarkPlanilha(getState(), new Uint8Array(buf), file.filename);
+      return {
+        ok: true,
+        total: seed.total,
+        arquivo: seed.arquivo,
+        atualizadoEm: seed.atualizadoEm,
+        contexto: seed.contexto,
+        mensagem: `Planilha FOB/kg atualizada — ${seed.total} NCMs em referência operacional.`,
+      };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Falha ao importar planilha.";
+      return reply.status(422).send({ ok: false, erro: msg });
     }
   });
 
