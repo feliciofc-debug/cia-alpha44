@@ -22,6 +22,10 @@ export interface BenchmarkIndex {
   comex: Map<string, ComexStatEntry>;
   historico: Map<string, HistoricoEntry>;
   contexto: string;
+  /** YYYY-MM da planilha mensal carregada (Histórico próprio). */
+  planilhaMensalMes?: string | null;
+  /** YYYY-MM de referência ComexStat (ex.: 2023-06). */
+  comexstatMes?: string | null;
 }
 
 export interface ComexSeed {
@@ -93,9 +97,20 @@ export function calcTetoHeuristico(mediaFobKg: number, amostra: number): number 
 }
 
 /** Monta índice em memória a partir do seed carregado (API). */
+export function extrairMesReferencia(isoOuContexto: string): string {
+  const iso = isoOuContexto.match(/^(\d{4}-\d{2})/);
+  if (iso) return iso[1]!;
+  const ano = isoOuContexto.match(/(\d{4})/)?.[1] ?? "2023";
+  if (/2º|2o|segundo|s2|2nd/i.test(isoOuContexto)) return `${ano}-12`;
+  if (/1º|1o|primeiro|s1|1st/i.test(isoOuContexto)) return `${ano}-06`;
+  return `${ano}-06`;
+}
+
+/** Monta índice em memória a partir do seed carregado (API). */
 export function buildBenchmarkIndex(
   itens: ComexStatEntry[],
   contexto = comexstatData.contexto,
+  meta?: { planilhaMensalMes?: string | null },
 ): BenchmarkIndex {
   const comex = new Map<string, ComexStatEntry>();
   for (const row of itens) {
@@ -105,6 +120,8 @@ export function buildBenchmarkIndex(
     comex,
     historico: new Map(historicoIndex),
     contexto,
+    planilhaMensalMes: meta?.planilhaMensalMes ?? null,
+    comexstatMes: extrairMesReferencia(contexto),
   };
 }
 

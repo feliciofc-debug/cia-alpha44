@@ -1,16 +1,27 @@
 /**
  * FOB/kg da planilha do embarque — prioridade sobre ComexStat.
- * Se a linha não tiver FOB/kg, usa o da linha com NCM mais próximo na mesma carga.
+ * Herança intra-carga só com distanciaNcm ≤ 4 (mesma posição).
  */
 
-import { normalizarNcm } from "./benchmark.js";
-import { detectarPrecoCusto } from "./preco-custo.js";
-import { resolvePesoLiqLinha, type LinhaCrua } from "./linha.js";
 import type { Item } from "@cia/shared";
+import { normalizarNcm } from "./benchmark.js";
+import {
+  detectarBasePesoFob,
+  pesoParaBaseFob,
+  type FobKgBase,
+} from "./detectar-base-peso-fob.js";
+import { resolvePesoLiqLinha, type LinhaCrua } from "./linha.js";
+import {
+  aplicarRegrasFobItens,
+  anexarMetaFobItem,
+  resolverFobKgPlanilha,
+  type FobKgMeta,
+} from "./resolver-fob-kg.js";
 
 export interface ReferenciaFobKgPlanilha {
   ncm: string;
   fobKg: number;
+  fobKgBase?: FobKgBase;
 }
 
 export interface PreenchimentoFobKgPlanilha {
@@ -18,28 +29,57 @@ export interface PreenchimentoFobKgPlanilha {
   fobKg: number;
 }
 
-/** FOB/kg calculado da própria linha (total ÷ peso). */
-export function fobKgDaLinha(l: LinhaCrua): number | null {
-  const peso = resolvePesoLiqLinha(l);
+/** Herança NCM irmão — no máximo mesma posição (4 díg.). */
+export const DISTANCIA_MAX_NCM_IRMAO = 4;
+
+/** FOB/kg calculado da própria linha (total ÷ peso base detectado). */
+export function fobKgDaLinha(l: LinhaCrua, fobKgCol?: number | null): number | null {
   const fob = l.fobTotalUS ?? 0;
-  if (fob > 0 && peso > 0) return fob / peso;
-  return null;
+  if (fob <= 0) return null;
+  const det = detectarBasePesoFob({
+    fobTotalUS: fob,
+    pesoBrutoKg: l.pesoBrutoKg,
+    pesoLiqKg: l.pesoLiqKg,
+    fobKgReferencia: fobKgCol,
+  });
+  const peso = pesoParaBaseFob(det.fobKgBase, l.pesoBrutoKg, l.pesoLiqKg);
+  if (peso <= 0) return null;
+  return fob / peso;
 }
 
 export function fobKgDoItem(it: Item): number | null {
-  if (it.fobTotalUS > 0 && it.pesoLiqKg > 0) return it.fobTotalUS / it.pesoLiqKg;
-  return null;
+  if (it.fobTotalUS <= 0) return null;
+  const det = detectarBasePesoFob({
+    fobTotalUS: it.fobTotalUS,
+    pesoBrutoKg: it.pesoBrutoKg,
+    pesoLiqKg: it.pesoLiqKg,
+  });
+  const peso = pesoParaBaseFob(det.fobKgBase, it.pesoBrutoKg, it.pesoLiqKg);
+  if (peso <= 0) return null;
+  return it.fobTotalUS / peso;
 }
 
 /** Índice NCM → FOB/kg das linhas que já têm valor na planilha. */
-export function indiceFobKgPlanilha(linhas: LinhaCrua[]): Map<string, ReferenciaFobKgPlanilha> {
+export function indiceFobKgPlanilha(
+  linhas: LinhaCrua[],
+  fobKgColPorIndice?: Map<number, number>,
+): Map<string, ReferenciaFobKgPlanilha> {
   const map = new Map<string, ReferenciaFobKgPlanilha>();
-  for (const l of linhas) {
+  linhas.forEach((l, i) => {
     const ncm = normalizarNcm(l.ncm ?? "");
-    const fobKg = fobKgDaLinha(l);
-    if (!ncm || ncm === "00000000" || !fobKg || fobKg <= 0) continue;
-    if (!map.has(ncm)) map.set(ncm, { ncm, fobKg });
-  }
+    const fobKgCol = fobKgColPorIndice?.get(i);
+    const fobKg = fobKgDaLinha(l, fobKgCol);
+    if (!ncm || ncm === "00000000" || !fobKg || fobKg <= 0) return;
+    if (!map.has(ncm)) {
+      const det = detectarBasePesoFob({
+        fobTotalUS: l.fobTotalUS!,
+        pesoBrutoKg: l.pesoBrutoKg,
+        pesoLiqKg: l.pesoLiqKg,
+        fobKgReferencia: fobKgCol,
+      });
+      map.set(ncm, { ncm, fobKg, fobKgBase: det.fobKgBase });
+    }
+  });
   return map;
 }
 
@@ -49,7 +89,13 @@ export function indiceFobKgItens(itens: Item[]): Map<string, ReferenciaFobKgPlan
     const ncm = normalizarNcm(it.ncm ?? "");
     const fobKg = fobKgDoItem(it);
     if (!ncm || ncm === "00000000" || !fobKg || fobKg <= 0) continue;
-    if (!map.has(ncm)) map.set(ncm, { ncm, fobKg });
+    if (!map.has(ncm)) {
+      map.set(ncm, {
+        ncm,
+        fobKg,
+        fobKgBase: it.fobKgBase,
+      });
+    }
   }
   return map;
 }
@@ -85,57 +131,71 @@ export function fobKgNcmMaisProximo(
   return best;
 }
 
-function linhaTemFob(l: LinhaCrua): boolean {
-  return (l.fobTotalUS ?? 0) > 0 && fobKgDaLinha(l) !== null;
-}
-
-/** Preenche FOB total ausente com FOB/kg do NCM mais próximo na mesma planilha. */
-export function preencherFobKgPlanilha(linhas: LinhaCrua[]): {
+/** Preenche FOB ausente via cascata com trava (delega ao resolver). */
+export function preencherFobKgPlanilha(
+  linhas: LinhaCrua[],
+  benchmarkIndex?: import("./benchmark.js").BenchmarkIndex,
+  fobKgColPorIndice?: Map<number, number>,
+): {
   linhas: LinhaCrua[];
   preenchimentos: PreenchimentoFobKgPlanilha[];
+  metas: FobKgMeta[];
 } {
-  const indice = indiceFobKgPlanilha(linhas);
+  const index =
+    benchmarkIndex ??
+    ({
+      comex: new Map(),
+      historico: new Map(),
+      contexto: "",
+    } as import("./benchmark.js").BenchmarkIndex);
+
+  const antes = linhas.map((l) => l.fobTotalUS);
+  const { linhas: out, metas } = resolverFobKgPlanilha(linhas, index, fobKgColPorIndice);
   const preenchimentos: PreenchimentoFobKgPlanilha[] = [];
 
-  const out = linhas.map((l) => {
-    if (linhaTemFob(l) || detectarPrecoCusto(l.descOriginal, l.ncm)) return l;
-    const ref = fobKgNcmMaisProximo(l.ncm ?? "", indice);
-    if (!ref) return l;
-    const peso = resolvePesoLiqLinha(l);
-    if (peso <= 0) return l;
-    const fobTotal = ref.fobKg * peso;
-    preenchimentos.push({ ncmReferencia: ref.ncm, fobKg: ref.fobKg });
-    return {
-      ...l,
-      fobTotalUS: fobTotal,
-      fobUnitarioUS: l.qtd && l.qtd > 0 ? fobTotal / l.qtd : l.fobUnitarioUS,
-    };
+  out.forEach((l, i) => {
+    const tinha = (antes[i] ?? 0) > 0;
+    const meta = metas[i];
+    if (!tinha && (l.fobTotalUS ?? 0) > 0 && meta?.fobKgFonte.startsWith("ncm-irmao")) {
+      const m = meta.fobKgFonte.match(/ncm-irmao\((\d{8})\)/);
+      const fobKg = fobKgDaLinha(l, fobKgColPorIndice?.get(i));
+      if (m && fobKg) preenchimentos.push({ ncmReferencia: m[1]!, fobKg });
+    }
   });
 
-  return { linhas: out, preenchimentos };
+  return { linhas: out, preenchimentos, metas };
 }
 
 /** Mesma regra para itens já classificados (NCM resolvido). */
-export function preencherFobKgItens(itens: Item[]): {
+export function preencherFobKgItens(
+  itens: Item[],
+  benchmarkIndex?: import("./benchmark.js").BenchmarkIndex,
+): {
   itens: Item[];
   refsPorIndice: Map<number, ReferenciaFobKgPlanilha>;
 } {
-  const indice = indiceFobKgItens(itens);
+  const index =
+    benchmarkIndex ??
+    ({
+      comex: new Map(),
+      historico: new Map(),
+      contexto: "",
+    } as import("./benchmark.js").BenchmarkIndex);
+
+  const resolvidos = aplicarRegrasFobItens(itens, index);
   const refsPorIndice = new Map<number, ReferenciaFobKgPlanilha>();
 
-  const out = itens.map((it, i) => {
-    if (fobKgDoItem(it) !== null && it.fobTotalUS > 0) return it;
-    if (detectarPrecoCusto(it.descOriginal, it.ncm)) return it;
-    const ref = fobKgNcmMaisProximo(it.ncm ?? "", indice);
-    if (!ref || it.pesoLiqKg <= 0) return it;
-    refsPorIndice.set(i, ref);
-    const fobTotal = ref.fobKg * it.pesoLiqKg;
-    return {
-      ...it,
-      fobTotalUS: fobTotal,
-      fobUnitarioUS: it.qtd && it.qtd > 0 ? fobTotal / it.qtd : it.fobUnitarioUS,
-    };
+  resolvidos.forEach((it, i) => {
+    const orig = itens[i]!;
+    if (orig.fobTotalUS <= 0 && it.fobTotalUS > 0 && it.fobKgFonte?.startsWith("ncm-irmao")) {
+      const m = it.fobKgFonte.match(/ncm-irmao\((\d{8})\)/);
+      const fobKg = fobKgDoItem(it);
+      if (m && fobKg) refsPorIndice.set(i, { ncm: m[1]!, fobKg, fobKgBase: it.fobKgBase });
+    }
   });
 
-  return { itens: out, refsPorIndice };
+  return { itens: resolvidos, refsPorIndice };
 }
+
+export { anexarMetaFobItem, aplicarRegrasFobItens, resolverFobKgPlanilha };
+export type { FobKgMeta } from "./resolver-fob-kg.js";

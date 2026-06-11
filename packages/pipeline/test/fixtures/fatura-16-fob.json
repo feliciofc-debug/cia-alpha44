@@ -1,0 +1,222 @@
+{
+  "fonte": "16 - 巴西预装柜2.xlsx",
+  "fobKgPlanilha": 2.109588,
+  "itens": [
+    {
+      "descricao": "B2-1 — LUSTRE — N/M",
+      "ncm": "94051093",
+      "pesoBrutoKg": 370,
+      "pesoLiqKg": 356,
+      "fobTotalUS": 780.5475542527346,
+      "fobKgPlanilha": 2.109588
+    },
+    {
+      "descricao": "B2-2 — LUSTRE — N/M",
+      "ncm": "94051093",
+      "pesoBrutoKg": 370,
+      "pesoLiqKg": 356,
+      "fobTotalUS": 780.5475542527346,
+      "fobKgPlanilha": 2.109588
+    },
+    {
+      "descricao": "B2-3 — LUSTRE — N/M",
+      "ncm": "94051093",
+      "pesoBrutoKg": 370,
+      "pesoLiqKg": 356,
+      "fobTotalUS": 780.5475542527346,
+      "fobKgPlanilha": 2.109588
+    },
+    {
+      "descricao": "B2-4 — LUSTRE — N/M",
+      "ncm": "94051093",
+      "pesoBrutoKg": 370,
+      "pesoLiqKg": 356,
+      "fobTotalUS": 780.5475542527346,
+      "fobKgPlanilha": 2.109588
+    },
+    {
+      "descricao": "B2-6 — LUSTRE — N/M",
+      "ncm": "94051093",
+      "pesoBrutoKg": 370,
+      "pesoLiqKg": 356,
+      "fobTotalUS": 780.5475542527346,
+      "fobKgPlanilha": 2.109588
+    },
+    {
+      "descricao": "B2-7 — LUSTRE — N/M",
+      "ncm": "94051093",
+      "pesoBrutoKg": 370,
+      "pesoLiqKg": 356,
+      "fobTotalUS": 780.5475542527346,
+      "fobKgPlanilha": 2.109588
+    },
+    {
+      "descricao": "B2-8 — LUSTRE — N/M",
+      "ncm": "94051093",
+      "pesoBrutoKg": 370,
+      "pesoLiqKg": 356,
+      "fobTotalUS": 780.5475542527346,
+      "fobKgPlanilha": 2.109588
+    },
+    {
+      "descricao": "B2-9 — LUSTRE — N/M",
+      "ncm": "94051093",
+      "pesoBrutoKg": 420,
+      "pesoLiqKg": 315,
+      "fobTotalUS": 886.0269534760771,
+      "fobKgPlanilha": 2.109588
+    },
+    {
+      "descricao": "B2-10 — LUSTRE — N/M",
+      "ncm": "94051093",
+      "pesoBrutoKg": 555,
+      "pesoLiqKg": 534,
+      "fobTotalUS": 1170.8213313791018,
+      "fobKgPlanilha": 2.109588
+    },
+    {
+      "descricao": "B7-1-W — LUSTRE — N/M",
+      "ncm": "94051093",
+      "pesoBrutoKg": 246,
+      "pesoLiqKg": 174,
+      "fobTotalUS": 518.9586441788451,
+      "fobKgPlanilha": 2.109588
+    },
+    {
+      "descricao": "B7-2-B — LUSTRE — N/M",
+      "ncm": "94051093",
+      "pesoBrutoKg": 288,
+      "pesoLiqKg": 216,
+      "fobTotalUS": 607.5613395264528,
+      "fobKgPlanilha": 2.109588
+    },
+    {
+      "descricao": "B7-2-W — LUSTRE — N/M",
+      "ncm": "94051093",
+      "pesoBrutoKg": 288,
+      "pesoLiqKg": 216,
+      "fobTotalUS": 607.5613395264528,
+      "fobKgPlanilha": 2.109588
+    },
+    {
+      "descricao": "B7-1-G — LUSTRE — N/M",
+      "ncm": "94051093",
+      "pesoBrutoKg": 246,
+      "pesoLiqKg": 174,
+      "fobTotalUS": 518.9586441788451,
+      "fobKgPlanilha": 2.109588
+    },
+    {
+      "descricao": "A71-W — LUSTRE / LUMINÁRIA — N/M",
+      "ncm": "94051093",
+      "pesoBrutoKg": 147,
+      "pesoLiqKg": 105,
+      "fobTotalUS": 310.109433716627,
+      "fobKgPlanilha": 2.109588
+    },
+    {
+      "descricao": "A72-B — LUSTRE / LUMINÁRIA — N/M",
+      "ncm": "94051093",
+      "pesoBrutoKg": 147,
+      "pesoLiqKg": 105,
+      "fobTotalUS": 310.109433716627,
+      "fobKgPlanilha": 2.109588
+    },
+    {
+      "descricao": "A73-B — LUSTRE / LUMINÁRIA — N/M",
+      "ncm": "94051093",
+      "pesoBrutoKg": 147,
+      "pesoLiqKg": 105,
+      "fobTotalUS": 310.109433716627,
+      "fobKgPlanilha": 2.109588
+    },
+    {
+      "descricao": "A77-B — LUSTRE / LUMINÁRIA — N/M",
+      "ncm": "94051093",
+      "pesoBrutoKg": 130.2,
+      "pesoLiqKg": 88.2,
+      "fobTotalUS": 274.66835557758384,
+      "fobKgPlanilha": 2.109588
+    },
+    {
+      "descricao": "A77-W — LUSTRE / LUMINÁRIA — N/M",
+      "ncm": "94051190",
+      "pesoBrutoKg": 130.2,
+      "pesoLiqKg": 88.2,
+      "fobTotalUS": 274.66835557758384,
+      "fobKgPlanilha": 2.109588
+    },
+    {
+      "descricao": "A80-W — LUSTRE / LUMINÁRIA — N/M",
+      "ncm": "94051190",
+      "pesoBrutoKg": 153.3,
+      "pesoLiqKg": 111.3,
+      "fobTotalUS": 323.39983801876815,
+      "fobKgPlanilha": 2.109588
+    },
+    {
+      "descricao": "A73-W-big — LUSTRE / LUMINÁRIA — N/M",
+      "ncm": "94051190",
+      "pesoBrutoKg": 182.7,
+      "pesoLiqKg": 140.7,
+      "fobTotalUS": 385.4217247620935,
+      "fobKgPlanilha": 2.109588
+    },
+    {
+      "descricao": "A73-B-big — LUSTRE / LUMINÁRIA — N/M",
+      "ncm": "94051190",
+      "pesoBrutoKg": 182.7,
+      "pesoLiqKg": 140.7,
+      "fobTotalUS": 385.4217247620935,
+      "fobKgPlanilha": 2.109588
+    },
+    {
+      "descricao": "A81-B — LUSTRE / LUMINÁRIA — N/M",
+      "ncm": "94051190",
+      "pesoBrutoKg": 153.3,
+      "pesoLiqKg": 111.3,
+      "fobTotalUS": 323.39983801876815,
+      "fobKgPlanilha": 2.109588
+    },
+    {
+      "descricao": "B1-4 — LUSTRE / LUMINÁRIA — N/M",
+      "ncm": "94051190",
+      "pesoBrutoKg": 80,
+      "pesoLiqKg": 64,
+      "fobTotalUS": 168.76703875734802,
+      "fobKgPlanilha": 2.109588
+    },
+    {
+      "descricao": "B1-5 — LUSTRE / LUMINÁRIA — N/M",
+      "ncm": "94051190",
+      "pesoBrutoKg": 80,
+      "pesoLiqKg": 64,
+      "fobTotalUS": 168.76703875734802,
+      "fobKgPlanilha": 2.109588
+    },
+    {
+      "descricao": "B5-5 — LUSTRE / LUMINÁRIA — N/M",
+      "ncm": "94051190",
+      "pesoBrutoKg": 102.4,
+      "pesoLiqKg": 70.4,
+      "fobTotalUS": 216.02180960940547,
+      "fobKgPlanilha": 2.109588
+    },
+    {
+      "descricao": "A71-B — LUSTRE / LUMINÁRIA — N/M",
+      "ncm": "94051190",
+      "pesoBrutoKg": 147,
+      "pesoLiqKg": 105,
+      "fobTotalUS": 310.109433716627,
+      "fobKgPlanilha": 2.109588
+    },
+    {
+      "descricao": "A76-B — LUSTRE / LUMINÁRIA — N/M",
+      "ncm": "94051190",
+      "pesoBrutoKg": 149.1,
+      "pesoLiqKg": 106.05,
+      "fobTotalUS": 314.53956848400736,
+      "fobKgPlanilha": 2.109588
+    }
+  ]
+}

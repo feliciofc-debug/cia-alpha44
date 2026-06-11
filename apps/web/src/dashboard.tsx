@@ -377,6 +377,16 @@ function AnalisePainel({
                     ) : (
                       "—"
                     )}
+                    {it.fobPendente && (
+                      <span className="mt-0.5 block text-[10px] font-semibold text-amber-400" title={it.fobKgAvisos?.join(" ")}>
+                        ⚠ FOB pendente
+                      </span>
+                    )}
+                    {it.fobKgFonte && !it.fobPendente && (
+                      <span className="mt-0.5 block max-w-[10rem] truncate text-[10px] text-slate-500" title={it.fobKgFonte}>
+                        {it.fobKgFonte}
+                      </span>
+                    )}
                   </td>
                   <td className="p-2 whitespace-nowrap">
                     {it.benchmark?.mediaFobKg != null ? (

@@ -3,17 +3,16 @@
 import { calcCotacao, type CotacaoFiscalInput } from "@cia/fiscal-engine";
 import {
   analisarRisco,
+  anexarMetaFobItem,
+  aplicarRegrasFobItens,
   calibrarFobKg,
   criarNcmCatalog,
   loadNcmVigenteCache,
   lookupBenchmark,
+  preencherFobKgPlanilha,
   resolveNcm,
   resolvePesoLiqLinha,
   validarNcmItem,
-  detectarFamilia,
-  aplicarPrecoCustoLinhas,
-  preencherFobKgPlanilha,
-  preencherFobKgItens,
   type LinhaCrua,
   type NcmCatalog,
 } from "@cia/pipeline";
@@ -53,8 +52,7 @@ async function classificarEmLotes(
 
 /** Converte linhas cruas do parser em itens de domínio (tradução+NCM via IA, alíquotas via TEC). */
 export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise<{ itens: Item[]; provider: string }> {
-  const comPrecoCusto = aplicarPrecoCustoLinhas(linhas);
-  const { linhas: linhasNorm } = preencherFobKgPlanilha(comPrecoCusto);
+  const { linhas: linhasNorm, metas: metasFob } = preencherFobKgPlanilha(linhas, state.benchmarkIndex);
   const classificados = await classificarEmLotes(state, linhasNorm);
 
   const itens: Item[] = [];
@@ -96,32 +94,37 @@ export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise
       avisosClassificacao.push(c.avisoAtributo);
     }
 
-    itens.push({
-      descOriginal: l.descOriginal,
-      descPt: c?.descPt ?? l.descOriginal,
-      descDuimp: c?.descDuimp ?? "",
-      ncm,
-      ncmCandidatos: resolvido.ncmCandidatos,
-      ncmValido: resolvido.valido && validacao.ok,
-      ncmFonte: resolvido.fonte,
-      ncmDescricaoOficial: resolvido.descricaoOficial ?? undefined,
-      ncmPlanilhaOriginal: resolvido.ncmPlanilhaOriginal ?? undefined,
-      ncmAvisos: [...resolvido.avisos, ...validacao.avisos, ...avisosClassificacao].length
-        ? [...resolvido.avisos, ...validacao.avisos, ...avisosClassificacao]
-        : undefined,
-      pesoBrutoKg: l.pesoBrutoKg,
-      pesoLiqKg: pesoLiq,
-      qtd: l.qtd,
-      fobUnitarioUS: l.fobUnitarioUS,
-      fobTotalUS: fobTotal,
-      aliquotas: tec?.aliquotas ?? { ii: 0, ipi: 0, pis: 0.021, cofins: 0.0965, icmsEntrada: 0 },
-      aliquotasOverride: false,
-      anuencia: [],
-      antidumping: false,
-      ...(l.fotoBase64
-        ? { fotoBase64: l.fotoBase64, fotoMime: l.fotoMime ?? "image/jpeg" }
-        : {}),
-    });
+    itens.push(
+      anexarMetaFobItem(
+        {
+          descOriginal: l.descOriginal,
+          descPt: c?.descPt ?? l.descOriginal,
+          descDuimp: c?.descDuimp ?? "",
+          ncm,
+          ncmCandidatos: resolvido.ncmCandidatos,
+          ncmValido: resolvido.valido && validacao.ok,
+          ncmFonte: resolvido.fonte,
+          ncmDescricaoOficial: resolvido.descricaoOficial ?? undefined,
+          ncmPlanilhaOriginal: resolvido.ncmPlanilhaOriginal ?? undefined,
+          ncmAvisos: [...resolvido.avisos, ...validacao.avisos, ...avisosClassificacao].length
+            ? [...resolvido.avisos, ...validacao.avisos, ...avisosClassificacao]
+            : undefined,
+          pesoBrutoKg: l.pesoBrutoKg,
+          pesoLiqKg: pesoLiq,
+          qtd: l.qtd,
+          fobUnitarioUS: l.fobUnitarioUS,
+          fobTotalUS: fobTotal,
+          aliquotas: tec?.aliquotas ?? { ii: 0, ipi: 0, pis: 0.021, cofins: 0.0965, icmsEntrada: 0 },
+          aliquotasOverride: false,
+          anuencia: [],
+          antidumping: false,
+          ...(l.fotoBase64
+            ? { fotoBase64: l.fotoBase64, fotoMime: l.fotoMime ?? "image/jpeg" }
+            : {}),
+        },
+        metasFob[i] ?? { fobKgFonte: "linha" },
+      ),
+    );
   }
 
   const { avaliarCompatibilidadeLote } = await import("../siscomex/compatibilidade-produto.js");
@@ -147,6 +150,7 @@ export interface ResultadoCompleto {
 }
 
 function fobUsadoNoEngine(it: Item, calibracao: ReturnType<typeof calibrarFobKg>): number {
+  if (it.fobPendente) return 0;
   // FOB explícito na planilha prevalece — ComexStat só eleva se faltava preço ou calibragem defensiva (ajustado).
   if (it.fobTotalUS > 0 && calibracao.fobKgOriginal && calibracao.fobKgOriginal > 0 && !calibracao.ajustado) {
     return it.fobTotalUS;
@@ -159,39 +163,39 @@ function fobUsadoNoEngine(it: Item, calibracao: ReturnType<typeof calibrarFobKg>
 
 /** Enriquece itens (benchmark/calibragem/risco) e roda o engine fiscal. */
 export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCompleto {
-  const { itens: itensComFob, refsPorIndice } = preencherFobKgItens(cotacao.itens);
+  const itensComFob = aplicarRegrasFobItens(cotacao.itens, state.benchmarkIndex);
 
-  const itensEnriquecidos: Item[] = itensComFob.map((it, i) => {
-    const refPlanilha = refsPorIndice.get(i);
+  const itensEnriquecidos: Item[] = itensComFob.map((it) => {
     const fobKg = it.pesoLiqKg > 0 && it.fobTotalUS > 0 ? it.fobTotalUS / it.pesoLiqKg : null;
     const benchmark = lookupBenchmark(state.benchmarkIndex, it.ncm || "00000000");
-    const calibracao = calibrarFobKg({
-      fobKgOriginal: fobKg,
-      fobKgPlanilhaReferencia: refPlanilha?.fobKg ?? null,
-      benchmark,
-      fobTotalUS: it.fobTotalUS,
-      pesoLiqKg: it.pesoLiqKg,
-    });
-    const calibracaoFinal =
-      refPlanilha && !fobKg
-        ? {
-            ...calibracao,
-            justificativa: `FOB/kg US$ ${refPlanilha.fobKg.toFixed(4)} da planilha (NCM ref. ${refPlanilha.ncm}). ${calibracao.justificativa}`,
-          }
-        : calibracao;
+    const calibracao = it.fobPendente
+      ? {
+          fobKgOriginal: null,
+          fobKgCalibrado: 0,
+          desvioBenchmarkPct: null,
+          ajustado: false,
+          justificativa: "FOB/kg pendente — informe valor na planilha ou aguarde referência válida.",
+        }
+      : calibrarFobKg({
+          fobKgOriginal: fobKg,
+          benchmark,
+          fobTotalUS: it.fobTotalUS,
+          pesoLiqKg: it.pesoLiqKg,
+        });
     const risco = analisarRisco({
       benchmark,
-      calibracao: calibracaoFinal,
-      fobKgFinal: fobKg ?? calibracaoFinal.fobKgCalibrado,
+      calibracao,
+      fobKgFinal: it.fobPendente ? null : (fobKg ?? calibracao.fobKgCalibrado),
       anuencia: it.anuencia,
       antidumping: it.antidumping,
     });
+    const flags = it.fobPendente ? [...(risco.flags ?? []), "FOB_PENDENTE"] : risco.flags;
     return {
       ...it,
       fobTotalUS: it.fobTotalUS,
       benchmark,
-      calibracao: calibracaoFinal,
-      risco,
+      calibracao,
+      risco: it.fobPendente ? { ...risco, flags, score: Math.max(risco.score, 40) } : risco,
       fotoBase64: it.fotoBase64,
       fotoMime: it.fotoMime,
       fotoPath: it.fotoPath,

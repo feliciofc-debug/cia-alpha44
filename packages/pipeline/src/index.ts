@@ -12,8 +12,25 @@ export {
   type ComexEntry,
   type ComexSeed,
   type BenchmarkIndex,
+  extrairMesReferencia,
   type HistoricoEntry,
 } from "./benchmark.js";
+export {
+  preencherFobKgPlanilha,
+  preencherFobKgItens,
+  fobKgNcmMaisProximo,
+  fobKgDaLinha,
+  indiceFobKgPlanilha,
+  distanciaNcm,
+  DISTANCIA_MAX_NCM_IRMAO,
+  type ReferenciaFobKgPlanilha,
+} from "./fob-kg-planilha.js";
+export {
+  detectarBasePesoFob,
+  pesoParaBaseFob,
+  TOLERANCIA_RECONCILIACAO_FOB,
+  type FobKgBase,
+} from "./detectar-base-peso-fob.js";
 export { resolvePesoLiqLinha, type LinhaCrua } from "./linha.js";
 export {
   PRECO_CUSTO_MOTO_USD,
@@ -26,13 +43,15 @@ export {
   type TipoPrecoCusto,
 } from "./preco-custo.js";
 export {
-  preencherFobKgPlanilha,
-  preencherFobKgItens,
-  fobKgNcmMaisProximo,
-  fobKgDaLinha,
-  indiceFobKgPlanilha,
-  type ReferenciaFobKgPlanilha,
-} from "./fob-kg-planilha.js";
+  aplicarRegrasFobItens,
+  anexarMetaFobItem,
+  resolverFobKgPlanilha,
+  formatarFobKgFonteBenchmark,
+  FOB_KG_FONTE_PRECO_CUSTO,
+  FOB_KG_FONTE_PENDENTE,
+  FOB_KG_FONTE_LINHA,
+  type FobKgMeta,
+} from "./resolver-fob-kg.js";
 export { calibrarFobKg, calcFobKg, type CalibradorInput } from "./calibrador.js";
 export { analisarRisco, type RiscoInput } from "./risco.js";
 export {

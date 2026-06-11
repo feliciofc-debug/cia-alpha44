@@ -4,6 +4,7 @@ import {
   buildBenchmarkIndex,
   criarNcmCatalog,
   criarTecSource,
+  extrairMesReferencia,
   historicoFromPlanilhaSeed,
   loadBenchmarkPlanilha,
   loadComexSeed,
@@ -49,12 +50,24 @@ function carregarHistoricoPlanilha(): void {
   }
 }
 
+function buildIndexComPlanilha(comexItens: ComexEntry[]): BenchmarkIndex {
+  let planilhaMensalMes: string | null = null;
+  try {
+    const seed = loadBenchmarkPlanilha(benchmarkPlanilhaPath());
+    if (seed?.atualizadoEm) planilhaMensalMes = extrairMesReferencia(seed.atualizadoEm);
+  } catch {
+    /* opcional */
+  }
+  const comex = loadComexSeed();
+  return buildBenchmarkIndex(comexItens, comex.contexto, { planilhaMensalMes });
+}
+
 export function getState(): AppState {
   if (state) return state;
   const comex = loadComexSeed();
   carregarHistoricoPlanilha();
   const tec = loadTecCache();
-  const benchmarkIndex = buildBenchmarkIndex(comex.itens);
+  const benchmarkIndex = buildIndexComPlanilha(comex.itens);
   const siscomex = escolherSiscomexProvider();
   const tecBase = criarTecSource(tec);
   const tecSource = siscomex.operacional ? criarTecSourceHibrido(tecBase, siscomex) : tecBase;
@@ -71,7 +84,7 @@ export function recarregarComexBenchmark(): BenchmarkIndex {
   const s = getState();
   const comex = loadComexSeed();
   s.comexSeed = comex.itens;
-  s.benchmarkIndex = buildBenchmarkIndex(comex.itens);
+  s.benchmarkIndex = buildIndexComPlanilha(comex.itens);
   return s.benchmarkIndex;
 }
 

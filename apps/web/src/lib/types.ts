@@ -71,6 +71,10 @@ export interface Item {
   ncmAvisos?: string[];
   compatibilidadeProduto?: "compativel" | "incompativel" | "revisar";
   motivoCompatibilidade?: string;
+  fobKgFonte?: string;
+  fobPendente?: boolean;
+  fobKgBase?: "bruto" | "liquido" | "indeterminado";
+  fobKgAvisos?: string[];
 }
 
 export interface Despesa {
