@@ -26,19 +26,35 @@ describe("resolveNcm — partes genéricas (item 3a)", () => {
 
   it("sem candidato IA → fallback Siscomex", () => {
     const r = resolveNcm(catalog, {
-      descricao: "parafuso sextavado metal",
+      descOriginal: "parafuso sextavado metal",
       candidatosIa: [],
     });
     expect(r.ncm).toBeTruthy();
     expect(catalog.existe(r.ncm)).toBe(true);
     expect(r.fonte).toBe("siscomex");
   });
+
+  it("IA 90319090 mantida como fonte ia mesmo com uso 配件 (não filtra guard-rail)", () => {
+    const r = resolveNcm(catalog, {
+      descOriginal: "ACC-ES-018 — 仪表",
+      uso: "配件",
+      candidatosIa: [{ ncm: "90319090", confianca: 0.85 }],
+    });
+    expect(r.fonte).toBe("ia");
+    expect(r.ncm).toBe("90319090");
+  });
 });
 
 describe("família pecas_veiculo_leve (item 3c)", () => {
   it("detecta 配件 + amortecedor e inclui 8714/8708 nos candidatos passe 1", () => {
-    const desc = "减震器 / Shock Absorber, material 铁, uso 配件";
-    const candidatos = montarCandidatosPasse1(catalog, desc, null);
+    const desc = "减震器 / Shock Absorber";
+    const candidatos = montarCandidatosPasse1(
+      catalog,
+      "减震器 / Shock Absorber · Material: 铁 · Uso: 配件",
+      null,
+      25,
+      { descOriginal: desc, uso: "配件" },
+    );
     const pos4 = candidatos.map((c) => c.posicao4);
     expect(pos4.some((p) => p.startsWith("8714") || p.startsWith("8708"))).toBe(true);
     expect(pos4.some((p) => p.startsWith("8211"))).toBe(false);

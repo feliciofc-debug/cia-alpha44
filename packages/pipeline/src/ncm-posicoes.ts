@@ -7,6 +7,7 @@ import { enriquecerTextoClassificacao } from "./classificar-ncm.js";
 import {
   detectarFamilias,
   prefixosDasFamilias,
+  type DetectarFamiliasInput,
   type FamiliaProduto,
 } from "./familias/index.js";
 
@@ -58,11 +59,14 @@ function addPrefixoAoMap(
  */
 export function montarCandidatosPasse1(
   catalog: NcmCatalog,
-  descricao: string,
+  descricaoBusca: string,
   familiaLegado: FamiliaProduto | null = null,
   limite = 25,
+  detectarOpts?: DetectarFamiliasInput,
 ): PosicaoCandidata[] {
-  const deteccao = detectarFamilias(descricao);
+  const deteccao = detectarOpts
+    ? detectarFamilias(detectarOpts)
+    : detectarFamilias({ descOriginal: descricaoBusca });
   const familias = deteccao.familias.map((f) => f.familia);
   const prefixos =
     familias.length > 0
@@ -75,7 +79,7 @@ export function montarCandidatosPasse1(
   for (const pre of prefixos) addPrefixoAoMap(catalog, map, pre);
 
   const familiaEnriquecimento = familias[0] ?? familiaLegado;
-  const texto = enriquecerTextoClassificacao(descricao, familiaEnriquecimento);
+  const texto = enriquecerTextoClassificacao(descricaoBusca, familiaEnriquecimento);
   const hits = catalog.buscarPorTexto(texto, undefined, 10);
   for (const h of hits) addPrefixoAoMap(catalog, map, h.ncm.slice(0, 4));
 

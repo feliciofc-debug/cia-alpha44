@@ -30,6 +30,22 @@ CAPÍTULO 9405 (Iluminação) — orientação:
 - NCM 94051093 está DESCONTINUADO — se aparecer na planilha, substituir por 94052100 ou 94051190 conforme LED/construção.
 `.trim();
 
+/** 87.08 (automóveis) vs 87.14 (motos/ciclos/patinetes) — partes e acessórios. */
+export const REGRA_8708_8714 = `
+CAPÍTULO 87 — PARTES DE VEÍCULOS (8708 vs 8714):
+- Posição 87.08 é EXCLUSIVA para partes e acessórios de veículos das posições 87.01 a 87.05 (automóveis de passageiros, comerciais leves, caminhões etc.).
+- Partes e acessórios de motocicletas (87.11), ciclomotores/auxiliares elétricos (87.12) e ciclos/patinetes/scooters elétricos (87.11–87.13) classificam-se na posição 87.14 — NÃO em 87.08.
+- Amortecedores, freios, cabos, parafusos e demais acessórios fornecidos para patinete/scooter elétrico (87.11.60 etc.) → preferir 8714 (ex.: 8714.10 partes de motocicletas), nunca 8708.80 (suspensão de automóvel).
+`.trim();
+
+/** Nota 2 da Seção XVII — partes de uso geral vs partes de veículos. */
+export const REGRA_NOTA2_SECAO_XVII = `
+NOTA 2 DA SEÇÃO XVII (Veículos) — partes de uso geral:
+- Parafusos, porcas, arruelas, molas e demais artigos de uso geral de metal (posição 73.18, 73.20 etc.) classificam-se NESTAS posições, mesmo quando destinados a veículos — NÃO em 87.08/87.14.
+- Máquinas, aparelhos e material elétrico de uso geral (capítulos 84 e 85 — ex.: carregadores/adaptadores 85.04.40) classificam-se nos respectivos capítulos, mesmo quando de uso veicular — NÃO em 87.08/87.14.
+- Posições 87.08 e 87.14 aplicam-se somente a partes e acessórios identificáveis como próprios de veículos (ex.: para-lamas, manetes, painéis integrados ao veículo), não a fixadores ou equipamentos elétricos de uso geral.
+`.trim();
+
 /** Passos que a IA deve seguir antes de escolher o NCM. */
 export const METODO_CLASSIFICACAO = `
 MÉTODO OBRIGATÓRIO (para cada item):

@@ -93,6 +93,8 @@ export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise
     const resolvido = resolveNcm(state.ncmCatalog, {
       ncmPlanilha: l.ncm,
       candidatosIa: candidatosBrutos,
+      descOriginal: l.descOriginal,
+      uso: l.uso,
       descricao: textoClassificacaoIa({
         descOriginal: c?.descPt || l.descOriginal,
         material: l.material,
@@ -101,9 +103,10 @@ export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise
     });
     const validacao = validarNcmItem(
       resolvido.ncm,
-      c?.descPt || l.descOriginal,
+      l.descOriginal,
       state.ncmCatalog,
       resolvido.fonte,
+      l.uso,
     );
     const ncm = resolvido.ncm;
     const tec =

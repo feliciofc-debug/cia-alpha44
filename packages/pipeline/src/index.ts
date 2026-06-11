@@ -129,6 +129,7 @@ export {
   type FamiliaProduto,
   type FamiliaDetectada,
   type ResultadoDeteccaoFamilias,
+  type DetectarFamiliasInput,
 } from "./classificar-ncm.js";
 export {
   criarTecSource,

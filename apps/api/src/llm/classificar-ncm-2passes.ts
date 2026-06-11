@@ -45,12 +45,13 @@ export async function executar2PassesComLlm(
 ): Promise<ClassifyItemOutput[]> {
   const passe1Inputs: Passe1ItemInput[] = itens.map((it, i) => {
     const desc = descricaoIa(it);
+    const detInput = { descOriginal: it.descOriginal, uso: it.uso };
     return {
       i,
       descricao: desc,
       ncmInformado: it.ncmInformado,
       contexto: it.contexto,
-      candidatos: montarCandidatosPasse1(catalog, desc, detectarFamilia(desc)),
+      candidatos: montarCandidatosPasse1(catalog, desc, detectarFamilia(detInput), undefined, detInput),
     };
   });
 

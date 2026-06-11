@@ -1,10 +1,10 @@
 /** Prompts e parsers — classificação NCM em 2 passes. */
 
 import type { Ncm8Posicao, PosicaoCandidata } from "@cia/pipeline";
-import { RGI_RESUMO } from "./ncm-regras.js";
+import { REGRA_8708_8714, REGRA_NOTA2_SECAO_XVII, RGI_RESUMO } from "./ncm-regras.js";
 
 /** Identificador auditável — exibir na prova LLM para confirmar versão do prompt. */
-export const PROMPT_PASSE2_VERSION = "PROMPT_PASSE2_V2";
+export const PROMPT_PASSE2_VERSION = "PROMPT_PASSE2_V4";
 
 /** Produtos de referência para prova manual com LLM real (3 itens). */
 export const PRODUTOS_PROVA_CLASSIFICACAO = [
@@ -16,6 +16,7 @@ export const PRODUTOS_PROVA_CLASSIFICACAO = [
 export const SYSTEM_PASSE1 = [
   "Você é especialista em classificação fiscal NCM/SH (importação Brasil / Siscomex).",
   "PASSE 1: escolha a POSIÇÃO NCM de 4 dígitos mais adequada ao produto.",
+  REGRA_8708_8714,
   RGI_RESUMO,
   "Responda APENAS JSON válido.",
 ].join("\n\n");
@@ -23,6 +24,8 @@ export const SYSTEM_PASSE1 = [
 export const SYSTEM_PASSE2 = [
   "Você é especialista em classificação fiscal NCM/SH (importação Brasil / Siscomex).",
   "PASSE 2: escolha o NCM-8 EXATO dentro da posição já selecionada.",
+  REGRA_8708_8714,
+  REGRA_NOTA2_SECAO_XVII,
   "ORDEM DA NOMENCLATURA (obrigatório): avalie as subposições NA ORDEM em que aparecem na " +
     "lista ncm8Opcoes (sistemática do SH — do mais específico/ anterior ao residual). " +
     "Subposições residuais (ex.: «Outros assentos», «Outros») SÓ se aplicam ao que NÃO coube " +

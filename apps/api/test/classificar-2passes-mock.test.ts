@@ -12,9 +12,12 @@ const mock = criarMockProvider([]);
 const CADEIRA_GABARITO = PRODUTOS_PROVA_CLASSIFICACAO[2];
 
 describe("prompt-2passes — versão auditável", () => {
-  it("PROMPT_PASSE2_V2 com regra 9401.31/39", () => {
-    expect(PROMPT_PASSE2_VERSION).toBe("PROMPT_PASSE2_V2");
+  it("PROMPT_PASSE2_V4 com regra 9401.31/39, 8708×8714 e Nota 2 Seção XVII", () => {
+    expect(PROMPT_PASSE2_VERSION).toBe("PROMPT_PASSE2_V4");
     expect(SYSTEM_PASSE2).toContain("9401.31/39");
+    expect(SYSTEM_PASSE2).toContain("87.08");
+    expect(SYSTEM_PASSE2).toContain("87.14");
+    expect(SYSTEM_PASSE2).toContain("NOTA 2 DA SEÇÃO XVII");
     expect(CADEIRA_GABARITO).toContain("de altura ajustável");
   });
 });
@@ -61,5 +64,18 @@ describe("mock classify2Passes — determinístico CI", () => {
     ]);
     expect(r!.ncmCandidatos[0]!.ncm).toBe("94013900");
     expect(r!.avisoAtributo).toMatch(/atributo determinante não informado: altura ajustável/i);
+  });
+
+  it("amortecedor patinete elétrico → 8714 / 87141000 (não 8708)", async () => {
+    const [r] = await mock.classify2Passes!(catalog, [
+      {
+        descOriginal: "减震器 Shock Absorber, veículo: patinete elétrico",
+        material: "铁",
+        uso: "配件",
+      },
+    ]);
+    expect(r!.posicaoPasse1).toBe("8714");
+    expect(r!.ncmCandidatos[0]!.ncm).toBe("87141000");
+    expect(r!.ncmCandidatos[0]!.ncm.startsWith("8708")).toBe(false);
   });
 });

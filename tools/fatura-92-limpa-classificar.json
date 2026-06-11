@@ -1,0 +1,98 @@
+{
+  "linhas": [
+    {
+      "descOriginal": "ES-T19A-10BLK — 滑板车T1 MAX 10寸500W款（黑色） — 1-500",
+      "qtd": 500,
+      "material": "高碳钢",
+      "uso": "骑行",
+      "pesoLiqKg": 10000,
+      "pesoBrutoKg": 11500,
+      "fobUnitarioUS": 140.58,
+      "fobTotalUS": 70290
+    },
+    {
+      "descOriginal": "ES-T19A-10WHI — 滑板车T1 MAX 10寸500W款（白色） — 501-710",
+      "qtd": 210,
+      "material": "高碳钢",
+      "uso": "骑行",
+      "pesoLiqKg": 4200,
+      "pesoBrutoKg": 4830,
+      "fobUnitarioUS": 140.58,
+      "fobTotalUS": 29521.800000000003
+    },
+    {
+      "descOriginal": "ACC-ES-SSA001 — 减震器 — 711.0",
+      "qtd": 4,
+      "material": "铁",
+      "uso": "配件",
+      "pesoLiqKg": 16,
+      "pesoBrutoKg": 16.4,
+      "fobUnitarioUS": 0.12,
+      "fobTotalUS": 0.48
+    },
+    {
+      "descOriginal": "ACC-ES-BC002 — 刹车线",
+      "material": "镀铬钢+塑胶",
+      "uso": "配件",
+      "fobUnitarioUS": 0.05
+    },
+    {
+      "descOriginal": "ACC-ES-LS001 — 后尾挡泥板螺丝",
+      "material": "铁",
+      "uso": "配件",
+      "fobUnitarioUS": 0.001
+    },
+    {
+      "descOriginal": "ACC-ES-018 — 仪表",
+      "material": "PC板",
+      "uso": "配件",
+      "fobUnitarioUS": 0.1
+    },
+    {
+      "descOriginal": "ACC-ES-034 — 减震螺丝",
+      "material": "铁",
+      "uso": "配件",
+      "fobUnitarioUS": 0.01
+    },
+    {
+      "descOriginal": "ACC-ES-035 — 额头螺丝",
+      "material": "铁",
+      "uso": "配件",
+      "fobUnitarioUS": 0.01
+    },
+    {
+      "descOriginal": "ACC-ES-043 — 适配器",
+      "material": "塑胶",
+      "uso": "配件",
+      "fobUnitarioUS": 0.2
+    },
+    {
+      "descOriginal": "ACC-ES-042 — 控制器 — 712.0",
+      "qtd": 10,
+      "material": "铝合金",
+      "uso": "配件",
+      "pesoLiqKg": 6,
+      "pesoBrutoKg": 6.5,
+      "fobUnitarioUS": 0.1,
+      "fobTotalUS": 1
+    },
+    {
+      "descOriginal": "ACC-ES-045 — 刹车把",
+      "material": "铝合金",
+      "uso": "配件",
+      "fobUnitarioUS": 0.1
+    },
+    {
+      "descOriginal": "ACC-ES-040 — 后挡泥板",
+      "material": "PVC",
+      "uso": "配件",
+      "fobUnitarioUS": 0.1
+    },
+    {
+      "descOriginal": "ACC-ES-033 — 后挡泥板",
+      "material": "PVC",
+      "uso": "配件",
+      "fobUnitarioUS": 0.1
+    }
+  ]
+}

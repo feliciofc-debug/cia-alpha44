@@ -77,6 +77,37 @@ function mock2PassesItem(catalog: NcmCatalog, it: ClassifyItemInput): ClassifyIt
       justificativaRGI = `RGI 1 + RGI 6 — assento giratório; material não especificado (9401.39). ${rgiExclusao9401}`;
     }
   } else if (
+    (/滑板车|500w|10寸|es-t19|scooter|patinete/i.test(desc) || /500w/i.test(it.descOriginal)) &&
+    /骑行/.test(it.uso ?? "")
+  ) {
+    posicao4 = "8711";
+    ncm = "87116000";
+    confianca = 0.92;
+    justificativaRGI =
+      "RGI 1 — scooter/patinete elétrico completo (87.11.60); material estrutural não altera capítulo do veículo.";
+  } else if (/螺丝|parafus|bolt|screw/i.test(desc) || /螺丝/.test(it.descOriginal)) {
+    posicao4 = "7318";
+    ncm = "73181500";
+    confianca = 0.9;
+    justificativaRGI =
+      "Nota 2 Seção XVII — parafuso de uso geral (73.18), não parte identificável de veículo (87.14).";
+  } else if (/适配器|carregador|charger|adaptador/i.test(desc) || /适配器/.test(it.descOriginal)) {
+    posicao4 = "8504";
+    ncm = "85044010";
+    confianca = 0.91;
+    justificativaRGI =
+      "Nota 2 Seção XVII — carregador/adaptador elétrico (85.04.40), não parte de veículo (87.14).";
+  } else if (
+    (/减震|amortecedor|shock\s*absorber/.test(desc) ||
+      (/配件|spare\s*part/.test(desc) && /patinete|scooter|滑板|8711|8712|8713|ve[ií]culo/.test(desc))) &&
+    !/autom[oó]vel|passenger\s*car|8701|8702|8703|8704|8705/.test(desc)
+  ) {
+    posicao4 = "8714";
+    ncm = "87141000";
+    confianca = 0.88;
+    justificativaRGI =
+      "RGI 1 — parte/acessório de patinete/scooter (87.11–87.13) → 8714.10; 87.08 exclusiva para automóveis 87.01–87.05.";
+  } else if (
     /减震|amortecedor|shock\s*absorber|配件|spare\s*part/.test(desc) ||
     /铁|配件/.test(`${it.material ?? ""} ${it.uso ?? ""}`)
   ) {

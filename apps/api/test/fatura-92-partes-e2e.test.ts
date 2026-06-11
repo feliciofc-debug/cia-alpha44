@@ -6,8 +6,8 @@ const catalog = criarNcmCatalog(loadNcmVigente());
 const mock = criarMockProvider([]);
 
 describe("fatura 92 — partes com material/uso (item 3e mock)", () => {
-  it("减震器 + material 铁 + uso 配件 → NCM 8714xx fonte ia (não Siscomex)", async () => {
-    const descOriginal = "减震器 / Shock Absorber";
+  it("减震器 + material 铁 + uso 配件 → NCM 87141000 fonte ia (não 8708)", async () => {
+    const descOriginal = "减震器 Shock Absorber, veículo: patinete elétrico";
     const material = "铁";
     const uso = "配件";
     const [classificado] = await mock.classify2Passes!(catalog, [
@@ -19,8 +19,8 @@ describe("fatura 92 — partes com material/uso (item 3e mock)", () => {
       descricao,
     });
     expect(r.fonte).toBe("ia");
-    expect(r.ncm.startsWith("8714")).toBe(true);
-    expect(r.ncm.startsWith("8211")).toBe(false);
+    expect(r.ncm).toBe("87141000");
+    expect(r.ncm.startsWith("8708")).toBe(false);
     expect(r.avisos.some((a) => a.includes("inferido pela tabela Siscomex"))).toBe(false);
   });
 });

@@ -28,6 +28,7 @@ export {
   prefixoBuscaPrincipal,
   type FamiliaDetectada,
   type ResultadoDeteccaoFamilias,
+  type DetectarFamiliasInput,
 } from "./familias/index.js";
 
 /** Expande descrição para busca Siscomex (sinônimos + família). */
@@ -101,12 +102,13 @@ export interface ValidacaoNcmItem {
 /** Validação pós-resolução — sinaliza erro grave para UI/revisão. */
 export function validarNcmItem(
   ncm: string,
-  descricao: string,
+  descOriginal: string,
   catalog: NcmCatalog,
   fonte: string,
+  uso?: string | null,
 ): ValidacaoNcmItem {
   const avisos: string[] = [];
-  const deteccao = detectarFamilias(descricao);
+  const deteccao = detectarFamilias({ descOriginal, uso });
   const familia = deteccao.conflito ? null : deteccao.familias[0]?.familia ?? null;
   const familiasDetectadas = deteccao.familias.map((f) => f.familia);
   const key = normNcm8(ncm);

@@ -70,7 +70,7 @@ export const FAMILIAS_PRODUTO: FamiliaProduto[] = [
   {
     id: "maquinas_eletricas",
     prefixos: ["8504"],
-    re: /transformador|fonte|power\s*supply|conversor|inversor|变压器|电源/i,
+    re: /transformador|fonte|power\s*supply|conversor|inversor|变压器|电源|适配器|carregador|charger|acumulador/i,
     termosBusca: "transformador conversor estatico fonte alimentacao",
   },
   {
@@ -83,7 +83,7 @@ export const FAMILIAS_PRODUTO: FamiliaProduto[] = [
   {
     id: "veiculo_leve_eletrico",
     prefixos: ["8711"],
-    re: /patinete\s*el[eé]tr|e-?scooter|electric\s*scooter|scooter\s*el[eé]tr|hoverboard|电动滑板|滑板车.*电/i,
+    re: /patinete\s*el[eé]tr|e-?scooter|electric\s*scooter|scooter\s*el[eé]tr|hoverboard|电动滑板车|电动滑板|滑板车|踏板车/i,
     termosBusca: "patinete scooter eletrico veiculo",
     ncmPreferidos: ["87116000", "87119000"],
   },
@@ -123,7 +123,7 @@ export const FAMILIAS_PRODUTO: FamiliaProduto[] = [
   {
     id: "parafusos_fixadores",
     prefixos: ["7318"],
-    re: /parafus|porca\b|sexav|bolt|screw|nut\b|fixador|fastener|tornillo|螺栓|螺母/i,
+    re: /parafus|porca\b|sexav|bolt|screw|nut\b|fixador|fastener|tornillo|螺栓|螺母|螺丝/i,
     termosBusca: "parafusos porcas rebites fixadores metal rosca",
     ncmPreferidos: ["73181500"],
   },

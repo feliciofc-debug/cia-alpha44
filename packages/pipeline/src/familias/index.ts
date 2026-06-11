@@ -4,6 +4,7 @@ export {
   detectarFamilia,
   detectarFamilias,
   avisoConflitoFamilias,
+  type DetectarFamiliasInput,
 } from "./detectar.js";
 export {
   ncmCoerenteComPrefixo,

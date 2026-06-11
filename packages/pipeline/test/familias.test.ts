@@ -94,6 +94,34 @@ describe("familias — brinquedos × patinete elétrico", () => {
     expect(r.conflito).toBe(false);
     expect(detectarFamilia("electric scooter 500W")?.id).toBe("veiculo_leve_eletrico");
   });
+
+  it("滑板车 ZH → veiculo_leve_eletrico (8711)", () => {
+    const r = detectarFamilias("滑板车T1 MAX 10寸500W款");
+    expect(r.familias.map((f) => f.familia.id)).toContain("veiculo_leve_eletrico");
+  });
+
+  it("uso 骑行 viés produto completo — exclui metal_ferro_aco e pecas", () => {
+    const r = detectarFamilias({
+      descOriginal: "滑板车T1 MAX 10寸500W款",
+      uso: "骑行",
+    });
+    expect(r.familias.map((f) => f.familia.id)).toContain("veiculo_leve_eletrico");
+    expect(r.familias.map((f) => f.familia.id)).not.toContain("metal_ferro_aco");
+    expect(r.familias.map((f) => f.familia.id)).not.toContain("pecas_veiculo_leve");
+  });
+
+  it("material não participa da detecção — 高碳钢 só no prompt, não na família", () => {
+    const soDesc = detectarFamilias({ descOriginal: "滑板车T1 MAX", uso: "骑行" });
+    const descComMaterial = detectarFamilias("滑板车 · Material: 高碳钢");
+    expect(soDesc.familias.map((f) => f.familia.id)).not.toContain("metal_ferro_aco");
+    expect(descComMaterial.familias.map((f) => f.familia.id)).toContain("metal_ferro_aco");
+  });
+
+  it("uso 配件 viés parte — inclui pecas, exclui veiculo completo", () => {
+    const r = detectarFamilias({ descOriginal: "减震器", uso: "配件" });
+    expect(r.familias.map((f) => f.familia.id)).toContain("pecas_veiculo_leve");
+    expect(r.familias.map((f) => f.familia.id)).not.toContain("veiculo_leve_eletrico");
+  });
 });
 
 describe("familias — conflito", () => {

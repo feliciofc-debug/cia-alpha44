@@ -22,8 +22,11 @@ export type NcmFonte = "planilha" | "ia" | "siscomex" | "pendente";
 export interface ResolveNcmInput {
   ncmPlanilha?: string | null;
   candidatosIa?: NcmCandidato[];
-  /** Descrição do produto — usada para sugerir NCM vigente quando planilha/IA falham. */
+  /** Texto enriquecido para busca Siscomex (pode incluir material/uso). */
   descricao?: string | null;
+  /** Descrição da planilha — única base para detecção de família (sem material). */
+  descOriginal?: string | null;
+  uso?: string | null;
 }
 
 export interface ResolveNcmResult {
@@ -52,6 +55,18 @@ function filtrarCandidatosValidos(catalog: NcmCatalog, candidatos: NcmCandidato[
     });
   }
   return out.slice(0, 5);
+}
+
+/** Capítulos de uso geral (Nota 2 Seção XVII) — IA pode prevalecer fora do guard-rail da família. */
+const CAPITULOS_USO_GERAL_IA = new Set(["73", "84", "85", "90", "91", "92", "93"]);
+
+function iaIncoerenteAceitavel(ncm: string, familia: FamiliaProduto): boolean {
+  const cap2 = ncm.slice(0, 2);
+  if (!CAPITULOS_USO_GERAL_IA.has(cap2)) return false;
+  return !familia.prefixos.some((p) => {
+    const pre = p.replace(/\D/g, "");
+    return pre.length >= 2 && ncm.startsWith(pre);
+  });
 }
 
 function candidatosDeBusca(
@@ -102,15 +117,30 @@ function escolherSubstituto(
   avisos?: string[],
 ): { ncm: string; fonte: NcmFonte; candidatos: NcmCandidato[] } | null {
   const cap = prefixoBuscaPrincipal(familia) ?? capitulo4;
-  const ia = prepararCandidatosIa(catalog, input, familia, avisos ?? []);
+  const validosRaw = filtrarCandidatosValidos(catalog, input.candidatosIa ?? []);
+  const iaCoerentes = familia
+    ? validosRaw.filter((c) => ncmCoerenteComFamilia(c.ncm, familia))
+    : validosRaw;
 
-  // 2-passes / IA é o decisor: candidato válido no catálogo prevalece sobre busca textual.
-  if (ia[0]) {
-    const conf = ia[0].confianca ?? 0.5;
+  if (familia && validosRaw.length) {
+    prepararCandidatosIa(catalog, input, familia, avisos ?? []);
+  }
+
+  const escolhaIa = iaCoerentes[0] ?? (familia && validosRaw[0] && iaIncoerenteAceitavel(validosRaw[0].ncm, familia)
+    ? validosRaw[0]
+    : null);
+
+  if (escolhaIa) {
+    const conf = escolhaIa.confianca ?? 0.5;
     if (conf < 0.6 && avisos) {
       avisos.push("Classificação com baixa confiança — revisar");
     }
-    return { ncm: ia[0].ncm, fonte: "ia", candidatos: ia };
+    if (familia && !ncmCoerenteComFamilia(escolhaIa.ncm, familia) && avisos) {
+      avisos.push(
+        `IA sugeriu NCM fora dos prefixos ${familia.prefixos.join("/")} (${familia.id}) — mantido candidato IA ${escolhaIa.ncm} (uso geral / Nota 2).`,
+      );
+    }
+    return { ncm: escolhaIa.ncm, fonte: "ia", candidatos: validosRaw };
   }
 
   const desc = enriquecerTextoClassificacao(input.descricao ?? "", familia);
@@ -137,7 +167,10 @@ function escolherSubstituto(
 /** Escolhe NCM final — nunca retorna código ausente na tabela Siscomex vigente. */
 export function resolveNcm(catalog: NcmCatalog, input: ResolveNcmInput): ResolveNcmResult {
   const avisos: string[] = [];
-  const deteccao = detectarFamilias(input.descricao ?? "");
+  const deteccao = detectarFamilias({
+    descOriginal: input.descOriginal ?? input.descricao ?? "",
+    uso: input.uso,
+  });
   const familia = deteccao.conflito ? null : (deteccao.familias[0]?.familia ?? null);
   if (deteccao.avisoConflito) avisos.push(deteccao.avisoConflito);
   const planilha = input.ncmPlanilha ? normNcm8(input.ncmPlanilha) : null;
