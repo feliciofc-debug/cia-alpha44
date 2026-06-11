@@ -137,6 +137,7 @@ export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise
           descOriginal: l.descOriginal,
           descPt: c?.descPt ?? l.descOriginal,
           descDuimp: c?.descDuimp ?? "",
+          uso: l.uso ?? undefined,
           ncm,
           ncmCandidatos: resolvido.ncmCandidatos,
           ncmValido: resolvido.valido && validacao.ok,

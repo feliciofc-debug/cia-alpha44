@@ -4,6 +4,8 @@ import {
   PRECO_CUSTO_PATINETE_USD,
   aplicarPrecoCustoLinha,
   detectarPrecoCusto,
+  isUsoPeca,
+  pesoCompativelVeiculo,
 } from "../src/preco-custo.js";
 
 describe("preco-custo — moto e patinete", () => {
@@ -36,8 +38,8 @@ describe("preco-custo — moto e patinete", () => {
       descOriginal: "Patinete elétrico PRO",
       ncm: "95030099",
       qtd: 50,
-      pesoBrutoKg: 200,
-      pesoLiqKg: 180,
+      pesoBrutoKg: 1150,
+      pesoLiqKg: 1000,
       fobUnitarioUS: 80,
       fobTotalUS: 4000,
     });
@@ -56,5 +58,87 @@ describe("preco-custo — moto e patinete", () => {
       fobTotalUS: 780,
     });
     expect(r.fobTotalUS).toBe(780);
+  });
+});
+
+describe("preco-custo — guard-rails peça vs produto completo", () => {
+  it("rejeita uso 配件 / acessório / parte / spare", () => {
+    expect(isUsoPeca("配件")).toBe(true);
+    expect(isUsoPeca("acessório")).toBe(true);
+    expect(isUsoPeca("parte")).toBe(true);
+    expect(
+      detectarPrecoCusto({
+        descOriginal: "Patinete elétrico PRO",
+        uso: "配件",
+        pesoLiqKg: 1000,
+        qtd: 50,
+      }),
+    ).toBeNull();
+  });
+
+  it("não usa descPt — amortecedor para patinete com uso 配件 → null", () => {
+    expect(
+      detectarPrecoCusto({
+        descOriginal: "ACC-ES-SSA001 — 减震器",
+        ncm: "87149990",
+        uso: "配件",
+        pesoLiqKg: 16,
+        qtd: 4,
+      }),
+    ).toBeNull();
+  });
+
+  it("peso unitário ≤ 5 kg bloqueia preço-custo", () => {
+    expect(
+      pesoCompativelVeiculo({ descOriginal: "x", pesoLiqKg: 16, qtd: 4 }),
+    ).toBe(false);
+    expect(
+      detectarPrecoCusto({
+        descOriginal: "滑板车T1 MAX",
+        uso: "骑行",
+        pesoLiqKg: 16,
+        qtd: 4,
+      }),
+    ).toBeNull();
+  });
+
+  it("patinete completo 滑板车 + uso 骑行 + peso 20 kg/un mantém preço-custo", () => {
+    expect(
+      detectarPrecoCusto({
+        descOriginal: "ES-T19A-10BLK — 滑板车T1 MAX 10寸500W款（黑色）",
+        ncm: "87116000",
+        uso: "骑行",
+        pesoLiqKg: 10000,
+        qtd: 500,
+      }),
+    ).toBe("patinete_eletrico");
+
+    const r = aplicarPrecoCustoLinha({
+      descOriginal: "ES-T19A-10BLK — 滑板车T1 MAX 10寸500W款（黑色）",
+      ncm: "87116000",
+      uso: "骑行",
+      qtd: 500,
+      pesoLiqKg: 10000,
+      pesoBrutoKg: 11500,
+      fobUnitarioUS: 140.58,
+      fobTotalUS: 70290,
+    });
+    expect(r.fobUnitarioUS).toBe(PRECO_CUSTO_PATINETE_USD);
+    expect(r.fobTotalUS).toBe(500 * PRECO_CUSTO_PATINETE_USD);
+  });
+
+  it("amortecedor 0,12 US$ → cascata normal (nunca preco-custo)", () => {
+    const r = aplicarPrecoCustoLinha({
+      descOriginal: "ACC-ES-SSA001 — 减震器",
+      ncm: "87149990",
+      uso: "配件",
+      qtd: 4,
+      pesoLiqKg: 16,
+      pesoBrutoKg: 16.4,
+      fobUnitarioUS: 0.12,
+      fobTotalUS: 0.48,
+    });
+    expect(r.fobUnitarioUS).toBe(0.12);
+    expect(r.fobTotalUS).toBe(0.48);
   });
 });

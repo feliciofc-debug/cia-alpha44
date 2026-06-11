@@ -83,6 +83,8 @@ export const itemSchema = z.object({
   descOriginal: z.string(),
   descPt: z.string().default(""),
   descDuimp: z.string().default(""),
+  /** Uso / aplicação (用途) — herdado da planilha para regras FOB/NCM. */
+  uso: z.string().optional(),
   ncm: z.string(),
   ncmCandidatos: z.array(ncmCandidatoSchema).default([]),
   pesoBrutoKg: z.number().nonnegative().nullable().default(null),

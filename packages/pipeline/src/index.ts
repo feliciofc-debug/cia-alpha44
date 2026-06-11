@@ -43,11 +43,16 @@ export { resolvePesoLiqLinha, type LinhaCrua } from "./linha.js";
 export {
   PRECO_CUSTO_MOTO_USD,
   PRECO_CUSTO_PATINETE_USD,
+  PESO_MIN_VEICULO_KG,
+  RE_USO_PECA,
   aplicarPrecoCustoLinha,
   aplicarPrecoCustoLinhas,
   detectarPrecoCusto,
+  isUsoPeca,
+  pesoCompativelVeiculo,
   precoCustoUnitarioUSD,
   rotuloPrecoCusto,
+  type DetectarPrecoCustoInput,
   type TipoPrecoCusto,
 } from "./preco-custo.js";
 export {

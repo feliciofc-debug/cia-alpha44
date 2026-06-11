@@ -102,7 +102,14 @@ function detectarMetaLinha(l: LinhaCrua, fobKgCol?: number | null): ResultadoDet
 }
 
 function aplicarPrecoCustoLinhaComMeta(l: LinhaCrua): ResultadoResolverFobLinha | null {
-  const tipo = detectarPrecoCusto(l.descOriginal, l.ncm);
+  const tipo = detectarPrecoCusto({
+    descOriginal: l.descOriginal,
+    ncm: l.ncm,
+    uso: l.uso,
+    pesoLiqKg: l.pesoLiqKg,
+    pesoBrutoKg: l.pesoBrutoKg,
+    qtd: l.qtd,
+  });
   if (!tipo) return null;
   const unit = precoCustoUnitarioUSD(tipo);
   const qtd = l.qtd != null && l.qtd > 0 ? l.qtd : 1;
@@ -224,7 +231,14 @@ function resolverItemInterno(
   indice: Map<string, ReferenciaFobKgPlanilha>,
   benchmarkIndex: BenchmarkIndex,
 ): ResultadoResolverFobItem {
-  const tipo = detectarPrecoCusto(it.descOriginal, it.ncm, it.descPt);
+  const tipo = detectarPrecoCusto({
+    descOriginal: it.descOriginal,
+    ncm: it.ncm,
+    uso: it.uso,
+    pesoLiqKg: it.pesoLiqKg,
+    pesoBrutoKg: it.pesoBrutoKg,
+    qtd: it.qtd,
+  });
   if (tipo) {
     const unit = precoCustoUnitarioUSD(tipo);
     const qtd = it.qtd != null && it.qtd > 0 ? it.qtd : 1;

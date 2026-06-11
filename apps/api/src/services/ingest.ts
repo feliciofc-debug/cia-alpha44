@@ -33,7 +33,14 @@ export function tipoIngestao(filename: string): FonteIngestao | null {
 function aplicarPrecosCusto(parsed: ParsedSupplierFile): ParsedSupplierFile {
   const avisos = [...parsed.avisos];
   const linhas = parsed.linhas.map((l) => {
-    const tipoAntes = detectarPrecoCusto(l.descOriginal, l.ncm);
+    const tipoAntes = detectarPrecoCusto({
+      descOriginal: l.descOriginal,
+      ncm: l.ncm,
+      uso: l.uso,
+      pesoLiqKg: l.pesoLiqKg,
+      pesoBrutoKg: l.pesoBrutoKg,
+      qtd: l.qtd,
+    });
     if (!tipoAntes) return l;
     const next = aplicarPrecoCustoLinha(l);
     const unit = precoCustoUnitarioUSD(tipoAntes);
