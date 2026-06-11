@@ -1,10 +1,15 @@
 /**
  * Calibrador FOB/KG — regra principal do CIA:
- * alvo = max(menor_preço_B2B, piso_defensável_ComexStat)
- * Nunca usar preço nacional como base.
+ * alvo = max(menor_preço_B2B, piso_defensável sobre média DI)
+ * Ponderada ComexStat é sinal secundário — nunca piso.
  */
 
 import type { Benchmark, Calibracao } from "@cia/shared";
+import {
+  AVISO_BENCHMARK_SO_PONDERADA,
+  benchmarkSoPonderado,
+  referenciaPrimariaBenchmark,
+} from "./benchmark-metrics.js";
 
 export interface CalibradorInput {
   /** Alias aceito pela API (`fobKgOriginal`). */
@@ -32,13 +37,16 @@ export function calibrarFobKg(input: CalibradorInput): Calibracao {
   const fobKgOriginal = calcFobKg(input);
   const { benchmark, menorPrecoB2BKg, fobKgPlanilhaReferencia } = input;
   const refPlanilha = fobKgPlanilhaReferencia != null && fobKgPlanilhaReferencia > 0 ? fobKgPlanilhaReferencia : null;
+  const refPrim = referenciaPrimariaBenchmark(benchmark);
+  const soPonderada = benchmarkSoPonderado(benchmark);
+  const avisoPond = benchmark.avisoBenchmark ?? (soPonderada ? AVISO_BENCHMARK_SO_PONDERADA : "");
 
-  if (benchmark.fonte === "sem base" || benchmark.pisoDefensavel === null) {
+  if (benchmark.fonte === "sem base" || soPonderada || benchmark.pisoDefensavel === null) {
     const calibrado = fobKgOriginal > 0 ? fobKgOriginal : (refPlanilha ?? menorPrecoB2BKg ?? 0);
     const justificativa =
-      refPlanilha && fobKgOriginal <= 0
+      (refPlanilha && fobKgOriginal <= 0
         ? `FOB/KG US$ ${calibrado.toFixed(4)}/kg da planilha (NCM mais próximo na carga)`
-        : benchmark.nota;
+        : benchmark.nota) + (avisoPond ? ` · ${avisoPond}` : "");
     return {
       fobKgOriginal: fobKgOriginal || refPlanilha || null,
       fobKgCalibrado: calibrado,
@@ -60,9 +68,8 @@ export function calibrarFobKg(input: CalibradorInput): Calibracao {
     ajustado = true;
   }
 
-  const media = benchmark.mediaFobKg;
   const desvioBenchmarkPct =
-    media && media > 0 ? ((calibrado - media) / media) * 100 : null;
+    refPrim && refPrim > 0 ? ((calibrado - refPrim) / refPrim) * 100 : null;
 
   const justificativa = ajustado
     ? `FOB/KG ajustado de ${fobKgOriginal.toFixed(4)} para ${calibrado.toFixed(4)} US$/kg (piso defensável ${benchmark.fonte}: ${piso.toFixed(4)})`

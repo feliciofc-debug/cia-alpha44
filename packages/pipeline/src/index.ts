@@ -16,6 +16,14 @@ export {
   type HistoricoEntry,
 } from "./benchmark.js";
 export {
+  AVISO_BENCHMARK_SO_PONDERADA,
+  referenciaPrimariaBenchmark,
+  benchmarkSoPonderado,
+  fobKgParaPreenchimento,
+  periodoLabel,
+  filtrosUltimosMesesFechados,
+} from "./benchmark-metrics.js";
+export {
   preencherFobKgPlanilha,
   preencherFobKgItens,
   fobKgNcmMaisProximo,

@@ -8,10 +8,11 @@ import {
 } from "../src/index.js";
 
 describe("Benchmark ComexStat", () => {
-  it("encontra NCM da planilha 66 (8204.20.00)", () => {
+  it("encontra NCM da planilha 66 (8204.20.00) — métrica ponderada ComexStat", () => {
     const b = lookupBenchmark("8204.20.00");
     expect(b.fonte).toBe("ComexStat");
-    expect(b.mediaFobKg).not.toBeNull();
+    expect(b.fobKgPonderado).not.toBeNull();
+    expect(b.mediaFobKg).toBeNull();
     expect(b.amostra).toBeGreaterThanOrEqual(0);
   });
 

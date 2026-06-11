@@ -33,16 +33,26 @@ export type NcmCandidato = z.infer<typeof ncmCandidatoSchema>;
 /** Faixa de benchmark FOB/KG (US$/kg). */
 export const benchmarkSchema = z.object({
   fonte: z.enum(FONTES_BENCHMARK),
-  /** Média de FOB/KG observada (US$/kg). */
+  /** Primária: média simples por DI (col 3 planilha). */
+  fobKgMedioDI: z.number().nullable().optional(),
+  /** Secundária: média ponderada FOB/KG (col 4 / API). */
+  fobKgPonderado: z.number().nullable().optional(),
+  /** Alias legado — espelha fobKgMedioDI quando presente. */
   mediaFobKg: z.number().nullable(),
-  /** Piso defensável estimado (heurística sobre a média / amostra). */
+  /** Piso defensável — calculado só sobre fobKgMedioDI. */
   pisoDefensavel: z.number().nullable(),
   /** Teto observado. */
   teto: z.number().nullable(),
-  /** Tamanho da amostra (nº de DIs). Quanto maior, mais confiável. */
+  /** Tamanho da amostra (genérico). */
   amostra: z.number().int().nonnegative().default(0),
+  /** Nº de DIs na planilha mensal (quando houver). */
+  amostraDIs: z.number().int().nonnegative().optional(),
   /** Texto curto explicando a base usada. */
   nota: z.string(),
+  /** Rastro auditável — ex.: planilha-mensal(2023-S1):media-DI */
+  rastroFonte: z.string().optional(),
+  /** Aviso quando só houver métrica ponderada. */
+  avisoBenchmark: z.string().optional(),
 });
 export type Benchmark = z.infer<typeof benchmarkSchema>;
 

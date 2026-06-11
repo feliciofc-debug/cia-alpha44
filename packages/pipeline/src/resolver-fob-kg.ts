@@ -4,7 +4,8 @@
 
 import type { Benchmark, Item } from "@cia/shared";
 import type { BenchmarkIndex } from "./benchmark.js";
-import { lookupBenchmark, normalizarNcm, extrairMesReferencia } from "./benchmark.js";
+import { lookupBenchmark, normalizarNcm } from "./benchmark.js";
+import { fobKgParaPreenchimento } from "./benchmark-metrics.js";
 import {
   detectarBasePesoFob,
   pesoParaBaseFob,
@@ -52,14 +53,13 @@ export interface ResultadoResolverFobItem {
 /** Re-exporta helper de mês para testes e API. */
 export { extrairMesReferencia } from "./benchmark.js";
 
-export function formatarFobKgFonteBenchmark(benchmark: Benchmark, index: BenchmarkIndex): string | null {
-  if (benchmark.fonte === "Histórico próprio" && benchmark.mediaFobKg) {
-    const mes = index.planilhaMensalMes ?? extrairMesReferencia(new Date().toISOString());
-    return `benchmark(planilha-mensal:${mes})`;
+export function formatarFobKgFonteBenchmark(benchmark: Benchmark, _index: BenchmarkIndex): string | null {
+  if (benchmark.rastroFonte) return benchmark.rastroFonte;
+  if (benchmark.fonte === "Histórico próprio" && benchmark.fobKgMedioDI) {
+    return `planilha-mensal(referencia):media-DI`;
   }
-  if (benchmark.fonte === "ComexStat" && benchmark.mediaFobKg) {
-    const mes = index.comexstatMes ?? extrairMesReferencia(index.contexto);
-    return `benchmark(comexstat:${mes})`;
+  if (benchmark.fonte === "ComexStat" && benchmark.fobKgPonderado) {
+    return `comexstat(referencia):ponderada`;
   }
   return null;
 }
@@ -142,16 +142,19 @@ function resolverBenchmark(
   index: BenchmarkIndex,
 ): { fobTotalUS: number; fobUnitarioUS: number | null; meta: FobKgMeta } | null {
   const bench = lookupBenchmark(index, ncm);
+  const fobKg = fobKgParaPreenchimento(bench);
   const fonte = formatarFobKgFonteBenchmark(bench, index);
-  if (!fonte || !bench.mediaFobKg || pesoLiqKg <= 0) return null;
-  const fobTotal = bench.mediaFobKg * pesoLiqKg;
+  if (!fonte || !fobKg || pesoLiqKg <= 0) return null;
+  const avisos = ["FOB/kg de benchmark externo aplicado sobre peso líquido (base CIF)."];
+  if (bench.avisoBenchmark) avisos.unshift(bench.avisoBenchmark);
+  const fobTotal = fobKg * pesoLiqKg;
   return {
     fobTotalUS: fobTotal,
     fobUnitarioUS: qtd && qtd > 0 ? fobTotal / qtd : fobUnitarioUS,
     meta: {
       fobKgFonte: fonte,
       fobKgBase: "liquido",
-      fobKgAvisos: ["FOB/kg de benchmark externo aplicado sobre peso líquido (base CIF)."],
+      fobKgAvisos: avisos,
     },
   };
 }

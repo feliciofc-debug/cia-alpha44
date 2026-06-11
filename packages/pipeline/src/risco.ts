@@ -41,21 +41,25 @@ export function analisarRisco(input: RiscoInput): Risco {
     if (desvio < -25) {
       score += 45;
       flags.push(
-        `FOB/KG ${Math.abs(desvio).toFixed(0)}% abaixo da média ${benchmark.fonte} → risco de valoração`,
+        `FOB/KG ${Math.abs(desvio).toFixed(0)}% abaixo da média DI ${benchmark.fonte} → risco de valoração`,
       );
       canal = "CINZA_VALORACAO";
     } else if (desvio < -10) {
       score += 25;
-      flags.push(`FOB/KG ${Math.abs(desvio).toFixed(0)}% abaixo da mediana/média ${benchmark.fonte}`);
+      flags.push(`FOB/KG ${Math.abs(desvio).toFixed(0)}% abaixo da média DI ${benchmark.fonte}`);
       if (canal === "VERDE_PROVAVEL") canal = "CINZA_VALORACAO";
     } else if (desvio <= 15) {
       score += 0;
       flags.push(`FOB/KG dentro da faixa defensável (${benchmark.fonte})`);
     } else {
       score += 10;
-      flags.push(`FOB/KG ${desvio.toFixed(0)}% acima da média — verificar coerência`);
+      flags.push(`FOB/KG ${desvio.toFixed(0)}% acima da média DI — verificar coerência`);
       if (canal === "VERDE_PROVAVEL") canal = "AMARELO_TECNICO";
     }
+  } else if (benchmark.avisoBenchmark) {
+    flags.push(benchmark.avisoBenchmark);
+    score += 10;
+    if (canal === "VERDE_PROVAVEL") canal = "AMARELO_TECNICO";
   } else {
     flags.push("Sem benchmark — risco estimado por heurística");
     score += 15;

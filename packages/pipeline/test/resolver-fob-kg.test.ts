@@ -151,27 +151,31 @@ describe("resolver FOB/kg — trava e rastro", () => {
     expect(metas[0]?.fobKgFonte).toBe(FOB_KG_FONTE_PRECO_CUSTO);
   });
 
-  it("benchmark identificado com mês ComexStat", () => {
+  it("benchmark ComexStat identificado com rastro ponderada", () => {
     substituirHistoricoBenchmark([]);
-    const index = buildBenchmarkIndex([
-      { ncm: "94051190", desc: "Lustre", fobKg: 2.5, cifKg: 2.6, amostra: 3 },
-    ]);
+    const index = buildBenchmarkIndex(
+      [{ ncm: "94051190", desc: "Lustre", fobKg: 2.5, cifKg: 2.6, amostra: 3 }],
+      "1º semestre 2023",
+      { comexstatPeriodo: "2023-S1" },
+    );
     const { metas, linhas } = resolverFobKgPlanilha(
-      [linha({ descOriginal: "Lustre isolado", ncm: "94051190", fobTotalUS: null })],
+      [linha({ descOriginal: "Lustre isolado", ncm: "94051190", fobTotalUS: null, pesoLiqKg: 10 })],
       index,
     );
     expect(linhas[0]?.fobTotalUS).toBeGreaterThan(0);
-    expect(metas[0]?.fobKgFonte).toMatch(/^benchmark\(comexstat:\d{4}-\d{2}\)$/);
+    expect(metas[0]?.fobKgFonte).toBe("comexstat(2023-S1):ponderada");
   });
 
-  it("benchmark planilha mensal identificado", () => {
-    substituirHistoricoBenchmark([{ ncm: "94051190", fobKg: 2.11, amostra: 2 }]);
-    const index = buildBenchmarkIndex([], "ref", { planilhaMensalMes: "2024-06" });
+  it("benchmark planilha mensal identificado com rastro media-DI", () => {
+    substituirHistoricoBenchmark([
+      { ncm: "94051190", fobKgMedioDI: 2.11, fobKg: 2.11, amostra: 2 },
+    ]);
+    const index = buildBenchmarkIndex([], "ref", { planilhaPeriodo: "2023-S1" });
     const { metas } = resolverFobKgPlanilha(
       [linha({ descOriginal: "Lustre", ncm: "94051190", fobTotalUS: null, pesoLiqKg: 100 })],
       index,
     );
-    expect(metas[0]?.fobKgFonte).toBe("benchmark(planilha-mensal:2024-06)");
+    expect(metas[0]?.fobKgFonte).toBe("planilha-mensal(2023-S1):media-DI");
   });
 });
 

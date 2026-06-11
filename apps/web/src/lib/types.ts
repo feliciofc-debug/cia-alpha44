@@ -19,11 +19,16 @@ export interface NcmCandidato {
 
 export interface Benchmark {
   fonte: FonteBenchmark;
+  fobKgMedioDI?: number | null;
+  fobKgPonderado?: number | null;
   mediaFobKg: number | null;
   pisoDefensavel: number | null;
   teto: number | null;
   amostra: number;
+  amostraDIs?: number;
   nota: string;
+  rastroFonte?: string;
+  avisoBenchmark?: string;
 }
 
 export interface Calibracao {

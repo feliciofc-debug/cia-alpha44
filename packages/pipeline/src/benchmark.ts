@@ -1,11 +1,13 @@
 /**
  * Lookup de benchmark FOB/KG (ComexStat seed + histórico próprio).
  * Regra 8: sem base → "sem base", nunca finge validação.
+ * Métricas duplas: fobKgMedioDI (primária) · fobKgPonderado (secundária).
  */
 
 import type { Benchmark, FonteBenchmark } from "@cia/shared";
 import { formatNcm } from "@cia/shared";
 import comexstatData from "./data/comexstat-china-2023s1.json" with { type: "json" };
+import { AVISO_BENCHMARK_SO_PONDERADA, periodoLabel } from "./benchmark-metrics.js";
 
 export interface ComexStatEntry {
   ncm: string;
@@ -22,9 +24,13 @@ export interface BenchmarkIndex {
   comex: Map<string, ComexStatEntry>;
   historico: Map<string, HistoricoEntry>;
   contexto: string;
-  /** YYYY-MM da planilha mensal carregada (Histórico próprio). */
+  /** Período real da planilha mensal (ex.: 2023-S1). */
+  planilhaPeriodo?: string | null;
+  /** Período real ComexStat (ex.: 2023-S1 ou 2024-07..2025-06). */
+  comexstatPeriodo?: string | null;
+  /** @deprecated use planilhaPeriodo */
   planilhaMensalMes?: string | null;
-  /** YYYY-MM de referência ComexStat (ex.: 2023-06). */
+  /** @deprecated use comexstatPeriodo */
   comexstatMes?: string | null;
 }
 
@@ -34,11 +40,19 @@ export interface ComexSeed {
   geradoEm: string;
   total: number;
   itens: ComexStatEntry[];
+  periodoDe?: string;
+  periodoAte?: string;
+  periodoReferencia?: string;
 }
 
 export interface HistoricoEntry {
   ncm: string;
-  fobKg: number;
+  /** Col 3 — média simples por DI (primária). */
+  fobKgMedioDI?: number;
+  /** Col 4 / complemento — média ponderada FOB/KG. */
+  fobKgPonderado?: number | null;
+  /** @deprecated alias de fobKgMedioDI */
+  fobKg?: number;
   amostra: number;
 }
 
@@ -47,15 +61,29 @@ for (const row of comexstatData.itens as ComexStatEntry[]) {
   comexstatIndex.set(row.ncm, row);
 }
 
+const DEFAULT_COMEX_PERIODO =
+  (comexstatData as ComexSeed).periodoReferencia ?? periodoLabel("2023-01", "2023-06");
+
 /** Índice em memória do histórico próprio (regra 7 — prioridade sobre ComexStat). */
 const historicoIndex = new Map<string, HistoricoEntry>();
+
+function entryMedioDI(e: HistoricoEntry): number | null {
+  const v = e.fobKgMedioDI ?? e.fobKg ?? null;
+  return v != null && v > 0 ? v : null;
+}
 
 export function registrarHistorico(entries: HistoricoEntry[]): void {
   for (const e of entries) {
     const ncm = normalizarNcm(e.ncm);
     const prev = historicoIndex.get(ncm);
     if (!prev || e.amostra >= prev.amostra) {
-      historicoIndex.set(ncm, { ncm, fobKg: e.fobKg, amostra: e.amostra });
+      historicoIndex.set(ncm, {
+        ncm,
+        fobKgMedioDI: entryMedioDI(e) ?? undefined,
+        fobKgPonderado: e.fobKgPonderado ?? null,
+        fobKg: entryMedioDI(e) ?? undefined,
+        amostra: e.amostra,
+      });
     }
   }
 }
@@ -65,8 +93,15 @@ export function substituirHistoricoBenchmark(entries: HistoricoEntry[]): void {
   historicoIndex.clear();
   for (const e of entries) {
     const ncm = normalizarNcm(e.ncm);
-    if (!ncm || ncm === "00000000" || e.fobKg <= 0) continue;
-    historicoIndex.set(ncm, { ncm, fobKg: e.fobKg, amostra: e.amostra > 0 ? e.amostra : 1 });
+    const medioDI = entryMedioDI(e);
+    if (!ncm || ncm === "00000000" || !medioDI) continue;
+    historicoIndex.set(ncm, {
+      ncm,
+      fobKgMedioDI: medioDI,
+      fobKgPonderado: e.fobKgPonderado ?? null,
+      fobKg: medioDI,
+      amostra: e.amostra > 0 ? e.amostra : 1,
+    });
   }
 }
 
@@ -78,10 +113,7 @@ export function normalizarNcm(ncm: string): string {
   return ncm.replace(/\D/g, "").padStart(8, "0").slice(0, 8);
 }
 
-/**
- * Piso defensável heurístico a partir da média ComexStat.
- * Sem percentis reais na base → desvio conservador por tamanho de amostra.
- */
+/** Piso defensável — só sobre média DI (nunca ponderada). */
 export function calcPisoDefensavel(mediaFobKg: number, amostra: number): number {
   if (mediaFobKg <= 0) return 0;
   const fator =
@@ -96,7 +128,6 @@ export function calcTetoHeuristico(mediaFobKg: number, amostra: number): number 
   return mediaFobKg * fator;
 }
 
-/** Monta índice em memória a partir do seed carregado (API). */
 export function extrairMesReferencia(isoOuContexto: string): string {
   const iso = isoOuContexto.match(/^(\d{4}-\d{2})/);
   if (iso) return iso[1]!;
@@ -106,22 +137,31 @@ export function extrairMesReferencia(isoOuContexto: string): string {
   return `${ano}-06`;
 }
 
+interface BenchmarkMeta {
+  planilhaPeriodo?: string | null;
+  comexstatPeriodo?: string | null;
+}
+
 /** Monta índice em memória a partir do seed carregado (API). */
 export function buildBenchmarkIndex(
   itens: ComexStatEntry[],
   contexto = comexstatData.contexto,
-  meta?: { planilhaMensalMes?: string | null },
+  meta?: BenchmarkMeta & { planilhaMensalMes?: string | null },
 ): BenchmarkIndex {
   const comex = new Map<string, ComexStatEntry>();
   for (const row of itens) {
     comex.set(normalizarNcm(row.ncm), row);
   }
+  const comexstatPeriodo = meta?.comexstatPeriodo ?? DEFAULT_COMEX_PERIODO;
+  const planilhaPeriodo = meta?.planilhaPeriodo ?? meta?.planilhaMensalMes ?? null;
   return {
     comex,
     historico: new Map(historicoIndex),
     contexto,
-    planilhaMensalMes: meta?.planilhaMensalMes ?? null,
-    comexstatMes: extrairMesReferencia(contexto),
+    planilhaPeriodo,
+    comexstatPeriodo,
+    planilhaMensalMes: planilhaPeriodo,
+    comexstatMes: extrairMesReferencia(comexstatPeriodo),
   };
 }
 
@@ -130,37 +170,57 @@ function lookupFromMaps(
   comex: Map<string, ComexStatEntry>,
   historico: Map<string, HistoricoEntry>,
   contexto: string,
+  meta: BenchmarkMeta = {},
 ): Benchmark {
   const hist = historico.get(key);
-  if (hist && hist.fobKg > 0) {
-    const piso = calcPisoDefensavel(hist.fobKg, hist.amostra);
-    const teto = calcTetoHeuristico(hist.fobKg, hist.amostra);
-    return {
-      fonte: "Histórico próprio",
-      mediaFobKg: hist.fobKg,
-      pisoDefensavel: piso,
-      teto,
-      amostra: hist.amostra,
-      nota: `Benchmark do histórico próprio (${hist.amostra} ref.) · NCM ${formatNcm(key)}`,
-    };
+  const cs = comex.get(key);
+  const periodoPlanilha = meta.planilhaPeriodo ?? "referencia";
+  const periodoComex = meta.comexstatPeriodo ?? DEFAULT_COMEX_PERIODO;
+
+  if (hist) {
+    const medioDI = entryMedioDI(hist);
+    if (medioDI) {
+      const ponderado = hist.fobKgPonderado ?? cs?.fobKg ?? null;
+      const piso = calcPisoDefensavel(medioDI, hist.amostra);
+      const teto = calcTetoHeuristico(medioDI, hist.amostra);
+      const notaPond =
+        ponderado != null
+          ? ` · ponderado US$ ${ponderado.toFixed(4)}/kg`
+          : "";
+      return {
+        fonte: "Histórico próprio",
+        fobKgMedioDI: medioDI,
+        fobKgPonderado: ponderado,
+        mediaFobKg: medioDI,
+        pisoDefensavel: piso,
+        teto,
+        amostra: hist.amostra,
+        amostraDIs: hist.amostra,
+        rastroFonte: `planilha-mensal(${periodoPlanilha}):media-DI`,
+        nota: `Média DI US$ ${medioDI.toFixed(4)}/kg (${hist.amostra} ref.)${notaPond} · NCM ${formatNcm(key)}`,
+      };
+    }
   }
 
-  const cs = comex.get(key);
   if (cs && cs.fobKg > 0) {
-    const piso = calcPisoDefensavel(cs.fobKg, cs.amostra);
-    const teto = calcTetoHeuristico(cs.fobKg, cs.amostra);
     return {
       fonte: "ComexStat",
-      mediaFobKg: cs.fobKg,
-      pisoDefensavel: piso,
-      teto,
+      fobKgMedioDI: null,
+      fobKgPonderado: cs.fobKg,
+      mediaFobKg: null,
+      pisoDefensavel: null,
+      teto: null,
       amostra: cs.amostra,
-      nota: `ComexStat — ${contexto} · ${cs.amostra > 1 ? `${cs.amostra} DI(s)` : "agregado semestre"} · média US$ ${cs.fobKg.toFixed(4)}/kg`,
+      rastroFonte: `comexstat(${periodoComex}):ponderada`,
+      avisoBenchmark: AVISO_BENCHMARK_SO_PONDERADA,
+      nota: `ComexStat ponderado US$ ${cs.fobKg.toFixed(4)}/kg · ${contexto} · NCM ${formatNcm(key)}`,
     };
   }
 
   return {
     fonte: "sem base",
+    fobKgMedioDI: null,
+    fobKgPonderado: null,
     mediaFobKg: null,
     pisoDefensavel: null,
     teto: null,
@@ -181,9 +241,13 @@ export function lookupBenchmark(
       comexstatIndex,
       historicoIndex,
       comexstatData.contexto,
+      { comexstatPeriodo: DEFAULT_COMEX_PERIODO },
     );
   }
-  return lookupFromMaps(normalizarNcm(ncm ?? ""), indexOrNcm.comex, indexOrNcm.historico, indexOrNcm.contexto);
+  return lookupFromMaps(normalizarNcm(ncm ?? ""), indexOrNcm.comex, indexOrNcm.historico, indexOrNcm.contexto, {
+    planilhaPeriodo: indexOrNcm.planilhaPeriodo ?? indexOrNcm.planilhaMensalMes,
+    comexstatPeriodo: indexOrNcm.comexstatPeriodo ?? DEFAULT_COMEX_PERIODO,
+  });
 }
 
 export function getComexStatStats(): { total: number; contexto: string } {

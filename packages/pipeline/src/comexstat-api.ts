@@ -7,6 +7,7 @@ import { writeFileSync } from "node:fs";
 import type { ComexSeed, ComexStatEntry } from "./benchmark.js";
 import { defaultSeedPath, loadComexSeed } from "./seed.js";
 import { normalizarNcm } from "./benchmark.js";
+import { filtrosUltimosMesesFechados, periodoLabel } from "./benchmark-metrics.js";
 
 const API_URL = "https://api-comexstat.mdic.gov.br/general";
 
@@ -45,8 +46,15 @@ function num(v: string | number | undefined): number {
 }
 
 function contextoDe(f: ComexStatFiltros): string {
-  return `1º semestre ${f.periodoDe.slice(0, 4)} · China (país ${f.paisId}) · via marítima`;
+  const periodo = periodoLabel(f.periodoDe, f.periodoAte);
+  if (/^\d{4}-S[12]$/.test(periodo)) {
+    const sem = periodo.endsWith("S1") ? "1º semestre" : "2º semestre";
+    return `${sem} ${periodo.slice(0, 4)} · China (país ${f.paisId}) · via marítima`;
+  }
+  return `${f.periodoDe} a ${f.periodoAte} · China (país ${f.paisId}) · via marítima`;
 }
+
+export { filtrosUltimosMesesFechados, periodoLabel };
 
 /** Converte linhas da API em entradas de benchmark (FOB/kg e CIF/kg). */
 export function comexRowsParaEntradas(rows: ComexStatApiRow[]): ComexStatEntry[] {
@@ -116,6 +124,9 @@ export function buildComexSeed(
     geradoEm: new Date().toISOString(),
     total: itens.length,
     itens,
+    periodoDe: filtros.periodoDe,
+    periodoAte: filtros.periodoAte,
+    periodoReferencia: periodoLabel(filtros.periodoDe, filtros.periodoAte),
   };
 }
 
