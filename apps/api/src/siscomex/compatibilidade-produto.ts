@@ -29,6 +29,8 @@ export interface ResultadoCompatibilidade {
 export interface EntradaCompatibilidade {
   descricao: string;
   ncm: string;
+  /** Camada (a): família detectada na descrição original da planilha (evita conflito por descPt IA). */
+  descricaoFamilia?: string;
 }
 
 type SinalFamilia = "ok" | "indicio_incompativel" | "neutro";
@@ -73,11 +75,13 @@ function combinarCamadasAB(familia: AvaliacaoFamilia, heuristica: ResultadoHeuri
   }
 
   if (sinal === "indicio_incompativel") {
-    if (heuristica.score >= OVERLAP_ALTO) return "revisar";
+    // Regra dura T5-E2E: camada (a) nunca vira "compativel" por heurística (b).
     if (b === "incompativel") return "incompativel";
     if (b === "revisar") return "revisar";
-    if (b === "compativel") return "revisar";
-    return "inconclusivo";
+    if (b === "compativel") {
+      return heuristica.score >= OVERLAP_ALTO ? "revisar" : "incompativel";
+    }
+    return "incompativel";
   }
 
   // neutro
@@ -110,7 +114,8 @@ export function avaliarCompatibilidadeProduto(
   const ncmKey = normNcm8(entrada.ncm) ?? entrada.ncm.replace(/\D/g, "").padStart(8, "0");
   const descricaoNcm = catalog.descricaoCompleta(ncmKey) ?? catalog.descricao(ncmKey) ?? "";
 
-  const familia = avaliarCamadaFamilia(entrada.descricao, ncmKey);
+  const descFamilia = (entrada.descricaoFamilia ?? entrada.descricao).trim();
+  const familia = avaliarCamadaFamilia(descFamilia, ncmKey);
   const heuristica = avaliarHeuristicaTermos(entrada.descricao, descricaoNcm, familia.termosBusca, ncmKey);
   const decisao = combinarCamadasAB(familia, heuristica);
 

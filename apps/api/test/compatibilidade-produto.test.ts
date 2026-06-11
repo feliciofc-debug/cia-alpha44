@@ -35,7 +35,7 @@ describe("prompt-compatibilidade — juiz, não advogado", () => {
 });
 
 describe("camada (a) não condena sozinha", () => {
-  it("família incompatível + overlap alto → revisar (não incompativel)", () => {
+  it("família incompatível + overlap alto → revisar (nunca compativel)", () => {
     const decisao = combinarCamadasABParaTeste(
       {
         sinal: "indicio_incompativel",
@@ -44,6 +44,17 @@ describe("camada (a) não condena sozinha", () => {
       { status: "compativel", score: OVERLAP_ALTO + 0.05, motivo: "overlap alto" },
     );
     expect(decisao).toBe("revisar");
+  });
+
+  it("família incompatível + heurística compativel overlap baixo → incompativel (regra dura)", () => {
+    const decisao = combinarCamadasABParaTeste(
+      {
+        sinal: "indicio_incompativel",
+        motivo: "Família parafusos vs cap. 19",
+      },
+      { status: "compativel", score: 0.1, motivo: "overlap falso" },
+    );
+    expect(decisao).toBe("incompativel");
   });
 
   it("família incompatível + overlap baixo → incompativel (a+b concordam)", () => {
@@ -86,6 +97,39 @@ describe("compatibilidade produto × NCM — casos obrigatórios", () => {
       ncm: "94051190",
     });
     expect(resultado.compatibilidadeProduto).toBe("compativel");
+  });
+
+  it("E2E montarItens: parafuso + NCM 19011020 → incompativel (família na descOriginal)", () => {
+    const descOriginal = "Parafuso sextavado M8";
+    const descPtIa =
+      "Parafuso sextavado M8 em aço carbono zincado para fixação industrial em preparações alimentícias";
+    const ncm = "19011020";
+
+    const viaOriginal = avaliarCompatibilidadeProduto(catalog, {
+      descricao: descOriginal,
+      descricaoFamilia: descOriginal,
+      ncm,
+    });
+    expect(viaOriginal.resultado.compatibilidadeProduto).toBe("incompativel");
+
+    const viaDescPtComFamiliaOriginal = avaliarCompatibilidadeProduto(catalog, {
+      descricao: descPtIa,
+      descricaoFamilia: descOriginal,
+      ncm,
+    });
+    expect(viaDescPtComFamiliaOriginal.resultado.compatibilidadeProduto).not.toBe("compativel");
+    expect(["incompativel", "revisar"]).toContain(
+      viaDescPtComFamiliaOriginal.resultado.compatibilidadeProduto,
+    );
+  });
+
+  it("E2E: amortecedor × NCM 8211.93.20 → incompativel ou revisar", () => {
+    const { resultado } = avaliarCompatibilidadeProduto(catalog, {
+      descricao: "Amortecedor dianteiro patinete elétrico",
+      ncm: "82119320",
+    });
+    expect(["incompativel", "revisar"]).toContain(resultado.compatibilidadeProduto);
+    expect(resultado.compatibilidadeProduto).not.toBe("compativel");
   });
 });
 

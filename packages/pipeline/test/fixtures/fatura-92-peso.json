@@ -1,0 +1,33 @@
+{
+  "fonte": "Layout fatura 92 — pesos unitários × (Qtd Caixas × Qtd por Caixa)",
+  "header": [
+    "Modelo",
+    "Descrição",
+    "NCM",
+    "Qtd Caixas",
+    "Qtd por Caixa",
+    "Peso Líq Unit (kg)",
+    "Peso Bruto Unit (kg)",
+    "FOB Total USD"
+  ],
+  "rows": [
+    ["S90", "Patinete elétrico 350W", "87116000", 2, 1, 7.671875, 9.2, 109],
+    ["P01", "减震器 Shock Absorber", null, 1, 1, 0.091, 0.11, 12],
+    ["P02", "Parafuso fixação", null, 1, 1, 0.091, 0.11, 8],
+    ["P03", "Cabo elétrico", null, 1, 1, 0.091, 0.11, 6],
+    ["P04", "Manete freio", null, 1, 1, 0.091, 0.11, 9],
+    ["P05", "Luz LED", null, 1, 1, 0.091, 0.11, 5],
+    ["P06", "Suporte PVC", null, 1, 1, 0.091, 0.11, 4],
+    ["P07", "Porca M8", null, 1, 1, 0.091, 0.11, 2],
+    ["P08", "Arruela", null, 1, 1, 0.091, 0.11, 1.5],
+    ["P09", "Grip borracha", null, 1, 1, 0.091, 0.11, 7],
+    ["P10", "Carregador", null, 1, 1, 0.091, 0.11, 15],
+    ["P11", "Manual", null, 1, 1, 0.091, 0.11, 1]
+  ],
+  "esperado": {
+    "pesoLiqTotalKg": 16.343,
+    "pesoLiqPatineteKg": 15.343,
+    "fobKgPatinete": 7.105,
+    "pesoLiqErradoSemMultiplicarKg": 8.672875
+  }
+}

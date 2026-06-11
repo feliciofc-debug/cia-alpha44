@@ -159,7 +159,11 @@ export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise
   const juiz = resolverJuizCompatibilidade(state.provider);
   const comps = await avaliarCompatibilidadeLote(
     state.ncmCatalog,
-    itens.map((it) => ({ descricao: it.descPt || it.descOriginal, ncm: it.ncm })),
+    itens.map((it) => ({
+      descricao: it.descOriginal,
+      descricaoFamilia: it.descOriginal,
+      ncm: it.ncm,
+    })),
     juiz,
   );
   for (let i = 0; i < itens.length; i++) {

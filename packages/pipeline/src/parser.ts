@@ -4,6 +4,7 @@
 
 import * as XLSX from "xlsx";
 import type { LinhaCrua } from "./linha.js";
+import { calcularPesosTotaisLinha } from "./peso-total-linha.js";
 import { associarFotosLinhas, extrairFotosXlsx, type FotoPlanilha } from "./xlsx-images.js";
 import { extrairImagensWpsOle, isOleXls, isZipXlsx, mapDispimgLinhas } from "./wps-images.js";
 
@@ -53,7 +54,7 @@ const PADROES: { tipo: ColunaDetectada; re: RegExp }[] = [
     tipo: "descricao",
     re: /desc|description|品名|货物|产品配置|配置|product\s*config|product|item\s*number|货号|nome|mercadoria|中文品名|英文品名/i,
   },
-  { tipo: "qtd", re: /qty|quant|quantity|数量|装箱量|总数量|pcs|qtd|unidade|单箱个数/i },
+  { tipo: "qtd", re: /qty|quant|quantity|数量|总数量|pcs|qtd\b|unidade/i },
   { tipo: "peso_bruto", re: /gross|bruto|毛重|gw\b/i },
   { tipo: "peso", re: /peso|weight|净重|nw\b|net|kg/i },
   { tipo: "fob", re: /fob|total.*usd|amount|valor.*us|总价/i },
@@ -155,6 +156,54 @@ function escolherColuna(
     }
   }
   return best.indice;
+}
+
+const RE_QTD_CAIXAS = /qtd\s*caixas|qtde\s*caixas|quantidade\s*caixas|箱数|number\s*of\s*cartons?|cartons?\s*qty/i;
+const RE_QTD_POR_CAIXA =
+  /qtd\s*por\s*caixa|qtde\s*por\s*caixa|por\s*caixa|per\s*box|per\s*case|每箱|单箱个数|装箱量|pcs\s*per/i;
+const RE_PESO_TOTAL = /总|total|合计/i;
+const RE_PESO_UNIT = /unit|unitário|unitario|unitario|单件|每件|per\s*unit|per\s*pc|per\s*piece|\/\s*un/i;
+
+function indicePorHeader(colunas: ColunaMapeada[], re: RegExp): number | undefined {
+  return colunas.find((c) => re.test(c.header.replace(/\s+/g, " ")))?.indice;
+}
+
+function escolherColunaPeso(
+  colunas: ColunaMapeada[],
+  bruto: boolean,
+  modo: "total" | "unit",
+): number | undefined {
+  const tipo = bruto ? "peso_bruto" : "peso";
+  if (modo === "total") {
+    return escolherColuna(colunas, tipo, {
+      prefer: RE_PESO_TOTAL,
+      avoid: RE_PESO_UNIT,
+    });
+  }
+  return escolherColuna(colunas, tipo, {
+    prefer: RE_PESO_UNIT,
+    avoid: RE_PESO_TOTAL,
+  });
+}
+
+function resolverColunasPeso(
+  colunas: ColunaMapeada[],
+  bruto: boolean,
+): { total?: number; unit?: number } {
+  const candidatoTotal = escolherColunaPeso(colunas, bruto, "total");
+  const candidatoUnit = escolherColunaPeso(colunas, bruto, "unit");
+
+  if (candidatoTotal !== undefined && candidatoUnit !== undefined && candidatoTotal !== candidatoUnit) {
+    return { total: candidatoTotal, unit: candidatoUnit };
+  }
+
+  const unico = candidatoUnit ?? candidatoTotal;
+  if (unico === undefined) return {};
+
+  const header = colunas.find((c) => c.indice === unico)?.header ?? "";
+  if (RE_PESO_UNIT.test(header)) return { unit: unico };
+  if (RE_PESO_TOTAL.test(header)) return { total: unico };
+  return { total: unico };
 }
 
 /** Linha de item com espaços (OCR tabular). */
@@ -332,16 +381,12 @@ function parseRows(
   const iSku = colunas.find((c) => /货号|item\s*number|REF|唛头/i.test(c.header))?.indice;
   const iQtd = escolherColuna(colunas, "qtd", {
     prefer: /总数量|qtd\s*tot|quantidade\s*total|total.*qty|total.*quant/i,
-    avoid: /每箱|per\s*case|por\s*caixa|quantity\s*per|装箱量|单箱个数/i,
+    avoid: /每箱|per\s*case|por\s*caixa|quantity\s*per|装箱量|单箱个数|caixas?|cartons?/i,
   });
-  const iPeso = escolherColuna(colunas, "peso", {
-    prefer: /总净重|total\s*net\s*weight|peso.*liq.*total|net weight.*total/i,
-    avoid: /单箱|per\s*box|net weight per|por\s*caixa/i,
-  });
-  const iPesoBruto = escolherColuna(colunas, "peso_bruto", {
-    prefer: /总毛重|total\s*gross|gross weight.*total/i,
-    avoid: /单箱|single\s*box|gross weight of a single|por\s*caixa/i,
-  });
+  const iQtdCaixas = indicePorHeader(colunas, RE_QTD_CAIXAS);
+  const iQtdPorCaixa = indicePorHeader(colunas, RE_QTD_POR_CAIXA);
+  const pesoLiqCols = resolverColunasPeso(colunas, false);
+  const pesoBrutoCols = resolverColunasPeso(colunas, true);
   const iPreco = escolherColuna(colunas, "preco");
   const iFob = escolherColuna(colunas, "fob", {
     prefer: /valor\s*total\s*fob|total.*fob|fob\s*total|amount|总价/i,
@@ -383,9 +428,21 @@ function parseRows(
     if (!descricao || descricao.length < 2) continue;
     if (/^total$/i.test(descricao.trim())) continue;
 
-    const qtd = iQtd !== undefined ? num(row[iQtd]) : null;
-    const pesoLiqKg = iPeso !== undefined ? num(row[iPeso]) : null;
-    const pesoBrutoKg = iPesoBruto !== undefined ? num(row[iPesoBruto]) : null;
+    const qtdRaw = iQtd !== undefined ? num(row[iQtd]) : null;
+    const qtdCaixas = iQtdCaixas !== undefined ? num(row[iQtdCaixas]) : null;
+    const qtdPorCaixa = iQtdPorCaixa !== undefined ? num(row[iQtdPorCaixa]) : null;
+    const pesoCalc = calcularPesosTotaisLinha({
+      pesoLiqTotal: pesoLiqCols.total !== undefined ? num(row[pesoLiqCols.total]) : null,
+      pesoBrutoTotal: pesoBrutoCols.total !== undefined ? num(row[pesoBrutoCols.total]) : null,
+      pesoLiqUnit: pesoLiqCols.unit !== undefined ? num(row[pesoLiqCols.unit]) : null,
+      pesoBrutoUnit: pesoBrutoCols.unit !== undefined ? num(row[pesoBrutoCols.unit]) : null,
+      qtd: qtdRaw,
+      qtdCaixas,
+      qtdPorCaixa,
+    });
+    const qtd = pesoCalc.qtd ?? qtdRaw;
+    const pesoLiqKg = pesoCalc.pesoLiqKg;
+    const pesoBrutoKg = pesoCalc.pesoBrutoKg;
     const precoUnitario = iPreco !== undefined ? num(row[iPreco]) : null;
     const fobKgRef = iFobKg !== undefined ? num(row[iFobKg]) : null;
     let fobTotalUS = iFob !== undefined ? num(row[iFob]) : null;
