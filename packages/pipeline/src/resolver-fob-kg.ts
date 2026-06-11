@@ -185,10 +185,12 @@ export function resolverFobKgPlanilha(
     const fobKgCol = fobKgColPorIndice?.get(i);
     if (linhaTemFobExplicito(l)) {
       const det = detectarMetaLinha(l, fobKgCol);
+      const avisos = [...det.avisos];
+      if (l.avisosQtd?.length) avisos.push(...l.avisosQtd);
       metas.push({
         fobKgFonte: FOB_KG_FONTE_LINHA,
         fobKgBase: det.fobKgBase,
-        fobKgAvisos: det.avisos.length ? det.avisos : undefined,
+        fobKgAvisos: avisos.length ? avisos : undefined,
       });
       return l;
     }

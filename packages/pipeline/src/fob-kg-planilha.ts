@@ -17,6 +17,7 @@ import {
   resolverFobKgPlanilha,
   type FobKgMeta,
 } from "./resolver-fob-kg.js";
+import { aplicarQuantidadesLinhas } from "./qtd-linha.js";
 
 export interface ReferenciaFobKgPlanilha {
   ncm: string;
@@ -150,7 +151,8 @@ export function preencherFobKgPlanilha(
     } as import("./benchmark.js").BenchmarkIndex);
 
   const antes = linhas.map((l) => l.fobTotalUS);
-  const { linhas: out, metas } = resolverFobKgPlanilha(linhas, index, fobKgColPorIndice);
+  const comQtd = aplicarQuantidadesLinhas(linhas);
+  const { linhas: out, metas } = resolverFobKgPlanilha(comQtd, index, fobKgColPorIndice);
   const preenchimentos: PreenchimentoFobKgPlanilha[] = [];
 
   out.forEach((l, i) => {

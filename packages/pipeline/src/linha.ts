@@ -5,6 +5,10 @@ export interface LinhaCrua {
   descOriginal: string;
   ncm: string | null;
   qtd: number | null;
+  /** Coluna 箱数 — usada com qtdPorCaixa (sem inventar qtd). */
+  qtdCaixas?: number | null;
+  /** Coluna 装箱量 / qtd por caixa. */
+  qtdPorCaixa?: number | null;
   unidade?: string | null;
   pesoBrutoKg: number | null;
   pesoLiqKg: number | null;
@@ -15,6 +19,8 @@ export interface LinhaCrua {
   material?: string | null;
   /** Uso / aplicação (用途). */
   uso?: string | null;
+  /** Avisos de derivação de qtd (caixa compartilhada). */
+  avisosQtd?: string[];
   /** Foto do produto (base64) — extraída da planilha .xlsx. */
   fotoBase64?: string;
   fotoMime?: string;

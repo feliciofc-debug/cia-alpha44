@@ -41,6 +41,12 @@ export {
 } from "./detectar-base-peso-fob.js";
 export { resolvePesoLiqLinha, type LinhaCrua } from "./linha.js";
 export {
+  resolverQuantidadesPlanilha,
+  aplicarQuantidadesLinhas,
+  extrairCaixaCompartilhadaDesc,
+  AVISO_QTD_CAIXA_COMPARTILHADA,
+} from "./qtd-linha.js";
+export {
   PRECO_CUSTO_MOTO_USD,
   PRECO_CUSTO_PATINETE_USD,
   PESO_MIN_VEICULO_KG,

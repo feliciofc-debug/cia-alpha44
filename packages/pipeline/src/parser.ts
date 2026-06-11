@@ -31,6 +31,8 @@ export interface LinhaFornecedor {
   linha: number;
   descricao: string;
   qtd: number | null;
+  qtdCaixas?: number | null;
+  qtdPorCaixa?: number | null;
   pesoLiqKg: number | null;
   pesoBrutoKg: number | null;
   precoUnitario: number | null;
@@ -475,6 +477,8 @@ function parseRows(
       linha: r + 1,
       descricao,
       qtd,
+      qtdCaixas,
+      qtdPorCaixa,
       pesoLiqKg,
       pesoBrutoKg,
       precoUnitario,
@@ -607,6 +611,8 @@ function resultadoParaSupplier(parsed: ResultadoParse): ParsedSupplierFile {
     descOriginal: l.descricao,
     ncm: l.ncm,
     qtd: l.qtd,
+    qtdCaixas: l.qtdCaixas ?? null,
+    qtdPorCaixa: l.qtdPorCaixa ?? null,
     pesoBrutoKg: l.pesoBrutoKg,
     pesoLiqKg: l.pesoLiqKg,
     fobUnitarioUS: l.precoUnitario,

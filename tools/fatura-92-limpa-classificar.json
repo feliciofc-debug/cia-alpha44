@@ -34,36 +34,42 @@
       "descOriginal": "ACC-ES-BC002 — 刹车线",
       "material": "镀铬钢+塑胶",
       "uso": "配件",
+      "qtdPorCaixa": 5,
       "fobUnitarioUS": 0.05
     },
     {
       "descOriginal": "ACC-ES-LS001 — 后尾挡泥板螺丝",
       "material": "铁",
       "uso": "配件",
+      "qtdPorCaixa": 10,
       "fobUnitarioUS": 0.001
     },
     {
       "descOriginal": "ACC-ES-018 — 仪表",
       "material": "PC板",
       "uso": "配件",
+      "qtdPorCaixa": 1,
       "fobUnitarioUS": 0.1
     },
     {
       "descOriginal": "ACC-ES-034 — 减震螺丝",
       "material": "铁",
       "uso": "配件",
+      "qtdPorCaixa": 10,
       "fobUnitarioUS": 0.01
     },
     {
       "descOriginal": "ACC-ES-035 — 额头螺丝",
       "material": "铁",
       "uso": "配件",
+      "qtdPorCaixa": 10,
       "fobUnitarioUS": 0.01
     },
     {
       "descOriginal": "ACC-ES-043 — 适配器",
       "material": "塑胶",
       "uso": "配件",
+      "qtdPorCaixa": 1,
       "fobUnitarioUS": 0.2
     },
     {
@@ -80,18 +86,21 @@
       "descOriginal": "ACC-ES-045 — 刹车把",
       "material": "铝合金",
       "uso": "配件",
+      "qtdPorCaixa": 5,
       "fobUnitarioUS": 0.1
     },
     {
       "descOriginal": "ACC-ES-040 — 后挡泥板",
       "material": "PVC",
       "uso": "配件",
+      "qtdPorCaixa": 1,
       "fobUnitarioUS": 0.1
     },
     {
       "descOriginal": "ACC-ES-033 — 后挡泥板",
       "material": "PVC",
       "uso": "配件",
+      "qtdPorCaixa": 1,
       "fobUnitarioUS": 0.1
     }
   ]
