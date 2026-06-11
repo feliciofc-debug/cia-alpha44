@@ -88,12 +88,19 @@ export { isFolhaGenericaOutros, aplicarDesempateOutros } from "./desempate-outro
 export { resolveNcm, type ResolveNcmResult, type NcmFonte } from "./resolve-ncm.js";
 export {
   detectarFamilia,
+  detectarFamilias,
+  avisoConflitoFamilias,
   candidatosSiscomexPorDescricao,
   validarNcmItem,
   ncmCoerenteComFamilia,
+  ncmCoerenteComPrefixo,
+  prefixosDasFamilias,
+  prefixoBuscaPrincipal,
   enriquecerTextoClassificacao,
   FAMILIAS_PRODUTO,
   type FamiliaProduto,
+  type FamiliaDetectada,
+  type ResultadoDeteccaoFamilias,
 } from "./classificar-ncm.js";
 export {
   criarTecSource,

@@ -13,7 +13,8 @@ const catalog = criarNcmCatalog(loadNcmVigente());
 describe("classificar-ncm — família iluminação", () => {
   it("detecta lustre e rejeita NCM fora do cap. 9405", () => {
     const fam = detectarFamilia("B2-1 — LUSTRE — MODELO pendente teto");
-    expect(fam?.capitulo).toBe("9405");
+    expect(fam?.id).toBe("iluminacao");
+    expect(fam?.prefixos).toContain("9405");
     expect(ncmCoerenteComFamilia("94052100", fam)).toBe(true);
     expect(ncmCoerenteComFamilia("21069010", fam)).toBe(false);
     expect(ncmCoerenteComFamilia("84803000", fam)).toBe(false);

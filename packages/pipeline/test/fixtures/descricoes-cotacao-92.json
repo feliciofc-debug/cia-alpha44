@@ -1,0 +1,75 @@
+{
+  "fonte": "tools/payload66.json — cotação referência 92 (carga mista planilha 66; validar só família/prefixo)",
+  "itens": [
+    {
+      "descricao": "Ferramenta",
+      "familiaEsperada": "ferramentas_maquina",
+      "prefixosEsperados": ["8204"]
+    },
+    {
+      "descricao": "Luminária",
+      "familiaEsperada": "iluminacao",
+      "prefixosEsperados": ["9405"]
+    },
+    {
+      "descricao": "Luminária 2",
+      "familiaEsperada": "iluminacao",
+      "prefixosEsperados": ["9405"]
+    },
+    {
+      "descricao": "Peça bike",
+      "familiaEsperada": "bicicleta",
+      "prefixosEsperados": ["8712"]
+    },
+    {
+      "descricao": "Bolsa",
+      "familiaEsperada": "malas_bolsas",
+      "prefixosEsperados": ["4202"]
+    },
+    {
+      "descricao": "Câmera",
+      "familiaEsperada": "cameras",
+      "prefixosEsperados": ["8525", "8528"]
+    },
+    {
+      "descricao": "Transformador",
+      "familiaEsperada": "maquinas_eletricas",
+      "prefixosEsperados": ["8504"]
+    },
+    {
+      "descricao": "Eletrodoméstico",
+      "familiaEsperada": "eletro_portatil",
+      "prefixosEsperados": ["8509", "8508"]
+    },
+    {
+      "descricao": "Peça aço",
+      "familiaEsperada": "metal_ferro_aco",
+      "prefixosEsperados": ["7323", "7326"]
+    },
+    {
+      "descricao": "Disjuntor",
+      "familiaEsperada": "aparelhos_eletricos",
+      "prefixosEsperados": ["8536", "8537"]
+    },
+    {
+      "descricao": "Aparelho médico",
+      "familiaEsperada": "medico",
+      "prefixosEsperados": ["9018", "9019"]
+    },
+    {
+      "descricao": "Alumínio",
+      "familiaEsperada": "aluminio",
+      "prefixosEsperados": ["7615"]
+    },
+    {
+      "descricao": "1 LED Panel Light 36W 600x600mm / LED面板灯",
+      "familiaEsperada": "iluminacao",
+      "prefixosEsperados": ["9405"]
+    },
+    {
+      "descricao": "Cotton towel bath 100% cotton",
+      "familiaEsperada": "textil_cama_mesa",
+      "prefixosEsperados": ["63"]
+    }
+  ]
+}

@@ -3,7 +3,12 @@
  */
 
 import type { NcmCatalog } from "./ncm-catalog.js";
-import { detectarFamilia, enriquecerTextoClassificacao, type FamiliaProduto } from "./classificar-ncm.js";
+import { enriquecerTextoClassificacao } from "./classificar-ncm.js";
+import {
+  detectarFamilias,
+  prefixosDasFamilias,
+  type FamiliaProduto,
+} from "./familias/index.js";
 
 export interface PosicaoCandidata {
   posicao4: string;
@@ -17,38 +22,67 @@ export interface Ncm8Posicao {
   completa: string;
 }
 
+function addPrefixoAoMap(
+  catalog: NcmCatalog,
+  map: Map<string, PosicaoCandidata>,
+  prefixo: string,
+  titulo?: string,
+) {
+  const pre = prefixo.replace(/\D/g, "");
+  if (pre.length === 4) {
+    if (map.has(pre)) return;
+    const pos = catalog.listarPosicoes4(pre.slice(0, 2)).find((p) => p.posicao4 === pre);
+    map.set(pre, {
+      posicao4: pre,
+      titulo: titulo ?? pos?.descricao ?? pre,
+      capitulo2: pre.slice(0, 2),
+    });
+    return;
+  }
+  if (pre.length === 2) {
+    for (const p of catalog.listarPosicoes4(pre)) {
+      if (map.size >= 25) break;
+      if (!map.has(p.posicao4)) {
+        map.set(p.posicao4, {
+          posicao4: p.posicao4,
+          titulo: p.descricao,
+          capitulo2: pre,
+        });
+      }
+    }
+  }
+}
+
 /**
- * Candidatos do passe 1: família + top-10 busca hierárquica + fallback capítulos.
+ * Candidatos do passe 1: família(s) + top-10 busca hierárquica + fallback capítulos.
  */
 export function montarCandidatosPasse1(
   catalog: NcmCatalog,
   descricao: string,
-  familia: FamiliaProduto | null = detectarFamilia(descricao),
+  familiaLegado: FamiliaProduto | null = null,
   limite = 25,
 ): PosicaoCandidata[] {
+  const deteccao = detectarFamilias(descricao);
+  const familias = deteccao.familias.map((f) => f.familia);
+  const prefixos =
+    familias.length > 0
+      ? prefixosDasFamilias(familias)
+      : familiaLegado
+        ? prefixosDasFamilias([familiaLegado])
+        : [];
+
   const map = new Map<string, PosicaoCandidata>();
-  const add = (pos4: string, titulo?: string) => {
-    if (!/^\d{4}$/.test(pos4) || map.has(pos4)) return;
-    const pos = catalog.listarPosicoes4(pos4.slice(0, 2)).find((p) => p.posicao4 === pos4);
-    map.set(pos4, {
-      posicao4: pos4,
-      titulo: titulo ?? pos?.descricao ?? pos4,
-      capitulo2: pos4.slice(0, 2),
-    });
-  };
+  for (const pre of prefixos) addPrefixoAoMap(catalog, map, pre);
 
-  if (familia?.capitulo.length === 4) {
-    add(familia.capitulo);
-  }
-
-  const texto = enriquecerTextoClassificacao(descricao, familia);
+  const familiaEnriquecimento = familias[0] ?? familiaLegado;
+  const texto = enriquecerTextoClassificacao(descricao, familiaEnriquecimento);
   const hits = catalog.buscarPorTexto(texto, undefined, 10);
-  for (const h of hits) add(h.ncm.slice(0, 4));
+  for (const h of hits) addPrefixoAoMap(catalog, map, h.ncm.slice(0, 4));
 
   if (map.size === 0) {
     for (const cap of catalog.listarCapitulos().slice(0, 20)) {
       for (const p of catalog.listarPosicoes4(cap.capitulo2).slice(0, 3)) {
-        add(p.posicao4, p.descricao);
+        addPrefixoAoMap(catalog, map, p.posicao4, p.descricao);
         if (map.size >= limite) break;
       }
       if (map.size >= limite) break;
@@ -71,3 +105,5 @@ export function listarNcm8DaPosicao(catalog: NcmCatalog, posicao4: string): Ncm8
     }))
     .sort((a, b) => a.ncm.localeCompare(b.ncm));
 }
+
+export { detectarFamilias } from "./familias/index.js";

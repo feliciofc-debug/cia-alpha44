@@ -4,9 +4,10 @@
  */
 
 import {
-  detectarFamilia,
   listarNcm8DaPosicao,
   montarCandidatosPasse1,
+  prefixosDasFamilias,
+  detectarFamilias,
   type ComexEntry,
   type NcmCatalog,
 } from "@cia/pipeline";
@@ -137,8 +138,10 @@ export function criarMockProvider(seed: ComexEntry[]): LlmProvider {
         }
         const candidatos = [];
         const desc = it.descOriginal ?? "";
-        const familia = detectarFamilia(desc);
-        const capEsperado = familia?.capitulo ?? it.ncmInformado?.replace(/\D/g, "").slice(0, 4);
+        const det = detectarFamilias(desc);
+        const familia = det.familias[0]?.familia ?? null;
+        const caps = det.familias.length ? prefixosDasFamilias(det.familias.map((f) => f.familia)) : [];
+        const capEsperado = caps[0] ?? familia?.prefixos[0] ?? it.ncmInformado?.replace(/\D/g, "").slice(0, 4);
 
         if (/lustre|lumin[aá]ria|chandelier|wall lamp|aisle light|pendente|ceiling light/i.test(desc)) {
           candidatos.push({

@@ -6,10 +6,11 @@
 import type { NcmCandidato } from "@cia/shared";
 import {
   candidatosSiscomexPorDescricao,
-  detectarFamilia,
+  detectarFamilias,
   enriquecerTextoClassificacao,
   filtrarCandidatosIaCoerentes,
   ncmCoerenteComFamilia,
+  prefixoBuscaPrincipal,
   type FamiliaProduto,
 } from "./classificar-ncm.js";
 import type { NcmCatalog } from "./ncm-catalog.js";
@@ -78,7 +79,7 @@ function prepararCandidatosIa(
   const incoerentes = validos.filter((c) => !ncmCoerenteComFamilia(c.ncm, familia));
   if (incoerentes.length) {
     avisos.push(
-      `IA sugeriu NCM fora do capítulo ${familia.capitulo} (${familia.id}) — candidato(s) rejeitado(s): ${incoerentes.map((c) => c.ncm).join(", ")}.`,
+      `IA sugeriu NCM fora dos prefixos ${familia.prefixos.join("/")} (${familia.id}) — candidato(s) rejeitado(s): ${incoerentes.map((c) => c.ncm).join(", ")}.`,
     );
   }
   return filtrarCandidatosIaCoerentes(catalog, validos, familia);
@@ -90,7 +91,7 @@ function escolherSubstituto(
   familia: FamiliaProduto | null,
   capitulo4?: string,
 ): { ncm: string; fonte: NcmFonte; candidatos: NcmCandidato[] } | null {
-  const cap = familia?.capitulo ?? capitulo4;
+  const cap = prefixoBuscaPrincipal(familia) ?? capitulo4;
   const ia = prepararCandidatosIa(catalog, input, familia, []);
 
   const desc = enriquecerTextoClassificacao(input.descricao ?? "", familia);
@@ -124,7 +125,9 @@ function escolherSubstituto(
 /** Escolhe NCM final — nunca retorna código ausente na tabela Siscomex vigente. */
 export function resolveNcm(catalog: NcmCatalog, input: ResolveNcmInput): ResolveNcmResult {
   const avisos: string[] = [];
-  const familia = detectarFamilia(input.descricao ?? "");
+  const deteccao = detectarFamilias(input.descricao ?? "");
+  const familia = deteccao.conflito ? null : (deteccao.familias[0]?.familia ?? null);
+  if (deteccao.avisoConflito) avisos.push(deteccao.avisoConflito);
   const planilha = input.ncmPlanilha ? normNcm8(input.ncmPlanilha) : null;
   const candidatosValidos = prepararCandidatosIa(catalog, input, familia, avisos);
 
@@ -142,7 +145,7 @@ export function resolveNcm(catalog: NcmCatalog, input: ResolveNcmInput): Resolve
   if (planilha && catalog.existe(planilha)) {
     if (familia && !ncmCoerenteComFamilia(planilha, familia)) {
       avisos.push(
-        `NCM da planilha (${planilha}) incoerente com ${familia.id} (cap. ${familia.capitulo}) — buscando substituto Siscomex.`,
+        `NCM da planilha (${planilha}) incoerente com ${familia.id} (prefixos ${familia.prefixos.join("/")}) — buscando substituto Siscomex.`,
       );
       const sub = escolherSubstituto(catalog, input, familia, planilha.slice(0, 4));
       if (sub) {
