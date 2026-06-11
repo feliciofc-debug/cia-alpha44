@@ -18,36 +18,63 @@ import {
 } from "@cia/pipeline";
 import type { Cotacao, Item } from "@cia/shared";
 import type { AppState } from "../state.js";
+import type { ClassifyItemInput, ClassifyItemOutput } from "../llm/types.js";
+import { mapComConcorrencia } from "../util/map-concorrencia.js";
 
-const CLASSIFY_LOTE = 12;
+const CLASSIFY_CONCORRENCIA = Math.min(
+  6,
+  Math.max(1, Number.parseInt(process.env.CLASSIFY_CONCURRENCY ?? "5", 10) || 5),
+);
 
-/** Classifica em lotes — tenta 2 passes; fallback ao fluxo legado em falha. */
+async function classificarItemComFallback(
+  state: AppState,
+  input: ClassifyItemInput,
+  classificarItens2Passes: (
+    provider: AppState["provider"],
+    catalog: AppState["ncmCatalog"],
+    itens: ClassifyItemInput[],
+  ) => Promise<ClassifyItemOutput[] | null>,
+): Promise<ClassifyItemOutput> {
+  const doisPasses = await classificarItens2Passes(state.provider, state.ncmCatalog, [input]);
+  if (doisPasses?.[0]) return doisPasses[0];
+  const legado = await state.provider.classify([input]);
+  return (
+    legado[0] ?? {
+      descPt: input.descOriginal,
+      descDuimp: input.descOriginal,
+      ncmCandidatos: [],
+    }
+  );
+}
+
+/** Classifica em paralelo (2 passes por item) — fallback legado por item em falha. */
 async function classificarEmLotes(
   state: AppState,
   linhas: LinhaCrua[],
-): Promise<Awaited<ReturnType<AppState["provider"]["classify"]>>> {
+): Promise<ClassifyItemOutput[]> {
   const { contextoSiscomexParaItem } = await import("../llm/ncm-contexto-siscomex.js");
   const { classificarItens2Passes } = await import("../llm/classificar-ncm-2passes.js");
 
-  const inputs = linhas.map((l) => ({
+  const inputs: ClassifyItemInput[] = linhas.map((l) => ({
     descOriginal: l.descOriginal,
     ncmInformado: l.ncm,
     contexto: contextoSiscomexParaItem(state.ncmCatalog, l.descOriginal, l.ncm),
   }));
 
-  const saida: Awaited<ReturnType<AppState["provider"]["classify"]>> = [];
-
-  for (let i = 0; i < inputs.length; i += CLASSIFY_LOTE) {
-    const lote = inputs.slice(i, i + CLASSIFY_LOTE);
-    const doisPasses = await classificarItens2Passes(state.provider, state.ncmCatalog, lote);
-    if (doisPasses) {
-      saida.push(...doisPasses);
-      continue;
+  return mapComConcorrencia(inputs, CLASSIFY_CONCORRENCIA, async (input) => {
+    try {
+      return await classificarItemComFallback(state, input, classificarItens2Passes);
+    } catch {
+      const [legado] = await state.provider.classify([input]);
+      return (
+        legado ?? {
+          descPt: input.descOriginal,
+          descDuimp: input.descOriginal,
+          ncmCandidatos: [],
+        }
+      );
     }
-    const parte = await state.provider.classify(lote);
-    saida.push(...parte);
-  }
-  return saida;
+  });
 }
 
 /** Converte linhas cruas do parser em itens de domínio (tradução+NCM via IA, alíquotas via TEC). */
