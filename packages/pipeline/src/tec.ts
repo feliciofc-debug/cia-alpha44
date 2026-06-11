@@ -13,13 +13,29 @@ export interface TecEntry {
   ipi: number;
   pis: number;
   cofins: number;
+  fonte?: string;
+  vigencia?: string | null;
+  avisos?: string[];
+  /** IPI "NT" na TIPI — não tributado (distinto de 0% explícito ou ausente). */
+  ipiNt?: boolean;
 }
+
+/** Entrada legada (seed inicial planilha 66) sem metadados. */
+export type TecEntryLegado = Pick<TecEntry, "ii" | "ipi" | "pis" | "cofins">;
 
 export interface TecCache {
   fonte: string;
+  geradoEm?: string;
+  arquivosFonte?: Array<{ arquivo: string; baixadoEm: string | null; url?: string }>;
   pisPadrao: number;
   cofinsPadrao: number;
-  itens: Record<string, TecEntry>;
+  fundamentoPisCofinsPadrao?: string;
+  cobertura?: {
+    ii: { encontrados: number; total: number; percentual: number };
+    ipi: { encontrados: number; total: number; percentual: number };
+  };
+  total?: number;
+  itens: Record<string, TecEntry | TecEntryLegado>;
 }
 
 export interface AliquotaResult {
@@ -36,18 +52,34 @@ export interface AliquotaSource {
 }
 
 function normNcm(ncm: string): string {
-  return ncm.replace(/\D/g, "");
+  return ncm.replace(/\D/g, "").padStart(8, "0").slice(0, 8);
+}
+
+function normalizarEntrada(raw: TecEntry | TecEntryLegado): TecEntry {
+  return {
+    ii: raw.ii,
+    ipi: raw.ipi,
+    pis: raw.pis,
+    cofins: raw.cofins,
+    fonte: "fonte" in raw && raw.fonte ? raw.fonte : undefined,
+    vigencia: "vigencia" in raw ? (raw.vigencia ?? null) : null,
+    avisos: "avisos" in raw ? raw.avisos : undefined,
+    ipiNt: "ipiNt" in raw ? raw.ipiNt : undefined,
+  };
 }
 
 export function criarTecSource(cache: TecCache): AliquotaSource {
+  const itens = cache.itens ?? {};
+  const fontePadrao = cache.fonte?.includes("Seed") ? "Cache TEC/TIPI oficial" : "Cache TEC/TIPI";
   return {
     buscar(ncm: string): AliquotaResult {
       const key = normNcm(ncm);
-      const e = cache.itens[key];
-      if (e) {
+      const raw = itens[key];
+      if (raw) {
+        const e = normalizarEntrada(raw);
         return {
           encontrado: true,
-          fonte: "Cache TEC/TIPI",
+          fonte: e.fonte ?? fontePadrao,
           aliquotas: { ii: e.ii, ipi: e.ipi, pis: e.pis, cofins: e.cofins, icmsEntrada: 0 },
         };
       }

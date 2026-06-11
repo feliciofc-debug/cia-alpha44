@@ -12,6 +12,7 @@ Thumbs.db
 
 # artefatos de inspeção das planilhas-fonte
 tools/*.txt
+tools/data-fontes/*.xlsx
 
 # uploads / saídas geradas
 uploads/

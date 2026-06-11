@@ -1,0 +1,2458 @@
+{
+  "fonte": "Curado: Lei 10.865/2004 §3 + Lista Autopeças MDIC (Regime Autopeças Res. Gecex 284/2022)",
+  "pisPadrao": 0.021,
+  "cofinsPadrao": 0.0965,
+  "fundamentoPisCofinsPadrao": "Lei 10.865/2004, art. 8º",
+  "excecoes": [
+    {
+      "ncmPrefixo": "8429",
+      "pis": 0.0262,
+      "cofins": 0.1257,
+      "condicional": false,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §3 (Lei 13.137/2015)"
+    },
+    {
+      "ncmPrefixo": "84324000",
+      "pis": 0.0262,
+      "cofins": 0.1257,
+      "condicional": false,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §3 (Lei 13.137/2015)"
+    },
+    {
+      "ncmPrefixo": "84328000",
+      "pis": 0.0262,
+      "cofins": 0.1257,
+      "condicional": false,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §3 (Lei 13.137/2015)"
+    },
+    {
+      "ncmPrefixo": "843320",
+      "pis": 0.0262,
+      "cofins": 0.1257,
+      "condicional": false,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §3 (Lei 13.137/2015)"
+    },
+    {
+      "ncmPrefixo": "84333000",
+      "pis": 0.0262,
+      "cofins": 0.1257,
+      "condicional": false,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §3 (Lei 13.137/2015)"
+    },
+    {
+      "ncmPrefixo": "84334000",
+      "pis": 0.0262,
+      "cofins": 0.1257,
+      "condicional": false,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §3 (Lei 13.137/2015)"
+    },
+    {
+      "ncmPrefixo": "84335",
+      "pis": 0.0262,
+      "cofins": 0.1257,
+      "condicional": false,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §3 (Lei 13.137/2015)"
+    },
+    {
+      "ncmPrefixo": "8701",
+      "pis": 0.0262,
+      "cofins": 0.1257,
+      "condicional": false,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §3 (Lei 13.137/2015)"
+    },
+    {
+      "ncmPrefixo": "8702",
+      "pis": 0.0262,
+      "cofins": 0.1257,
+      "condicional": false,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §3 (Lei 13.137/2015)"
+    },
+    {
+      "ncmPrefixo": "8703",
+      "pis": 0.0262,
+      "cofins": 0.1257,
+      "condicional": false,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §3 (Lei 13.137/2015)"
+    },
+    {
+      "ncmPrefixo": "8704",
+      "pis": 0.0262,
+      "cofins": 0.1257,
+      "condicional": false,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §3 (Lei 13.137/2015)"
+    },
+    {
+      "ncmPrefixo": "8705",
+      "pis": 0.0262,
+      "cofins": 0.1257,
+      "condicional": false,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §3 (Lei 13.137/2015)"
+    },
+    {
+      "ncmPrefixo": "8706",
+      "pis": 0.0262,
+      "cofins": 0.1257,
+      "condicional": false,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §3 (Lei 13.137/2015)"
+    },
+    {
+      "ncmPrefixo": "38151210",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "39172900",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "39173240",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "39173290",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "39173300",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "39173900",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "39174090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "39199090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "39235000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "39263000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "39269090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "40069000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "40091100",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "40092290",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "40093100",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "40093290",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "40094100",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "40094290",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "40103500",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "40111000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "40117090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "40161010",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "40169300",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "40169990",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "42050000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "63079010",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "68138190",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "68138910",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "68138990",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "69091990",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "70071100",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "70072100",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "70091000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "73043110",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "73043910",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "73045910",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "73063000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "73065000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "73079100",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "73079900",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "73110000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "73151100",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "73151210",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "73181500",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "73181600",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "73181900",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "73182100",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "73182200",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "73182300",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "73182400",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "73182900",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "73201000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "73202010",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "73202090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "73209000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "73259910",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "73261900",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "73269090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "74112190",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "74122000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "74152100",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "74153900",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "74199990",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "76082090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "76090000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "76161000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "76169900",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "83012000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "83016000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "83017000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "83021000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "83023000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "83071090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84073390",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84073490",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84082020",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84082030",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84082090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84089090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84099111",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84099112",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84099115",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84099117",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84099120",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84099140",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84099190",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84099912",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84099914",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84099949",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84099959",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84099969",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84099999",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84122110",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84122190",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84122900",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84123100",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84123110",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84129080",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84129090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84133010",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84133020",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84133030",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84133090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84135010",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84135090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84136011",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84136019",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84136090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84137010",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84137090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84138100",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84139190",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84141000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84143091",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84145990",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84148019",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84148021",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84148090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84149010",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84149020",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84149031",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84149033",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84149034",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84149039",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84152010",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84152090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84159090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84186999",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84195010",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84195029",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84212300",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84212990",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84213920",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84213990",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84219910",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84219999",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84248990",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84249090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84254910",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84314100",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84314200",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84314921",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84314922",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84339090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84714190",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84716059",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84716062",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84798999",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84811000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84812011",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84812090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84813000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84814000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84818021",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84818092",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84818093",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84818095",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84818097",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84818099",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84819090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84821010",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84821090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84822090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84824000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84825090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84828000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84829119",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84829130",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84829190",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84829990",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84831019",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84831020",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84831040",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84831090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84832000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84833010",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84833029",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84833090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84834010",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84834090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84835010",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84835090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84836019",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84836090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84839000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84841000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84842000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "84879000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85011019",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85013110",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85015310",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85044010",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85044030",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85044090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85051100",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85051910",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85051990",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85052090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85059080",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85059090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85071090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85076000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85078000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85079020",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85079090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85111000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85114000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85115010",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85118010",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85119000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85122011",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85122019",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85122021",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85122022",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85122023",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85122029",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85123000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85129000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85176294",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85181090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85182100",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85182990",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85184000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85185000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85235210",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85258019",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85261000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85269200",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85272100",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85272900",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85285220",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85286990",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85291019",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85291090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85299020",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85299090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85311090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85312000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85322200",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85322490",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85322590",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85331000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85333110",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85333990",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85334011",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85334099",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85340020",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85361000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85364100",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85365090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85366990",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85369040",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85369090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85371090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85381000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85389090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85392110",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85392190",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85392910",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85432000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85437099",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85442000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85443000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85444200",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85444900",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85452000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85469000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "85471000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87081000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87082919",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87082991",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87082992",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87082993",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87082994",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87082999",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87083019",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87083090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87084019",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87084080",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87084090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87085019",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87085080",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87085099",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87087010",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87087090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87088000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87089100",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87089200",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87089300",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87089412",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87089482",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87089483",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87089490",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87089521",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87089529",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87089990",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "87169090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90158090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90251990",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90261019",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90261029",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90262090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90268000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90269010",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90269090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90271000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90278099",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90279099",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90282010",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90292010",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90299010",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90299090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90303390",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90308990",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90314990",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90318040",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90318060",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90318099",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90319090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90321010",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90321090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90322000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90328911",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90328921",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90328922",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90328923",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90328924",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90328925",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90328929",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90328981",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90328982",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90328983",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90328989",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90328990",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "90329099",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "94012000",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    },
+    {
+      "ncmPrefixo": "94019090",
+      "pis": 0.0312,
+      "cofins": 0.1437,
+      "condicional": true,
+      "fundamentoLegal": "Lei 10.865/2004, art. 8º, §9-A; autopeça — Lista MDIC Regime Autopeças (Lei 10.485/2002)"
+    }
+  ]
+}

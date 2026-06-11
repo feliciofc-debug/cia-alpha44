@@ -90,8 +90,9 @@ export {
 } from "./classificar-ncm.js";
 export {
   criarTecSource,
-  type TecCache,
   type TecEntry,
+  type TecEntryLegado,
+  type TecCache,
   type AliquotaSource,
   type AliquotaResult,
 } from "./tec.js";
