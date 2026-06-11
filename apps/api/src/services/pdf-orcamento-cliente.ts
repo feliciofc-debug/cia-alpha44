@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import type { ResultadoCotacao } from "@cia/fiscal-engine";
 import type { Cotacao, Despesa, Item } from "@cia/shared";
 import { formatNcm } from "@cia/shared";
+import { totaisPesoExibicao, AVISO_PDF_BASE_DESPACHANTE_BRUTA } from "@cia/pipeline";
 import { fotosParaPdf, primeiraFotoParaPdf } from "./pdf-fotos.js";
 import { registrarFontesPdf, textoPdf, tituloFatura } from "./pdf-fonts.js";
 
@@ -165,8 +166,7 @@ export async function gerarPdfOrcamentoClienteModelo(payload: PayloadOrcamentoCl
   const s = resultado.saida;
   const despesas = cotacao.despesas ?? [];
   const { totalIntegral, totalEntreposto, proveitoEconomico } = totaisRegime(resultado);
-  const pesoLiq = itens.reduce((acc, it) => acc + (it.pesoLiqKg > 0 ? it.pesoLiqKg : 0), 0);
-  const pesoBruto = itens.reduce((acc, it) => acc + (it.pesoBrutoKg ?? 0), 0) || pesoLiq * 1.1;
+  const { pesoLiqKg: pesoLiq, pesoBrutoKg: pesoBruto, baseDespachanteBruta } = totaisPesoExibicao(itens);
   const porto = `PORTO ${cotacao.origem || "RJ"}`;
   const faturaTitulo = tituloFatura(cotacao.cliente || "CLIENTE", criadoEm, fmtDataFatura);
   const [fotoMerc, fotosCert] = await Promise.all([primeiraFotoParaPdf(itens), fotosParaPdf(itens)]);
@@ -312,6 +312,14 @@ export async function gerarPdfOrcamentoClienteModelo(payload: PayloadOrcamentoCl
   doc.fontSize(7.5).font("Helvetica-Bold").text(`GROSS WEIGHT: ${fmtBrl(pesoBruto)}`, rx, y + 22);
   doc.text(`NET WEIGHT: ${fmtBrl(pesoLiq)}`, rx, y + 36);
   doc.text("CAIXAS:", rx, y + 50);
+  if (baseDespachanteBruta) {
+    doc
+      .fontSize(6)
+      .font("Helvetica")
+      .fillColor("#444444")
+      .text(AVISO_PDF_BASE_DESPACHANTE_BRUTA, rx, y + 62, { width: contentW * 0.45, align: "right" });
+    doc.fillColor("#000000");
+  }
   y += b4h + 8;
 
   const totais: [number, string][] = [

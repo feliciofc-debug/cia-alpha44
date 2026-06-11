@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""Smoke: POST fatura-92-limpa → FOB DI ~77.417, nenhuma peça com preco-custo."""
+"""Smoke: POST fatura-92-limpa → FOB DI ~77.391, nenhuma peça com preco-custo."""
 import json
 import sys
 import time
 import urllib.request
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 API = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:3333"
 PAYLOAD = sys.argv[2] if len(sys.argv) > 2 else "/tmp/fatura-92-limpa-classificar.json"
@@ -72,7 +75,7 @@ partes_preco = [
 
 print("\n=== SMOKE FOB DI (fatura-92-limpa) ===")
 print(f"FOB DI total US$: {fob_di:,.2f}")
-print("Meta: ~77.417 (710 × 109 + peças centavos)")
+print("Meta: ~77.391 (710 × 109 + peças centavos)")
 print(f"Partes com fonte preco-custo: {len(partes_preco)}")
 for p in partes_preco:
     desc = (p.get("descOriginal") or "")[:45]

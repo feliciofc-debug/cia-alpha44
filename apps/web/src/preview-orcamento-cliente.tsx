@@ -177,7 +177,9 @@ export function PreviewOrcamentoCliente({
   const despesas = cotacao.despesas ?? [];
   const { totalIntegral, totalEntreposto, proveitoEconomico } = totaisRegime(resultado);
   const pesoLiq = itens.reduce((acc, it) => acc + (it.pesoLiqKg > 0 ? it.pesoLiqKg : 0), 0);
-  const pesoBruto = itens.reduce((acc, it) => acc + (it.pesoBrutoKg ?? 0), 0) || pesoLiq * 1.1;
+  const brutoSum = itens.reduce((acc, it) => acc + (it.pesoBrutoKg ?? 0), 0);
+  const pesoBruto = brutoSum > 0 ? brutoSum : pesoLiq * 1.1;
+  const baseDespachanteBruta = brutoSum > 0 && Math.abs(pesoLiq - brutoSum) > 0.01;
   const desc = (itens[0]?.descPt || itens[0]?.descOriginal || "—").toUpperCase();
   const ncm = [...new Set(itens.map((it) => fmtNcm(it.ncm || "00000000")))].join(" / ");
   const pctMarkup = `${(cotacao.params.markupPct * 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}%`;
@@ -293,6 +295,11 @@ export function PreviewOrcamentoCliente({
             <>
               <Linha label="GROSS WEIGHT:" valor={fmtBrl(pesoBruto)} />
               <Linha label="NET WEIGHT:" valor={fmtBrl(pesoLiq)} />
+              {baseDespachanteBruta && (
+                <p className="col-span-2 text-[9px] leading-tight text-gray-600">
+                  FOB/kg planilha na base bruta (despachante); CIF rateado pelo peso líquido
+                </p>
+              )}
               <Linha label="CAIXAS:" valor="" />
             </>
           }

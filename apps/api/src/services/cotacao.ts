@@ -13,7 +13,8 @@ import {
   lookupBenchmark,
   preencherFobKgPlanilha,
   resolveNcm,
-  resolvePesoLiqLinha,
+  resolvePesoLiqRateio,
+  pesoLiqReal,
   textoClassificacaoIa,
   validarNcmItem,
   type LinhaCrua,
@@ -116,7 +117,7 @@ export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise
         ? await (state.tecSource.buscarAsync?.(ncm) ??
             Promise.resolve(state.tecSource.buscar(ncm)))
         : null;
-    const pesoLiq = resolvePesoLiqLinha(l);
+    const pesoLiq = pesoLiqReal(l);
     const fobTotal = l.fobTotalUS ?? 0;
 
     const avisosClassificacao: string[] = [];
@@ -197,14 +198,19 @@ export interface ResultadoCompleto {
   itens: Item[];
 }
 
+function pesoEngineItem(it: Item): number {
+  return resolvePesoLiqRateio({ pesoLiqKg: it.pesoLiqKg, pesoBrutoKg: it.pesoBrutoKg });
+}
+
 function fobUsadoNoEngine(it: Item, calibracao: ReturnType<typeof calibrarFobKg>): number {
   if (it.fobPendente) return 0;
+  const pesoRateio = pesoEngineItem(it);
   // FOB explícito na planilha prevalece — ComexStat só eleva se faltava preço ou calibragem defensiva (ajustado).
   if (it.fobTotalUS > 0 && calibracao.fobKgOriginal && calibracao.fobKgOriginal > 0 && !calibracao.ajustado) {
     return it.fobTotalUS;
   }
-  if (calibracao.fobKgCalibrado > 0 && it.pesoLiqKg > 0) {
-    return calibracao.fobKgCalibrado * it.pesoLiqKg;
+  if (calibracao.fobKgCalibrado > 0 && pesoRateio > 0) {
+    return calibracao.fobKgCalibrado * pesoRateio;
   }
   return it.fobTotalUS;
 }
@@ -214,7 +220,8 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
   const itensComFob = aplicarRegrasFobItens(cotacao.itens, state.benchmarkIndex);
 
   const itensEnriquecidos: Item[] = itensComFob.map((it) => {
-    const fobKg = it.pesoLiqKg > 0 && it.fobTotalUS > 0 ? it.fobTotalUS / it.pesoLiqKg : null;
+    const pesoRateio = pesoEngineItem(it);
+    const fobKg = pesoRateio > 0 && it.fobTotalUS > 0 ? it.fobTotalUS / pesoRateio : null;
     const benchmark = lookupBenchmark(state.benchmarkIndex, it.ncm || "00000000");
     const calibracao = it.fobPendente
       ? {
@@ -228,7 +235,7 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
           fobKgOriginal: fobKg,
           benchmark,
           fobTotalUS: it.fobTotalUS,
-          pesoLiqKg: it.pesoLiqKg,
+          pesoLiqKg: pesoRateio,
         });
     const risco = analisarRisco({
       benchmark,
@@ -261,7 +268,7 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
       ref: it.ncm,
       ncm: it.ncm,
       fobUS: fobUsadoNoEngine(it, it.calibracao!),
-      pesoLiqKg: it.pesoLiqKg,
+      pesoLiqKg: pesoEngineItem(it),
       aliqII: it.aliquotas.ii,
       aliqIPI: it.aliquotas.ipi,
       aliqPIS: it.aliquotas.pis,

@@ -39,7 +39,7 @@ export {
   TOLERANCIA_RECONCILIACAO_FOB,
   type FobKgBase,
 } from "./detectar-base-peso-fob.js";
-export { resolvePesoLiqLinha, type LinhaCrua } from "./linha.js";
+export { resolvePesoLiqLinha, resolvePesoLiqRateio, pesoLiqReal, pesoBrutoReal, totaisPesoExibicao, AVISO_PDF_BASE_DESPACHANTE_BRUTA, type LinhaCrua, type PesoLinha, type TotaisPesoExibicao } from "./linha.js";
 export {
   resolverQuantidadesPlanilha,
   aplicarQuantidadesLinhas,

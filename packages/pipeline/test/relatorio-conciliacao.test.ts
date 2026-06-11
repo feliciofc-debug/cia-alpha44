@@ -6,6 +6,7 @@ import {
   gerarCsvConciliacao,
   montarLinhasConciliacao,
   nomeArquivoConciliacao,
+  totaisConciliacao,
 } from "../src/relatorio-conciliacao.js";
 import type { Item } from "@cia/shared";
 
@@ -117,6 +118,29 @@ describe("relatorio-conciliacao", () => {
     expect(text).toContain(";");
     expect(text).toContain("滑板车T1 MAX");
     expect(text.split("\n")[0]).toContain("Descrição ZH/EN");
+  });
+
+  it("fobKg usa base bruta quando fobKgBase=bruto", () => {
+    const [linha] = montarLinhasConciliacao([
+      itemBase({
+        descOriginal: "Lustre",
+        fobTotalUS: 780.55,
+        pesoLiqKg: 356,
+        pesoBrutoKg: 370,
+        fobKgBase: "bruto",
+      }),
+    ]);
+    expect(Number(String(linha!.fobKg).replace(",", "."))).toBeCloseTo(780.55 / 370, 3);
+  });
+
+  it("totais conciliação — líq e bruto distintos", () => {
+    const itens = [
+      itemBase({ descOriginal: "Patinete A", pesoLiqKg: 10000, pesoBrutoKg: 11500, qtd: 500 }),
+      itemBase({ descOriginal: "Patinete B", pesoLiqKg: 4200, pesoBrutoKg: 4830, qtd: 210 }),
+    ];
+    const { pesoLiqKg, pesoBrutoKg } = totaisConciliacao(itens);
+    expect(pesoLiqKg).toBeCloseTo(14200, 0);
+    expect(pesoBrutoKg).toBeCloseTo(16330, 0);
   });
 
   it("filename — fallback quando cliente só CJK/especiais", () => {

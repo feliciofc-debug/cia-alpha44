@@ -83,4 +83,18 @@ describe("Parser — fatura 92 limpa (pesos unitários)", () => {
     expect(r.pesoLiqKg).toBeCloseTo(23, 3);
     expect(109 / r.pesoLiqKg!).toBeCloseTo(4.739, 2);
   });
+
+  it("colunas chinesas 净重/毛重 unit × qtd — patinete 20/23 kg", () => {
+    const parsed = parsePlanilhaRows(
+      [
+        ["Modelo", "Descrição", "总数量", "净重(kg)", "毛重(kg)", "单价USD"],
+        ["ES-T19A", "Patinete elétrico", 710, 20, 23, 109],
+      ],
+      "fatura-92-peso-cn",
+    );
+    expect(parsed.linhas).toHaveLength(1);
+    expect(parsed.linhas[0]!.pesoLiqKg).toBeCloseTo(14200, 0);
+    expect(parsed.linhas[0]!.pesoBrutoKg).toBeCloseTo(16330, 0);
+    expect(parsed.linhas[0]!.pesoLiqKg).not.toBeCloseTo(parsed.linhas[0]!.pesoBrutoKg!, 0);
+  });
 });

@@ -10,7 +10,7 @@ import {
   pesoParaBaseFob,
   type FobKgBase,
 } from "./detectar-base-peso-fob.js";
-import { resolvePesoLiqLinha, type LinhaCrua } from "./linha.js";
+import type { LinhaCrua } from "./linha.js";
 import {
   aplicarRegrasFobItens,
   anexarMetaFobItem,

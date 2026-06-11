@@ -5,6 +5,7 @@
 import ExcelJS from "exceljs";
 import type { Cotacao, Item } from "@cia/shared";
 import type { ResultadoCotacao } from "@cia/fiscal-engine";
+import { pesoParaBaseFob } from "./detectar-base-peso-fob.js";
 
 /** T7 substituirá por rastro real por tributo {valor, fonte, consultadoEm}. */
 export const FONTE_ALIQUOTA_TEC_PADRAO =
@@ -156,7 +157,8 @@ export function montarLinhasConciliacao(itens: Item[]): LinhaConciliacao[] {
     const brutoTot = it.pesoBrutoKg != null && it.pesoBrutoKg > 0 ? it.pesoBrutoKg : null;
     const liqUnit = qtd && liqTot ? liqTot / qtd : null;
     const brutoUnit = qtd && brutoTot ? brutoTot / qtd : null;
-    const fobKg = liqTot && it.fobTotalUS > 0 ? it.fobTotalUS / liqTot : null;
+    const pesoFob = pesoParaBaseFob(it.fobKgBase ?? "liquido", it.pesoBrutoKg, it.pesoLiqKg);
+    const fobKg = pesoFob > 0 && it.fobTotalUS > 0 ? it.fobTotalUS / pesoFob : null;
 
     return {
       num: i + 1,
@@ -204,7 +206,7 @@ export function totaisConciliacao(itens: Item[], resultado?: ResultadoCotacao | 
   const entrada = resultado?.entrada;
   return {
     fobTotalUS: entrada?.fobTotalUS ?? itens.reduce((s, it) => s + (it.fobTotalUS ?? 0), 0),
-    pesoLiqKg: entrada?.pesoLiqTotalKg ?? itens.reduce((s, it) => s + (it.pesoLiqKg ?? 0), 0),
+    pesoLiqKg: itens.reduce((s, it) => s + (it.pesoLiqKg ?? 0), 0),
     pesoBrutoKg: itens.reduce((s, it) => s + (it.pesoBrutoKg ?? 0), 0),
     iiTotal: entrada?.iiTotal ?? null,
     ipiTotal: entrada?.ipiTotal ?? null,

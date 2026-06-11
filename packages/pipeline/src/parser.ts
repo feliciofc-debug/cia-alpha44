@@ -208,6 +208,12 @@ function resolverColunasPeso(
 
   const header = colunas.find((c) => c.indice === unico)?.header ?? "";
   if (RE_PESO_UNIT.test(header)) return { unit: unico };
+  if (!bruto && /净重|net\s*weight|nw\b|peso\s*l[ií]q/i.test(header) && !RE_PESO_TOTAL.test(header)) {
+    return { unit: unico };
+  }
+  if (bruto && /毛重|gross|gw\b|peso\s*bruto/i.test(header) && !RE_PESO_TOTAL.test(header)) {
+    return { unit: unico };
+  }
   if (RE_PESO_TOTAL.test(header)) return { total: unico };
   return { total: unico };
 }
