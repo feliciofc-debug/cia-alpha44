@@ -18,8 +18,7 @@ import {
   type ResultadoHeuristica,
   type StatusHeuristica,
 } from "./heuristica-termos.js";
-
-export type CompatibilidadeProduto = "compativel" | "incompativel" | "revisar";
+import type { CompatibilidadeProduto } from "./types.js";
 
 export interface ResultadoCompatibilidade {
   compatibilidadeProduto: CompatibilidadeProduto;

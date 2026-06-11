@@ -5,6 +5,7 @@ import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import { z } from "zod";
 import { cotacaoSchema, listarUfsFiscais } from "@cia/shared";
+import type { LinhaCrua } from "@cia/pipeline";
 import { getState, recarregarNcmCatalog, recarregarComexBenchmark } from "./state.js";
 import { buscarCambioPtax } from "./services/cambio.js";
 import { calcularCotacao, montarItens } from "./services/cotacao.js";
@@ -272,7 +273,7 @@ export async function buildServer() {
         detalhe: body.error.flatten(),
       });
     }
-    const { itens, provider } = await montarItens(body.data.linhas, getState());
+    const { itens, provider } = await montarItens(body.data.linhas as unknown as LinhaCrua[], getState());
     return { itens, provider };
   });
 
