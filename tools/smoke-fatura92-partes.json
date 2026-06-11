@@ -1,0 +1,83 @@
+{
+  "linhas": [
+    {
+      "descOriginal": "Patinete eletrico 350W",
+      "ncm": "87116000",
+      "qtd": 2,
+      "material": "aluminio",
+      "fobTotalUS": 218
+    },
+    {
+      "descOriginal": "减震器 Shock Absorber",
+      "material": "铁",
+      "uso": "配件",
+      "qtd": 10
+    },
+    {
+      "descOriginal": "Parafuso fixacao patinete",
+      "material": "铁",
+      "uso": "配件",
+      "qtd": 100
+    },
+    {
+      "descOriginal": "Cabo eletrico scooter",
+      "material": "PVC",
+      "uso": "配件",
+      "qtd": 50
+    },
+    {
+      "descOriginal": "Manete freio",
+      "material": "铁",
+      "uso": "配件",
+      "qtd": 20
+    },
+    {
+      "descOriginal": "Luz LED patinete",
+      "material": "plastico",
+      "uso": "配件",
+      "qtd": 30
+    },
+    {
+      "descOriginal": "Suporte PVC",
+      "material": "PVC",
+      "uso": "配件",
+      "qtd": 40
+    },
+    {
+      "descOriginal": "Porca M8",
+      "material": "铁",
+      "uso": "配件",
+      "qtd": 200
+    },
+    {
+      "descOriginal": "Grip borracha",
+      "material": "borracha",
+      "uso": "配件",
+      "qtd": 25
+    },
+    {
+      "descOriginal": "Carregador bateria",
+      "material": "plastico",
+      "uso": "配件",
+      "qtd": 15
+    },
+    {
+      "descOriginal": "Manual usuario",
+      "material": "papel",
+      "uso": "配件",
+      "qtd": 10
+    },
+    {
+      "descOriginal": "Arruela metalica",
+      "material": "铁",
+      "uso": "配件",
+      "qtd": 300
+    },
+    {
+      "descOriginal": "Base metalica",
+      "material": "铁",
+      "uso": "配件",
+      "qtd": 12
+    }
+  ]
+}
