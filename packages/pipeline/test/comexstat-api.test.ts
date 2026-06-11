@@ -29,10 +29,19 @@ describe("ComexStat API — integração (rede)", () => {
     if (process.env.CI === "true" || process.env.SKIP_COMEXSTAT_LIVE === "1") return;
 
     const { fetchComexStatImport } = await import("../src/comexstat-api.js");
-    const rows = await fetchComexStatImport();
-    expect(rows.length).toBeGreaterThan(5000);
-    const lustre = rows.find((e) => e.ncm === "94052100");
-    expect(lustre?.fobKg).toBeGreaterThan(0);
+    try {
+      const rows = await fetchComexStatImport();
+      expect(rows.length).toBeGreaterThan(5000);
+      const lustre = rows.find((e) => e.ncm === "94052100");
+      expect(lustre?.fobKg).toBeGreaterThan(0);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("429") || msg.includes("503") || msg.includes("502")) {
+        console.warn("ComexStat indisponível (rate limit) — teste de integração ignorado.");
+        return;
+      }
+      throw e;
+    }
   }, 60_000);
 
   it("fetchComexStatFobKg encontra NCM no cache local", async () => {

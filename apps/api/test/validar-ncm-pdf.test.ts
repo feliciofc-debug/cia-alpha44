@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { Item } from "@cia/shared";
 import { criarNcmCatalog, loadNcmVigente } from "@cia/pipeline";
 import { auditarNcmsParaPdf, NcmInvalidoPdfError } from "../src/services/validar-ncm-pdf.js";
+import { metaConfirmacaoNcm } from "@cia/shared";
 
 const catalog = criarNcmCatalog(loadNcmVigente());
 
@@ -53,5 +54,61 @@ describe("auditarNcmsParaPdf", () => {
       expect((e as NcmInvalidoPdfError).itens).toHaveLength(1);
       expect((e as NcmInvalidoPdfError).codigo).toBe("NCM_INVALIDO");
     }
+  });
+
+  it("libera item com revisão humana confirmada e rastro de NCM", () => {
+    expect(() =>
+      auditarNcmsParaPdf(
+        [
+          {
+            ...item({
+              descPt: "Amortecedor patinete",
+              ncm: "87149990",
+              ncmValido: false,
+              compatibilidadeProduto: "revisar",
+            }),
+            ...metaConfirmacaoNcm("87149990", "teste@cia.local"),
+          },
+        ],
+        catalog,
+      ),
+    ).not.toThrow();
+  });
+
+  it("continua bloqueando incompatível mesmo com confirmação", () => {
+    expect(() =>
+      auditarNcmsParaPdf(
+        [
+          {
+            ...item({
+              descPt: "Produto divergente",
+              ncm: "87149990",
+              compatibilidadeProduto: "incompativel",
+            }),
+            ...metaConfirmacaoNcm("87149990"),
+          },
+        ],
+        catalog,
+      ),
+    ).toThrow(NcmInvalidoPdfError);
+  });
+
+  it("re-bloqueia se NCM mudou após confirmação", () => {
+    expect(() =>
+      auditarNcmsParaPdf(
+        [
+          {
+            ...item({
+              descPt: "Instrumento",
+              ncm: "90319090",
+              ncmValido: false,
+              compatibilidadeProduto: "revisar",
+            }),
+            ...metaConfirmacaoNcm("87149990"),
+          },
+        ],
+        catalog,
+      ),
+    ).toThrow(NcmInvalidoPdfError);
   });
 });

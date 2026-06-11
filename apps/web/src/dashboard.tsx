@@ -19,7 +19,7 @@ import { PainelKpisView } from "./painel-kpis.tsx";
 import { BenchmarkReferenciaView } from "./benchmark-referencia-view.tsx";
 import { PreviewOrcamentoCliente } from "./preview-orcamento-cliente.tsx";
 import { cotacaoParaSalvar, itensParaSalvar } from "./lib/cotacao-payload.ts";
-import { pdfBloqueadoPorNcm, resumoBloqueioNcm, avisoCompatibilidadePdf } from "./lib/ncm.ts";
+import { pdfBloqueadoPorNcm, resumoBloqueioNcm, avisoCompatibilidadePdf, itemPodeConfirmarNcm, itemPodeDesfazerNcm, metaConfirmacaoNcm, limparConfirmacaoNcm } from "./lib/ncm.ts";
 import type { ClienteResumo, DashboardKpis, DashboardSeries } from "./lib/types.ts";
 
 type View = NavItem | "detalhe";
@@ -201,6 +201,9 @@ function AnalisePainel({
   irParaOrcamento,
   onAlterarAliquota,
   recalculandoAliquota,
+  onConfirmarNcm,
+  confirmandoNcm,
+  onDesfazerNcm,
 }: {
   analise: AnaliseView;
   onSalvar?: () => void;
@@ -215,6 +218,9 @@ function AnalisePainel({
   irParaOrcamento?: number;
   onAlterarAliquota?: (idx: number, campo: AliquotaCampo, valor: number) => void | Promise<void>;
   recalculandoAliquota?: boolean;
+  onConfirmarNcm?: (idx: number) => void | Promise<void>;
+  confirmandoNcm?: number | null;
+  onDesfazerNcm?: (idx: number) => void | Promise<void>;
 }) {
   const [aba, setAba] = useState<"orcamento" | "tecnica">(
     salvaId && contarItensComFoto(analise.itens) === 0 ? "tecnica" : "orcamento",
@@ -389,6 +395,40 @@ function AnalisePainel({
                         {a.slice(0, 70)}{a.length > 70 ? "…" : ""}
                       </span>
                     ))}
+                    {itemPodeConfirmarNcm(it) && onConfirmarNcm && (
+                      <button
+                        type="button"
+                        className="mt-1 block rounded bg-emerald-600/80 px-2 py-0.5 text-[10px] font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+                        disabled={confirmandoNcm === i}
+                        onClick={() => void onConfirmarNcm(i)}
+                      >
+                        {confirmandoNcm === i ? "Confirmando…" : "Confirmar NCM"}
+                      </button>
+                    )}
+                    {itemPodeDesfazerNcm(it) && onDesfazerNcm && (
+                      <button
+                        type="button"
+                        className="mt-1 block rounded bg-slate-600/80 px-2 py-0.5 text-[10px] font-semibold text-slate-200 hover:bg-slate-500 disabled:opacity-50"
+                        disabled={confirmandoNcm === i}
+                        onClick={() => void onDesfazerNcm(i)}
+                      >
+                        {confirmandoNcm === i ? "…" : "Desfazer confirmação"}
+                      </button>
+                    )}
+                    {itemPodeDesfazerNcm(it) && (
+                      <span
+                        className="mt-0.5 block text-[10px] font-medium text-emerald-400"
+                        title={[
+                          it.ncmRevisadoEm ? `Confirmado em ${it.ncmRevisadoEm}` : "",
+                          it.ncmConfirmado ? `NCM ${fmtNcm(it.ncmConfirmado)}` : "",
+                          it.ncmConfirmadoPor ? `por ${it.ncmConfirmadoPor}` : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      >
+                        ✓ NCM confirmado (revisão humana)
+                      </span>
+                    )}
                   </td>
                   {(["ii", "ipi", "pis", "cofins", "icmsEntrada"] as const).map((campo) => (
                     <td key={campo} className="p-2 align-top">
@@ -648,6 +688,7 @@ export function Dashboard() {
   const [editorDraft, setEditorDraft] = useState<EditorDraft | null>(null);
   const [aplicandoEditor, setAplicandoEditor] = useState(false);
   const [recalculandoAliquota, setRecalculandoAliquota] = useState(false);
+  const [confirmandoNcm, setConfirmandoNcm] = useState<number | null>(null);
   const [pdfBaixando, setPdfBaixando] = useState<"cliente" | "trade" | null>(null);
   const [irParaOrcamento, setIrParaOrcamento] = useState(0);
   const [kpis, setKpis] = useState<DashboardKpis | null>(null);
@@ -829,6 +870,59 @@ export function Dashboard() {
       setErro(e instanceof Error ? e.message : "Falha ao recalcular alíquotas.");
     } finally {
       setRecalculandoAliquota(false);
+    }
+  }
+
+  async function confirmarNcmItem(idx: number) {
+    const base = analise ?? detalhe;
+    if (!base) return;
+    setConfirmandoNcm(idx);
+    setErro("");
+    const confirmadoPor = user?.email ?? user?.nome;
+    try {
+      const idSalvo = detalhe?.id ?? salvaId;
+      if (idSalvo) {
+        const atualizada = await api.confirmarNcmItem(idSalvo, idx, confirmadoPor);
+        if (detalhe?.id) {
+          setDetalhe(atualizada);
+        } else if (analise) {
+          setAnalise({ ...analise, itens: atualizada.itens });
+        }
+        return;
+      }
+      const itens = base.itens.map((it, i) =>
+        i === idx ? { ...it, ...metaConfirmacaoNcm(it.ncm, confirmadoPor) } : it,
+      );
+      if (analise) setAnalise({ ...analise, itens });
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao confirmar NCM.");
+    } finally {
+      setConfirmandoNcm(null);
+    }
+  }
+
+  async function desfazerNcmItem(idx: number) {
+    const base = analise ?? detalhe;
+    if (!base) return;
+    setConfirmandoNcm(idx);
+    setErro("");
+    try {
+      const idSalvo = detalhe?.id ?? salvaId;
+      if (idSalvo) {
+        const atualizada = await api.desfazerNcmItem(idSalvo, idx);
+        if (detalhe?.id) {
+          setDetalhe(atualizada);
+        } else if (analise) {
+          setAnalise({ ...analise, itens: atualizada.itens });
+        }
+        return;
+      }
+      const itens = base.itens.map((it, i) => (i === idx ? limparConfirmacaoNcm(it) : it));
+      if (analise) setAnalise({ ...analise, itens });
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao desfazer confirmação.");
+    } finally {
+      setConfirmandoNcm(null);
     }
   }
 
@@ -1243,6 +1337,9 @@ export function Dashboard() {
                 irParaOrcamento={irParaOrcamento}
                 onAlterarAliquota={alterarAliquotaItem}
                 recalculandoAliquota={recalculandoAliquota}
+                onConfirmarNcm={confirmarNcmItem}
+                confirmandoNcm={confirmandoNcm}
+                onDesfazerNcm={desfazerNcmItem}
               />
             </div>
           </div>
@@ -1330,6 +1427,9 @@ export function Dashboard() {
                   onBaixarPdfCliente={baixarPdfClienteOrcamento}
                   onAlterarAliquota={alterarAliquotaItem}
                   recalculandoAliquota={recalculandoAliquota}
+                  onConfirmarNcm={confirmarNcmItem}
+                  confirmandoNcm={confirmandoNcm}
+                  onDesfazerNcm={desfazerNcmItem}
                 />
                 {salvaId && (
                   <button type="button" className="btn-ghost mt-4 w-full" onClick={() => void abrirCotacao(salvaId)}>

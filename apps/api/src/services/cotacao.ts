@@ -1,6 +1,7 @@
 /** Orquestração da cotação: montar itens (parser→IA→TEC) e calcular (engine+benchmark+risco). */
 
 import { calcCotacao, type CotacaoFiscalInput } from "@cia/fiscal-engine";
+import { validarConfirmacaoNcmItens } from "@cia/shared";
 import {
   analisarRisco,
   anexarMetaFobItem,
@@ -278,5 +279,5 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
   };
 
   const resultado = calcCotacao(engineInput);
-  return { resultado, itens: itensEnriquecidos };
+  return { resultado, itens: validarConfirmacaoNcmItens(itensEnriquecidos) };
 }

@@ -243,6 +243,18 @@ export const api = {
       body: JSON.stringify(opts),
     }).then(handle<CotacaoSalva>),
 
+  confirmarNcmItem: (cotacaoId: string, ordem: number, confirmadoPor?: string) =>
+    fetch(`${BASE}/api/cotacoes/${cotacaoId}/itens/${ordem}/confirmar-ncm`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(confirmadoPor ? { confirmadoPor } : {}),
+    }).then(handle<CotacaoSalva>),
+
+  desfazerNcmItem: (cotacaoId: string, ordem: number) =>
+    fetch(`${BASE}/api/cotacoes/${cotacaoId}/itens/${ordem}/desfazer-ncm`, {
+      method: "POST",
+    }).then(handle<CotacaoSalva>),
+
   /** @deprecated use atualizarCotacao */
   atualizarFiscal: (id: string, opts: Record<string, unknown>) =>
     fetch(`${BASE}/api/cotacoes/${id}/fiscal`, {

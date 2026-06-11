@@ -76,6 +76,10 @@ export interface Item {
   ncmAvisos?: string[];
   compatibilidadeProduto?: "compativel" | "incompativel" | "revisar";
   motivoCompatibilidade?: string;
+  ncmRevisadoHumano?: boolean;
+  ncmRevisadoEm?: string;
+  ncmConfirmado?: string;
+  ncmConfirmadoPor?: string;
   fobKgFonte?: string;
   fobPendente?: boolean;
   fobKgBase?: "bruto" | "liquido" | "indeterminado";

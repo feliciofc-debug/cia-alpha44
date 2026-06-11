@@ -4,6 +4,12 @@ import { prisma, type CanalAduaneiro, type Cotacao as CotacaoRow } from "@cia/db
 import type { ResultadoCotacao } from "@cia/fiscal-engine";
 import { extrairItemMeta, mesclarItemMeta } from "@cia/pipeline";
 import {
+  limparConfirmacaoNcm,
+  metaConfirmacaoNcm,
+  validarConfirmacaoNcmItem,
+  validarConfirmacaoNcmItens,
+} from "@cia/shared";
+import {
   icmsSaidaParaDestino,
   inferirQtdContainers,
   normalizarUf,
@@ -138,7 +144,8 @@ export function mapRowParaDominio(row: CotacaoComRelacoes): {
         },
         it.meta,
       ),
-    );
+    )
+    .map(validarConfirmacaoNcmItem);
 
   const despesas = [...row.despesas]
     .sort((a, b) => a.ordem - b.ordem)
@@ -491,7 +498,8 @@ export async function atualizarCotacao(id: string, state: AppState, opts: Atuali
     itens: itensDom,
   };
   const { resultado, itens } = calcularCotacao(atualizada, state);
-  const canal = canalPredominante(itens);
+  const itensValidados = validarConfirmacaoNcmItens(itens);
+  const canal = canalPredominante(itensValidados);
 
   const updated = await prisma.$transaction(async (tx) => {
     if (opts.despesas) {
@@ -554,6 +562,89 @@ export async function atualizarCotacao(id: string, state: AppState, opts: Atuali
 /** @deprecated use atualizarCotacao */
 export async function atualizarFiscalCotacao(id: string, state: AppState, opts: AtualizarCotacaoInput) {
   return atualizarCotacao(id, state, opts);
+}
+
+/** Marca item com revisão humana do NCM (persiste em Item.meta). */
+export async function confirmarNcmItem(cotacaoId: string, ordem: number, confirmadoPor?: string, provider?: string) {
+  if (!dbAtivo()) throw new PersistenciaIndisponivelError();
+
+  const row = await prisma.cotacao.findUnique({
+    where: { id: cotacaoId },
+    include: { itens: true, despesas: true },
+  });
+  if (!row) return null;
+
+  const itemRow = row.itens.find((i) => i.ordem === ordem);
+  if (!itemRow) return null;
+
+  const metaAtual = (itemRow.meta as import("@cia/pipeline").ItemMetaPersistido | null) ?? {};
+  const base = mesclarItemMeta(
+    {
+      descOriginal: itemRow.descOriginal,
+      descPt: itemRow.descPt,
+      descDuimp: itemRow.descDuimp,
+      ncm: itemRow.ncm,
+      pesoLiqKg: num(itemRow.pesoLiqKg),
+      fobTotalUS: num(itemRow.fobTotalUS),
+    } as Item,
+    metaAtual,
+  );
+  const novoMeta = extrairItemMeta({
+    ...base,
+    ...metaConfirmacaoNcm(itemRow.ncm, confirmadoPor),
+  });
+
+  await prisma.item.update({
+    where: { id: itemRow.id },
+    data: { meta: novoMeta as Prisma.InputJsonValue },
+  });
+
+  const atualizada = await prisma.cotacao.findUnique({
+    where: { id: cotacaoId },
+    include: { itens: true, despesas: true },
+  });
+  if (!atualizada) return null;
+  return formatCotacaoSalva(atualizada as CotacaoComRelacoes, provider);
+}
+
+/** Remove revisão humana do NCM (item volta a bloquear PDF). */
+export async function desfazerConfirmacaoNcmItem(cotacaoId: string, ordem: number, provider?: string) {
+  if (!dbAtivo()) throw new PersistenciaIndisponivelError();
+
+  const row = await prisma.cotacao.findUnique({
+    where: { id: cotacaoId },
+    include: { itens: true, despesas: true },
+  });
+  if (!row) return null;
+
+  const itemRow = row.itens.find((i) => i.ordem === ordem);
+  if (!itemRow) return null;
+
+  const metaAtual = (itemRow.meta as import("@cia/pipeline").ItemMetaPersistido | null) ?? {};
+  const base = mesclarItemMeta(
+    {
+      descOriginal: itemRow.descOriginal,
+      descPt: itemRow.descPt,
+      descDuimp: itemRow.descDuimp,
+      ncm: itemRow.ncm,
+      pesoLiqKg: num(itemRow.pesoLiqKg),
+      fobTotalUS: num(itemRow.fobTotalUS),
+    } as Item,
+    metaAtual,
+  );
+  const novoMeta = extrairItemMeta(limparConfirmacaoNcm(base));
+
+  await prisma.item.update({
+    where: { id: itemRow.id },
+    data: { meta: novoMeta as Prisma.InputJsonValue },
+  });
+
+  const atualizada = await prisma.cotacao.findUnique({
+    where: { id: cotacaoId },
+    include: { itens: true, despesas: true },
+  });
+  if (!atualizada) return null;
+  return formatCotacaoSalva(atualizada as CotacaoComRelacoes, provider);
 }
 
 export async function excluirCotacao(id: string): Promise<boolean> {

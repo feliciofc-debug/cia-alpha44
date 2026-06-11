@@ -12,6 +12,8 @@ import { calcularCotacao, montarItens } from "./services/cotacao.js";
 import {
   atualizarCotacao,
   buscarCotacao,
+  confirmarNcmItem,
+  desfazerConfirmacaoNcmItem,
   duplicarCotacao,
   excluirCotacao,
   listarCotacoes,
@@ -445,6 +447,37 @@ export async function buildServer() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Falha ao exportar conciliação.";
       return reply.status(422).send({ erro: msg });
+    }
+  });
+
+  app.post("/api/cotacoes/:id/itens/:ordem/confirmar-ncm", async (req, reply) => {
+    try {
+      const { id, ordem } = req.params as { id: string; ordem: string };
+      const idx = Number(ordem);
+      if (!Number.isFinite(idx) || idx < 0) {
+        return reply.status(400).send({ erro: "Índice de item inválido." });
+      }
+      const body = z.object({ confirmadoPor: z.string().optional() }).safeParse(req.body ?? {});
+      const atualizada = await confirmarNcmItem(id, idx, body.success ? body.data.confirmadoPor : undefined);
+      if (!atualizada) return reply.status(404).send({ erro: "Cotação ou item não encontrado." });
+      return atualizada;
+    } catch (e) {
+      return persistenciaErro(reply, e);
+    }
+  });
+
+  app.post("/api/cotacoes/:id/itens/:ordem/desfazer-ncm", async (req, reply) => {
+    try {
+      const { id, ordem } = req.params as { id: string; ordem: string };
+      const idx = Number(ordem);
+      if (!Number.isFinite(idx) || idx < 0) {
+        return reply.status(400).send({ erro: "Índice de item inválido." });
+      }
+      const atualizada = await desfazerConfirmacaoNcmItem(id, idx);
+      if (!atualizada) return reply.status(404).send({ erro: "Cotação ou item não encontrado." });
+      return atualizada;
+    } catch (e) {
+      return persistenciaErro(reply, e);
     }
   });
 

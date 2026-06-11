@@ -2,6 +2,7 @@
 
 import type { Item } from "@cia/shared";
 import { validarNcmItem, type NcmCatalog } from "@cia/pipeline";
+import { confirmacaoNcmVigente } from "@cia/shared";
 
 export interface ItemNcmInvalidoPdf {
   ordem: number;
@@ -38,7 +39,30 @@ export function auditarNcmsParaPdf(itens: Item[], catalog: NcmCatalog): void {
     const key = ncm ? ncm8(ncm) : "";
 
     const avisos = [...(it.ncmAvisos ?? [])];
-    let bloqueado = it.ncmValido === false || !key || key === "00000000";
+
+    if (it.compatibilidadeProduto === "incompativel") {
+      invalidos.push({
+        ordem: i + 1,
+        descricao: desc.slice(0, 100) || `Item ${i + 1}`,
+        ncm: ncm || "(pendente)",
+        avisos: avisos.length ? avisos : [it.motivoCompatibilidade ?? "NCM × produto incompatível."],
+      });
+      continue;
+    }
+
+    if (!key || key === "00000000") {
+      invalidos.push({
+        ordem: i + 1,
+        descricao: desc.slice(0, 100) || `Item ${i + 1}`,
+        ncm: ncm || "(pendente)",
+        avisos,
+      });
+      continue;
+    }
+
+    if (confirmacaoNcmVigente(it)) continue;
+
+    let bloqueado = it.ncmValido === false || it.compatibilidadeProduto === "revisar";
 
     if (key && !catalog.existe(key)) {
       bloqueado = true;
