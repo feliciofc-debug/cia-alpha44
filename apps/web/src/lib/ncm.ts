@@ -3,8 +3,6 @@ import {
   confirmacaoNcmVigente,
   itemBloqueiaPdfNcm,
   itensBloqueandoPdf,
-  metaConfirmacaoNcm,
-  validarConfirmacaoNcmItem,
 } from "@cia/shared";
 
 /** @deprecated use itemBloqueiaPdfNcm / itensBloqueandoPdf */
