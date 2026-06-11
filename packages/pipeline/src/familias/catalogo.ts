@@ -102,6 +102,13 @@ export const FAMILIAS_PRODUTO: FamiliaProduto[] = [
     ncmPreferidos: ["87120010", "87149100"],
   },
   {
+    id: "pecas_veiculo_leve",
+    prefixos: ["8714", "8708", "7318", "8504"],
+    re: /配件|accessories|spare\s*part|pe[cç]a\s*(de|para)?\s*(patinete|scooter|ve[ií]culo|moto)|减震|amortecedor|shock\s*absorber|汽车配件|汽配/i,
+    termosBusca: "partes acessorios patinete scooter veiculo leve eletrico autopeças",
+    ncmPreferidos: ["87141000", "87089990"],
+  },
+  {
     id: "autopecas",
     prefixos: ["8708"],
     re: /autope[cç]a|auto\s*part|car\s*part|vehicle\s*part|汽车配件|汽配/i,

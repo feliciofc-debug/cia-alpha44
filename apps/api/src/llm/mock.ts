@@ -76,6 +76,15 @@ function mock2PassesItem(catalog: NcmCatalog, it: ClassifyItemInput): ClassifyIt
       }
       justificativaRGI = `RGI 1 + RGI 6 — assento giratório; material não especificado (9401.39). ${rgiExclusao9401}`;
     }
+  } else if (
+    /减震|amortecedor|shock\s*absorber|配件|spare\s*part/.test(desc) ||
+    /铁|配件/.test(`${it.material ?? ""} ${it.uso ?? ""}`)
+  ) {
+    posicao4 = "8714";
+    ncm = "87141000";
+    confianca = 0.82;
+    justificativaRGI =
+      "RGI 1 — parte/acessório de veículo leve (8714), coerente com material ferro e uso 配件.";
   } else if (/lustre|lumin[aá]ria|chandelier|wall lamp|pendente|ceiling light/i.test(it.descOriginal)) {
     posicao4 = "9405";
     ncm = "94052100";

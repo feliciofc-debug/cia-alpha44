@@ -31,6 +31,8 @@ export interface EntradaCompatibilidade {
   ncm: string;
   /** Camada (a): família detectada na descrição original da planilha (evita conflito por descPt IA). */
   descricaoFamilia?: string;
+  /** Material (材质) — alimenta heurística T5 quando presente. */
+  material?: string;
 }
 
 type SinalFamilia = "ok" | "indicio_incompativel" | "neutro";
@@ -116,7 +118,13 @@ export function avaliarCompatibilidadeProduto(
 
   const descFamilia = (entrada.descricaoFamilia ?? entrada.descricao).trim();
   const familia = avaliarCamadaFamilia(descFamilia, ncmKey);
-  const heuristica = avaliarHeuristicaTermos(entrada.descricao, descricaoNcm, familia.termosBusca, ncmKey);
+  const textoHeuristica = [
+    entrada.descricao,
+    entrada.material?.trim() ? `Material: ${entrada.material.trim()}` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const heuristica = avaliarHeuristicaTermos(textoHeuristica, descricaoNcm, familia.termosBusca, ncmKey);
   const decisao = combinarCamadasAB(familia, heuristica);
 
   if (decisao !== "inconclusivo") {

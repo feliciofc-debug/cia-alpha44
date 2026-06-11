@@ -78,9 +78,18 @@ function prepararCandidatosIa(
 
   const incoerentes = validos.filter((c) => !ncmCoerenteComFamilia(c.ncm, familia));
   if (incoerentes.length) {
-    avisos.push(
-      `IA sugeriu NCM fora dos prefixos ${familia.prefixos.join("/")} (${familia.id}) — candidato(s) rejeitado(s): ${incoerentes.map((c) => c.ncm).join(", ")}.`,
-    );
+    const planilha = input.ncmPlanilha ? normNcm8(input.ncmPlanilha) : null;
+    const planilhaOk =
+      planilha && catalog.existe(planilha) && (!familia || ncmCoerenteComFamilia(planilha, familia));
+    if (planilhaOk) {
+      avisos.push(
+        `Candidato alternativo da IA (${incoerentes.map((c) => c.ncm).join(", ")}) descartado pelo guard-rail — mantido NCM da planilha (${planilha}).`,
+      );
+    } else {
+      avisos.push(
+        `IA sugeriu NCM fora dos prefixos ${familia.prefixos.join("/")} (${familia.id}) — candidato(s) rejeitado(s): ${incoerentes.map((c) => c.ncm).join(", ")}.`,
+      );
+    }
   }
   return filtrarCandidatosIaCoerentes(catalog, validos, familia);
 }
@@ -90,21 +99,24 @@ function escolherSubstituto(
   input: ResolveNcmInput,
   familia: FamiliaProduto | null,
   capitulo4?: string,
+  avisos?: string[],
 ): { ncm: string; fonte: NcmFonte; candidatos: NcmCandidato[] } | null {
   const cap = prefixoBuscaPrincipal(familia) ?? capitulo4;
-  const ia = prepararCandidatosIa(catalog, input, familia, []);
+  const ia = prepararCandidatosIa(catalog, input, familia, avisos ?? []);
+
+  // 2-passes / IA é o decisor: candidato válido no catálogo prevalece sobre busca textual.
+  if (ia[0]) {
+    const conf = ia[0].confianca ?? 0.5;
+    if (conf < 0.6 && avisos) {
+      avisos.push("Classificação com baixa confiança — revisar");
+    }
+    return { ncm: ia[0].ncm, fonte: "ia", candidatos: ia };
+  }
 
   const desc = enriquecerTextoClassificacao(input.descricao ?? "", familia);
   const siscomex = familia
     ? candidatosSiscomexPorDescricao(catalog, input.descricao ?? "", familia)
     : candidatosDeBusca(catalog, desc, cap);
-
-  // Siscomex por família/descrição prevalece sobre IA incoerente ou fraca.
-  if (siscomex[0] && (!ia[0] || (ia[0].confianca ?? 0) < 0.75)) {
-    return { ncm: siscomex[0].ncm, fonte: "siscomex", candidatos: siscomex };
-  }
-
-  if (ia[0]) return { ncm: ia[0].ncm, fonte: "ia", candidatos: ia };
 
   if (siscomex[0]) return { ncm: siscomex[0].ncm, fonte: "siscomex", candidatos: siscomex };
 
@@ -147,7 +159,7 @@ export function resolveNcm(catalog: NcmCatalog, input: ResolveNcmInput): Resolve
       avisos.push(
         `NCM da planilha (${planilha}) incoerente com ${familia.id} (prefixos ${familia.prefixos.join("/")}) — buscando substituto Siscomex.`,
       );
-      const sub = escolherSubstituto(catalog, input, familia, planilha.slice(0, 4));
+      const sub = escolherSubstituto(catalog, input, familia, planilha.slice(0, 4), avisos);
       if (sub) {
         avisos.push(`Substituído por ${sub.ncm} (${sub.fonte}).`);
         return {
@@ -163,7 +175,9 @@ export function resolveNcm(catalog: NcmCatalog, input: ResolveNcmInput): Resolve
     }
     const iaTop = candidatosValidos[0]?.ncm;
     if (iaTop && iaTop !== planilha) {
-      avisos.push(`IA sugeriu ${iaTop} — mantido NCM da planilha (${planilha}), validado Siscomex.`);
+      avisos.push(
+        `Candidato alternativo da IA (${iaTop}) descartado pelo guard-rail — mantido NCM da planilha (${planilha}).`,
+      );
     }
     return {
       ncm: planilha,
@@ -181,7 +195,7 @@ export function resolveNcm(catalog: NcmCatalog, input: ResolveNcmInput): Resolve
     avisos.push(
       `NCM ${planilha} da planilha NÃO existe na NCM vigente Siscomex — código desatualizado ou incorreto.`,
     );
-    const sub = escolherSubstituto(catalog, input, familia, planilha.slice(0, 4));
+    const sub = escolherSubstituto(catalog, input, familia, planilha.slice(0, 4), avisos);
     if (sub) {
       avisos.push(
         sub.fonte === "ia"
@@ -209,7 +223,7 @@ export function resolveNcm(catalog: NcmCatalog, input: ResolveNcmInput): Resolve
     };
   }
 
-  const sub = escolherSubstituto(catalog, input, familia);
+  const sub = escolherSubstituto(catalog, input, familia, undefined, avisos);
   if (sub) {
     avisos.push(
       sub.fonte === "ia"

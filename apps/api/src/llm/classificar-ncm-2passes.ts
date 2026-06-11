@@ -8,6 +8,7 @@ import {
   detectarFamilia,
   listarNcm8DaPosicao,
   montarCandidatosPasse1,
+  textoClassificacaoIa,
   type NcmCatalog,
 } from "@cia/pipeline";
 import type { ClassifyItemInput, ClassifyItemOutput, LlmProvider } from "./types.js";
@@ -28,19 +29,30 @@ export interface LlmCallFn {
   (system: string, user: string): Promise<string>;
 }
 
+function descricaoIa(it: ClassifyItemInput): string {
+  return textoClassificacaoIa({
+    descOriginal: it.descOriginal,
+    material: it.material,
+    uso: it.uso,
+  });
+}
+
 /** Executa 2 passes via função de chamada LLM (Anthropic/OpenAI/mock). */
 export async function executar2PassesComLlm(
   catalog: NcmCatalog,
   itens: ClassifyItemInput[],
   chamarLlm: LlmCallFn,
 ): Promise<ClassifyItemOutput[]> {
-  const passe1Inputs: Passe1ItemInput[] = itens.map((it, i) => ({
-    i,
-    descricao: it.descOriginal,
-    ncmInformado: it.ncmInformado,
-    contexto: it.contexto,
-    candidatos: montarCandidatosPasse1(catalog, it.descOriginal, detectarFamilia(it.descOriginal)),
-  }));
+  const passe1Inputs: Passe1ItemInput[] = itens.map((it, i) => {
+    const desc = descricaoIa(it);
+    return {
+      i,
+      descricao: desc,
+      ncmInformado: it.ncmInformado,
+      contexto: it.contexto,
+      candidatos: montarCandidatosPasse1(catalog, desc, detectarFamilia(desc)),
+    };
+  });
 
   for (const p of passe1Inputs) {
     if (!p.candidatos.length) {
@@ -63,7 +75,7 @@ export async function executar2PassesComLlm(
     if (!opcoes.length) throw new Error(`Posição ${pos4} sem NCM-8 vigentes`);
     passe2Inputs.push({
       i,
-      descricao: itens[i]!.descOriginal,
+      descricao: descricaoIa(itens[i]!),
       posicao4: pos4,
       ncmInformado: itens[i]!.ncmInformado,
       opcoes,

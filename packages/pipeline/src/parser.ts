@@ -36,6 +36,8 @@ export interface LinhaFornecedor {
   precoUnitario: number | null;
   fobTotalUS: number | null;
   ncm: string | null;
+  material?: string | null;
+  uso?: string | null;
   raw: Record<string, unknown>;
   fotoBase64?: string;
   fotoMime?: string;
@@ -163,6 +165,8 @@ const RE_QTD_POR_CAIXA =
   /qtd\s*por\s*caixa|qtde\s*por\s*caixa|por\s*caixa|per\s*box|per\s*case|每箱|单箱个数|装箱量|pcs\s*per/i;
 const RE_PESO_TOTAL = /总|total|合计/i;
 const RE_PESO_UNIT = /unit|unitário|unitario|unitario|单件|每件|per\s*unit|per\s*pc|per\s*piece|\/\s*un/i;
+const RE_MATERIAL = /material|材质|mat[eé]ria/i;
+const RE_USO = /uso|用途|usage|application|aplica[cç][aã]o/i;
 
 function indicePorHeader(colunas: ColunaMapeada[], re: RegExp): number | undefined {
   return colunas.find((c) => re.test(c.header.replace(/\s+/g, " ")))?.indice;
@@ -397,6 +401,8 @@ function parseRows(
     avoid: /total/i,
   });
   const iNcm = escolherColuna(colunas, "ncm");
+  const iMaterial = indicePorHeader(colunas, RE_MATERIAL);
+  const iUso = indicePorHeader(colunas, RE_USO);
 
   const ehReferenciaComex = colunas.some((c) => /cod subitem ncm/i.test(c.header));
   if (ehReferenciaComex) {
@@ -457,6 +463,8 @@ function parseRows(
     }
     const ncmRaw = iNcm !== undefined ? String(row[iNcm] ?? "").trim() : "";
     const ncm = ncmRaw ? ncmRaw.replace(/\D/g, "").padStart(8, "0").slice(0, 8) : null;
+    const material = iMaterial !== undefined ? String(row[iMaterial] ?? "").trim() || null : null;
+    const uso = iUso !== undefined ? String(row[iUso] ?? "").trim() || null : null;
 
     const raw: Record<string, unknown> = {};
     colunas.forEach((c) => {
@@ -472,6 +480,8 @@ function parseRows(
       precoUnitario,
       fobTotalUS,
       ncm: ncm && ncm.length === 8 ? ncm : null,
+      material,
+      uso,
       raw,
     });
   }
@@ -602,6 +612,8 @@ function resultadoParaSupplier(parsed: ResultadoParse): ParsedSupplierFile {
     fobUnitarioUS: l.precoUnitario,
     fobTotalUS: l.fobTotalUS,
     dimensoes: null,
+    material: l.material ?? null,
+    uso: l.uso ?? null,
     ...(l.fotoBase64 ? { fotoBase64: l.fotoBase64, fotoMime: l.fotoMime } : {}),
   }));
   return {

@@ -124,6 +124,7 @@ export {
   prefixosDasFamilias,
   prefixoBuscaPrincipal,
   enriquecerTextoClassificacao,
+  textoClassificacaoIa,
   FAMILIAS_PRODUTO,
   type FamiliaProduto,
   type FamiliaDetectada,

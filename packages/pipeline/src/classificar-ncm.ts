@@ -37,6 +37,18 @@ export function enriquecerTextoClassificacao(descricao: string, familia: Familia
   return partes.filter(Boolean).join(" ");
 }
 
+/** Texto enriquecido para IA (2 passes) — material/uso quando presentes na planilha. */
+export function textoClassificacaoIa(input: {
+  descOriginal: string;
+  material?: string | null;
+  uso?: string | null;
+}): string {
+  const partes = [input.descOriginal.trim()];
+  if (input.material?.trim()) partes.push(`Material: ${input.material.trim()}`);
+  if (input.uso?.trim()) partes.push(`Uso: ${input.uso.trim()}`);
+  return partes.filter(Boolean).join(" · ");
+}
+
 /** Candidatos Siscomex por busca textual + preferência por família (fallback). */
 export function candidatosSiscomexPorDescricao(
   catalog: NcmCatalog,

@@ -12,6 +12,7 @@ import {
   preencherFobKgPlanilha,
   resolveNcm,
   resolvePesoLiqLinha,
+  textoClassificacaoIa,
   validarNcmItem,
   type LinhaCrua,
   type NcmCatalog,
@@ -58,6 +59,8 @@ async function classificarEmLotes(
   const inputs: ClassifyItemInput[] = linhas.map((l) => ({
     descOriginal: l.descOriginal,
     ncmInformado: l.ncm,
+    material: l.material,
+    uso: l.uso,
     contexto: contextoSiscomexParaItem(state.ncmCatalog, l.descOriginal, l.ncm),
   }));
 
@@ -90,7 +93,11 @@ export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise
     const resolvido = resolveNcm(state.ncmCatalog, {
       ncmPlanilha: l.ncm,
       candidatosIa: candidatosBrutos,
-      descricao: c?.descPt || l.descOriginal,
+      descricao: textoClassificacaoIa({
+        descOriginal: c?.descPt || l.descOriginal,
+        material: l.material,
+        uso: l.uso,
+      }),
     });
     const validacao = validarNcmItem(
       resolvido.ncm,
@@ -159,9 +166,10 @@ export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise
   const juiz = resolverJuizCompatibilidade(state.provider);
   const comps = await avaliarCompatibilidadeLote(
     state.ncmCatalog,
-    itens.map((it) => ({
+    itens.map((it, i) => ({
       descricao: it.descOriginal,
-      descricaoFamilia: it.descOriginal,
+      descricaoFamilia: linhasNorm[i]!.descOriginal,
+      material: linhasNorm[i]!.material ?? undefined,
       ncm: it.ncm,
     })),
     juiz,

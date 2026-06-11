@@ -131,6 +131,16 @@ describe("compatibilidade produto × NCM — casos obrigatórios", () => {
     expect(["incompativel", "revisar"]).toContain(resultado.compatibilidadeProduto);
     expect(resultado.compatibilidadeProduto).not.toBe("compativel");
   });
+
+  it("material 铁 × NCM cap. 30 → incompativel ou revisar", () => {
+    const { resultado } = avaliarCompatibilidadeProduto(catalog, {
+      descricao: "Peça metálica genérica",
+      material: "铁",
+      ncm: "30021510",
+    });
+    expect(["incompativel", "revisar"]).toContain(resultado.compatibilidadeProduto);
+    expect(resultado.compatibilidadeProduto).not.toBe("compativel");
+  });
 });
 
 describe("avisoCompatibilidadePdf", () => {

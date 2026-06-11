@@ -189,7 +189,8 @@ function paresFortes(produto: string, ncmTexto: string): string | null {
 /** Palavras de domínios distantes — par mínimo indica antagonismo. */
 const DOMINIOS: Record<string, RegExp> = {
   alimento: /farinha|lact|leite|aliment|comest|food|grain|flour|milk|preparac/i,
-  metalurgia: /parafus|porca|sexav|bolt|screw|ferro|aco|metal|fixador|rosca/i,
+  metalurgia: /parafus|porca|sexav|bolt|screw|ferro|aco|metal|fixador|rosca|铁|钢|stainless|inox/i,
+  imunologico: /imunolog|vacina|soro|anticorpo|hemoglobin|plasma|preparac.*imun/i,
   moveis: /cadeira|chair|assento|seat|estofad|upholster|altura\s*ajust|swivel|girator/i,
   iluminacao: /lustre|lumin|chandelier|pendente|plafon|light\s*fixture|led\s*panel/i,
   eletronico: /fone|headphone|bluetooth|celular|smartphone|camera|cabo\s*eletr/i,

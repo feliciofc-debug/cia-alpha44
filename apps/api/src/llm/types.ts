@@ -4,6 +4,8 @@ export interface ClassifyItemInput {
   descOriginal: string;
   ncmInformado?: string | null;
   contexto?: string | null;
+  material?: string | null;
+  uso?: string | null;
 }
 
 export interface NcmCandidatoLlm {

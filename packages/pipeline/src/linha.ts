@@ -11,6 +11,10 @@ export interface LinhaCrua {
   fobUnitarioUS: number | null;
   fobTotalUS: number | null;
   dimensoes?: string | null;
+  /** Material (材质) — coluna fornecedor. */
+  material?: string | null;
+  /** Uso / aplicação (用途). */
+  uso?: string | null;
   /** Foto do produto (base64) — extraída da planilha .xlsx. */
   fotoBase64?: string;
   fotoMime?: string;
