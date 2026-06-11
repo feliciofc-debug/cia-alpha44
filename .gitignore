@@ -13,6 +13,9 @@ Thumbs.db
 # artefatos de inspeção das planilhas-fonte
 tools/*.txt
 tools/data-fontes/*.xlsx
+# bundle HTML/JS acidental de deploy manual (não faz parte do monorepo)
+tools/vercel-bundle.js
+tools/vercel-index.html
 
 # uploads / saídas geradas
 uploads/
