@@ -219,6 +219,30 @@ function AnalisePainel({
   const [aba, setAba] = useState<"orcamento" | "tecnica">(
     salvaId && contarItensComFoto(analise.itens) === 0 ? "tecnica" : "orcamento",
   );
+  const [exportandoConc, setExportandoConc] = useState<"xlsx" | "csv" | null>(null);
+
+  async function exportarConciliacao(fmt: "xlsx" | "csv") {
+    setExportandoConc(fmt);
+    try {
+      if (salvaId) {
+        await api.exportarConciliacaoSalva(salvaId, fmt);
+      } else {
+        await api.exportarConciliacaoAnalise(
+          {
+            cotacao: analise.cotacao,
+            itens,
+            resultado: analise.resultado,
+            provider: (analise as { provider?: string | null }).provider,
+          },
+          fmt,
+        );
+      }
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : "Falha ao exportar conciliação.");
+    } finally {
+      setExportandoConc(null);
+    }
+  }
 
   useEffect(() => {
     if (!irParaOrcamento) return;
@@ -242,6 +266,26 @@ function AnalisePainel({
   const conteudoTecnico: ReactNode = (
     <>
       <ResumoFinanceiroPainel financeiro={financeiro} resultado={analise.resultado} />
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-slate-400">Exportar conciliação:</span>
+        <button
+          type="button"
+          className="btn-ghost text-xs"
+          disabled={exportandoConc != null}
+          onClick={() => void exportarConciliacao("xlsx")}
+        >
+          {exportandoConc === "xlsx" ? "Gerando XLSX…" : "XLSX"}
+        </button>
+        <button
+          type="button"
+          className="btn-ghost text-xs"
+          disabled={exportandoConc != null}
+          onClick={() => void exportarConciliacao("csv")}
+        >
+          {exportandoConc === "csv" ? "Gerando CSV…" : "CSV"}
+        </button>
+      </div>
 
       <div className="flex flex-wrap gap-2">
         {(Object.entries(canais) as [Canal, number][]).map(([canal, qtd]) => (

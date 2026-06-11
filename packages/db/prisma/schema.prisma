@@ -103,6 +103,8 @@ model Item {
   antidumping       Boolean  @default(false)
   /// Caminho relativo em data/fotos/ (ex.: cotacaoId/0.jpg)
   fotoPath          String?
+  /// Metadados estendidos (uso, material, ncmFonte, fobKgFonte, compatibilidade…)
+  meta              Json     @default("{}")
 
   @@index([cotacaoId])
   @@index([ncm])

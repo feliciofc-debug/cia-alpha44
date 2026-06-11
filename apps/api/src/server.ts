@@ -28,6 +28,7 @@ import { gerarPdfRelatorioFaturamento } from "./services/pdf-relatorio-faturamen
 import { gerarPdfCotacao, gerarPdfFromPayload } from "./services/pdf-cotacao.js";
 import { NcmInvalidoPdfError } from "./services/validar-ncm-pdf.js";
 import { conferirNcmItens } from "./services/ncm-conferencia.js";
+import { exportarConciliacao, exportarConciliacaoSalva } from "./services/conciliacao-export.js";
 import { lerFotoItem } from "./services/fotos.js";
 
 const PDF_GERACAO_TIMEOUT_MS = 45_000;
@@ -398,6 +399,52 @@ export async function buildServer() {
       return row;
     } catch (e) {
       return persistenciaErro(reply, e);
+    }
+  });
+
+  /** Exportação conciliação — mesma persistência/tenant que GET /api/cotacoes/:id. */
+  app.get("/api/cotacoes/:id/conciliacao", async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string };
+      const q = req.query as { formato?: string };
+      const formato = q.formato === "csv" ? "csv" : "xlsx";
+      const out = await exportarConciliacaoSalva(id, formato, getState());
+      if (!out) return reply.status(404).send({ erro: "Cotação não encontrada." });
+      return reply
+        .header("Content-Type", out.contentType)
+        .header("Content-Disposition", `attachment; filename="${out.filename}"`)
+        .send(out.buffer);
+    } catch (e) {
+      return persistenciaErro(reply, e);
+    }
+  });
+
+  app.post("/api/conciliacao/export", async (req, reply) => {
+    const parsed = salvarBody.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ erro: "Body inválido", detalhe: parsed.error.flatten() });
+    }
+    try {
+      const q = req.query as { formato?: string };
+      const formato = q.formato === "csv" ? "csv" : "xlsx";
+      const out = await exportarConciliacao(
+        {
+          cotacao: parsed.data.cotacao,
+          itens: parsed.data.itens as import("@cia/shared").Item[],
+          resultado: (parsed.data.resultado ?? null) as import("@cia/fiscal-engine").ResultadoCotacao | null,
+          provider: parsed.data.provider,
+          cotacaoId: parsed.data.cotacao.id,
+        },
+        formato,
+        getState(),
+      );
+      return reply
+        .header("Content-Type", out.contentType)
+        .header("Content-Disposition", `attachment; filename="${out.filename}"`)
+        .send(out.buffer);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Falha ao exportar conciliação.";
+      return reply.status(422).send({ erro: msg });
     }
   });
 

@@ -144,3 +144,20 @@ export {
   type AliquotaSource,
   type AliquotaResult,
 } from "./tec.js";
+export { confiancaNcmFinal } from "./confianca-ncm.js";
+export { extrairItemMeta, mesclarItemMeta, type ItemMetaPersistido } from "./item-meta.js";
+export {
+  FONTE_ALIQUOTA_TEC_PADRAO,
+  gerarConciliacaoBuffer,
+  gerarCsvConciliacao,
+  gerarXlsxConciliacao,
+  montarLinhasConciliacao,
+  nomeArquivoConciliacao,
+  fonteAliquotaItem,
+  parseModelo,
+  parseDescZhEn,
+  totaisConciliacao,
+  type RelatorioConciliacaoInput,
+  type LinhaConciliacao,
+  type TotaisConciliacao,
+} from "./relatorio-conciliacao.js";

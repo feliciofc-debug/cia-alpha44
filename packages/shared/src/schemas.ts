@@ -85,6 +85,10 @@ export const itemSchema = z.object({
   descDuimp: z.string().default(""),
   /** Uso / aplicação (用途) — herdado da planilha para regras FOB/NCM. */
   uso: z.string().optional(),
+  /** Material (材质) — coluna fornecedor. */
+  material: z.string().optional(),
+  /** Confiança do NCM final escolhido (2-passes), não necessariamente candidatos[0]. */
+  ncmConfianca: z.number().min(0).max(1).optional(),
   ncm: z.string(),
   ncmCandidatos: z.array(ncmCandidatoSchema).default([]),
   pesoBrutoKg: z.number().nonnegative().nullable().default(null),

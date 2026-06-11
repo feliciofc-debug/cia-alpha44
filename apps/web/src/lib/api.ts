@@ -317,6 +317,41 @@ export const api = {
     return api.baixarPdfBlob(res, `cia-preview-${tipo}.pdf`);
   },
 
+  exportarConciliacaoSalva: async (id: string, formato: "xlsx" | "csv" = "xlsx") => {
+    const res = await fetchComTimeout(
+      `${BASE}/api/cotacoes/${id}/conciliacao?formato=${formato}`,
+      {},
+      PDF_TIMEOUT_MS,
+    );
+    return api.baixarPdfBlob(res, `conciliacao.${formato}`);
+  },
+
+  exportarConciliacaoAnalise: async (
+    payload: {
+      cotacao: Cotacao;
+      itens: Item[];
+      resultado: ResultadoCotacao | null;
+      provider?: string | null;
+    },
+    formato: "xlsx" | "csv" = "xlsx",
+  ) => {
+    const res = await fetchComTimeout(
+      `${BASE}/api/conciliacao/export?formato=${formato}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          cotacao: payload.cotacao,
+          itens: payload.itens,
+          resultado: payload.resultado,
+          provider: payload.provider,
+        }),
+      },
+      PDF_TIMEOUT_MS,
+    );
+    return api.baixarPdfBlob(res, `conciliacao.${formato}`);
+  },
+
   benchmarkPlanilhaStatus: () =>
     fetchComTimeout(`${BASE}/api/benchmark/planilha/status`, {}, API_TIMEOUT_MS).then(
       handle<BenchmarkPlanilhaStatus>,

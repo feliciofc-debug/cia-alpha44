@@ -2,6 +2,7 @@
 
 import { prisma, type CanalAduaneiro, type Cotacao as CotacaoRow } from "@cia/db";
 import type { ResultadoCotacao } from "@cia/fiscal-engine";
+import { extrairItemMeta, mesclarItemMeta } from "@cia/pipeline";
 import {
   icmsSaidaParaDestino,
   inferirQtdContainers,
@@ -81,6 +82,7 @@ type CotacaoComRelacoes = CotacaoRow & {
     anuencia: unknown;
     antidumping: boolean;
     fotoPath?: string | null;
+    meta?: unknown;
   }>;
   despesas: Array<{
     id: string;
@@ -109,29 +111,34 @@ export function mapRowParaDominio(row: CotacaoComRelacoes): {
 } {
   const itens: Item[] = [...row.itens]
     .sort((a, b) => a.ordem - b.ordem)
-    .map((it) => ({
-      id: it.id,
-      descOriginal: it.descOriginal,
-      descPt: it.descPt,
-      descDuimp: it.descDuimp,
-      ncm: it.ncm,
-      ncmCandidatos: (it.ncmCandidatos as Item["ncmCandidatos"]) ?? [],
-      pesoBrutoKg: numOrNull(it.pesoBrutoKg),
-      pesoLiqKg: num(it.pesoLiqKg),
-      qtd: numOrNull(it.qtd),
-      fobUnitarioUS: numOrNull(it.fobUnitarioUS),
-      fobTotalUS: num(it.fobTotalUS),
-      aliquotas: it.aliquotas as Item["aliquotas"],
-      aliquotasOverride: it.aliquotasOverride,
-      benchmark: (it.benchmark as Item["benchmark"]) ?? undefined,
-      calibracao: (it.calibracao as Item["calibracao"]) ?? undefined,
-      risco: (it.risco as Item["risco"]) ?? undefined,
-      anuencia: (it.anuencia as string[]) ?? [],
-      antidumping: it.antidumping,
-      ...(it.fotoPath
-        ? { fotoPath: it.fotoPath, fotoUrl: fotoUrlApi(row.id, it.ordem) }
-        : {}),
-    }));
+    .map((it) =>
+      mesclarItemMeta(
+        {
+          id: it.id,
+          descOriginal: it.descOriginal,
+          descPt: it.descPt,
+          descDuimp: it.descDuimp,
+          ncm: it.ncm,
+          ncmCandidatos: (it.ncmCandidatos as Item["ncmCandidatos"]) ?? [],
+          pesoBrutoKg: numOrNull(it.pesoBrutoKg),
+          pesoLiqKg: num(it.pesoLiqKg),
+          qtd: numOrNull(it.qtd),
+          fobUnitarioUS: numOrNull(it.fobUnitarioUS),
+          fobTotalUS: num(it.fobTotalUS),
+          aliquotas: it.aliquotas as Item["aliquotas"],
+          aliquotasOverride: it.aliquotasOverride,
+          benchmark: (it.benchmark as Item["benchmark"]) ?? undefined,
+          calibracao: (it.calibracao as Item["calibracao"]) ?? undefined,
+          risco: (it.risco as Item["risco"]) ?? undefined,
+          anuencia: (it.anuencia as string[]) ?? [],
+          antidumping: it.antidumping,
+          ...(it.fotoPath
+            ? { fotoPath: it.fotoPath, fotoUrl: fotoUrlApi(row.id, it.ordem) }
+            : {}),
+        },
+        it.meta,
+      ),
+    );
 
   const despesas = [...row.despesas]
     .sort((a, b) => a.ordem - b.ordem)
@@ -232,6 +239,7 @@ export async function salvarCotacao(input: SalvarCotacaoInput) {
           risco: it.risco ?? undefined,
           anuencia: it.anuencia ?? [],
           antidumping: it.antidumping ?? false,
+          meta: extrairItemMeta(it) as Prisma.InputJsonValue,
         })),
       },
       despesas: {

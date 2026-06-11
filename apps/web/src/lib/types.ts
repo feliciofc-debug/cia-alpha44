@@ -80,6 +80,9 @@ export interface Item {
   fobPendente?: boolean;
   fobKgBase?: "bruto" | "liquido" | "indeterminado";
   fobKgAvisos?: string[];
+  uso?: string;
+  material?: string;
+  ncmConfianca?: number;
 }
 
 export interface Despesa {
