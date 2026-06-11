@@ -33,6 +33,8 @@ export interface NcmTratamentoTributario {
 
 export type StatusConferenciaNcm = "confere" | "diverge" | "so_planilha" | "so_ia" | "pendente_siscomex";
 
+export type CompatibilidadeProduto = "compativel" | "incompativel" | "revisar";
+
 export interface ItemConferenciaNcm {
   indice: number;
   ncmPlanilha: string | null;
@@ -41,6 +43,8 @@ export interface ItemConferenciaNcm {
   status: StatusConferenciaNcm;
   descricaoSiscomex: string | null;
   avisos: string[];
+  compatibilidadeProduto?: CompatibilidadeProduto;
+  motivoCompatibilidade?: string;
 }
 
 export interface SiscomexProvider {

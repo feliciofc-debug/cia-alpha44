@@ -69,6 +69,8 @@ export interface Item {
   ncmPlanilhaOriginal?: string;
   ncmDescricaoOficial?: string;
   ncmAvisos?: string[];
+  compatibilidadeProduto?: "compativel" | "incompativel" | "revisar";
+  motivoCompatibilidade?: string;
 }
 
 export interface Despesa {

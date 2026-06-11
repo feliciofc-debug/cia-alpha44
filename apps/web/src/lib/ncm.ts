@@ -8,6 +8,10 @@ export function itensComNcmInvalido(itens: Item[]): Item[] {
   });
 }
 
+export function itensComIncompatibilidadeProduto(itens: Item[]): Item[] {
+  return itens.filter((it) => it.compatibilidadeProduto === "incompativel");
+}
+
 export function pdfBloqueadoPorNcm(itens: Item[]): boolean {
   return itensComNcmInvalido(itens).length > 0;
 }
@@ -21,4 +25,11 @@ export function resumoBloqueioNcm(itens: Item[]): string {
     .join("; ");
   const extra = inv.length > 3 ? ` (+${inv.length - 3})` : "";
   return `PDF bloqueado: ${inv.length} item(ns) com NCM inválido ou pendente (${nomes}${extra}). Corrija na aba Análise técnica.`;
+}
+
+/** Aviso não bloqueante — possível incompatibilidade semântica produto × NCM. */
+export function avisoCompatibilidadePdf(itens: Item[]): string | null {
+  const qtd = itensComIncompatibilidadeProduto(itens).length;
+  if (!qtd) return null;
+  return `${qtd} item(ns) com possível incompatibilidade NCM × produto — revisar antes de enviar`;
 }

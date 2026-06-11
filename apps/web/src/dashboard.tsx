@@ -19,7 +19,7 @@ import { PainelKpisView } from "./painel-kpis.tsx";
 import { BenchmarkReferenciaView } from "./benchmark-referencia-view.tsx";
 import { PreviewOrcamentoCliente } from "./preview-orcamento-cliente.tsx";
 import { cotacaoParaSalvar, itensParaSalvar } from "./lib/cotacao-payload.ts";
-import { pdfBloqueadoPorNcm, resumoBloqueioNcm } from "./lib/ncm.ts";
+import { pdfBloqueadoPorNcm, resumoBloqueioNcm, avisoCompatibilidadePdf } from "./lib/ncm.ts";
 import type { ClienteResumo, DashboardKpis, DashboardSeries } from "./lib/types.ts";
 
 type View = NavItem | "detalhe";
@@ -231,6 +231,7 @@ function AnalisePainel({
   const qtdFotos = contarItensComFoto(itens);
   const ncmBloqueiaPdf = pdfBloqueadoPorNcm(itens);
   const motivoBloqueioPdf = resumoBloqueioNcm(itens);
+  const avisoCompatPdf = avisoCompatibilidadePdf(itens);
   const provider = (analise as { provider?: string | null }).provider ?? "—";
   const canais = resumoCanais(itens);
   const financeiro =
@@ -303,6 +304,27 @@ function AnalisePainel({
                     <span className={it.ncmValido === false ? "font-semibold text-red-400" : "text-emerald-300"}>
                       {fmtNcm(it.ncm || "00000000")}
                     </span>
+                    {it.compatibilidadeProduto === "incompativel" && (
+                      <span
+                        className="mt-0.5 block text-[10px] font-semibold text-orange-400"
+                        title={it.motivoCompatibilidade}
+                      >
+                        ⚠ NCM × produto incompatível
+                      </span>
+                    )}
+                    {it.compatibilidadeProduto === "revisar" && (
+                      <span
+                        className="mt-0.5 block text-[10px] font-medium text-amber-400"
+                        title={it.motivoCompatibilidade}
+                      >
+                        ◐ revisar compatibilidade
+                      </span>
+                    )}
+                    {it.compatibilidadeProduto === "compativel" && (
+                      <span className="mt-0.5 block text-[10px] text-slate-500" title={it.motivoCompatibilidade}>
+                        ✓ compatível
+                      </span>
+                    )}
                     {it.ncmPlanilhaOriginal && it.ncmPlanilhaOriginal !== it.ncm && (
                       <span className="block text-[10px] text-red-400/80 line-through">
                         planilha: {fmtNcm(it.ncmPlanilhaOriginal)}
@@ -459,6 +481,11 @@ function AnalisePainel({
               {motivoBloqueioPdf}
             </div>
           )}
+          {avisoCompatPdf && (
+            <div className="rounded-xl border border-orange-500/40 bg-orange-500/10 px-4 py-3 text-sm text-orange-200">
+              {avisoCompatPdf}
+            </div>
+          )}
           <PreviewOrcamentoCliente
             cotacao={analise.cotacao}
             itens={itens}
@@ -468,6 +495,7 @@ function AnalisePainel({
             criadoEm={"criadoEm" in analise ? analise.criadoEm : undefined}
             pdfBloqueado={ncmBloqueiaPdf}
             motivoBloqueioPdf={motivoBloqueioPdf}
+            avisoCompatibilidade={avisoCompatPdf}
           />
         </div>
       ) : (

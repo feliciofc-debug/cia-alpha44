@@ -2,6 +2,7 @@
 
 import { normNcm8, type NcmCatalog } from "@cia/pipeline";
 import {
+  avaliarCompatibilidadeProduto,
   conferirLoteNcm,
   type EntradaConferenciaNcm,
   type ItemConferenciaNcm,
@@ -58,10 +59,25 @@ export async function conferirNcmItens(
 
   const catalogoAtivo = catalog.total > 0;
 
+  const conferidos = conferirLoteNcm(itens, siscomexPorIndice, siscomex.operacional || catalogoAtivo);
+
+  const itensComCompat = conferidos.map((item, i) => {
+    const entrada = itens[i]!;
+    const ncmRef = item.ncmPlanilha ?? item.ncmIa ?? entrada.ncmPlanilha ?? entrada.ncmIa;
+    const descricao = entrada.descricao ?? "";
+    if (!ncmRef || !descricao.trim()) return item;
+    const { resultado } = avaliarCompatibilidadeProduto(catalog, { descricao, ncm: ncmRef });
+    return {
+      ...item,
+      compatibilidadeProduto: resultado.compatibilidadeProduto,
+      motivoCompatibilidade: resultado.motivoCompatibilidade,
+    };
+  });
+
   return {
     siscomexConfigurado: siscomex.configurado || catalogoAtivo,
     siscomexOperacional: siscomex.operacional,
     ncmCatalogoTotal: catalog.total,
-    itens: conferirLoteNcm(itens, siscomexPorIndice, siscomex.operacional || catalogoAtivo),
+    itens: itensComCompat,
   };
 }

@@ -114,6 +114,13 @@ export const FAMILIAS_PRODUTO: FamiliaProduto[] = [
     termosBusca: "pneus borracha veiculo",
   },
   {
+    id: "parafusos_fixadores",
+    prefixos: ["7318"],
+    re: /parafus|porca\b|sexav|bolt|screw|nut\b|fixador|fastener|tornillo|螺栓|螺母/i,
+    termosBusca: "parafusos porcas rebites fixadores metal rosca",
+    ncmPreferidos: ["73181500"],
+  },
+  {
     id: "ferramentas_manual",
     prefixos: ["8205"],
     re: /chave\s*(ingl|fenda|phillips|allen)|ferramenta\s*manual|hand\s*tool|扳手|螺丝刀/i,

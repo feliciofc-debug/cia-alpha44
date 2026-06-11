@@ -127,6 +127,7 @@ export function PreviewOrcamentoCliente({
   criadoEm,
   pdfBloqueado = false,
   motivoBloqueioPdf,
+  avisoCompatibilidade,
 }: {
   cotacao: Cotacao;
   itens: Item[];
@@ -139,6 +140,8 @@ export function PreviewOrcamentoCliente({
   /** Impede download quando há NCM inválido na cotação. */
   pdfBloqueado?: boolean;
   motivoBloqueioPdf?: string;
+  /** Aviso não bloqueante — incompatibilidade semântica produto × NCM. */
+  avisoCompatibilidade?: string | null;
 }) {
   const [baixando, setBaixando] = useState(false);
 
@@ -182,6 +185,11 @@ export function PreviewOrcamentoCliente({
 
   return (
     <div className="overflow-hidden rounded-xl border border-white/10 bg-white text-black shadow-xl">
+      {avisoCompatibilidade && (
+        <div className="border-b border-orange-400 bg-orange-50 px-4 py-2 text-[11px] font-semibold text-orange-900">
+          {avisoCompatibilidade}
+        </div>
+      )}
       <div className="p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-black pb-3">
           <img src="/logo-innove888.jpeg" alt="INNOVE 888" className="h-12 w-auto object-contain" />

@@ -124,6 +124,20 @@ export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise
     });
   }
 
+  const { avaliarCompatibilidadeLote } = await import("../siscomex/compatibilidade-produto.js");
+  const { resolverJuizCompatibilidade } = await import("../llm/juiz-compatibilidade.js");
+  const juiz = resolverJuizCompatibilidade(state.provider);
+  const comps = await avaliarCompatibilidadeLote(
+    state.ncmCatalog,
+    itens.map((it) => ({ descricao: it.descPt || it.descOriginal, ncm: it.ncm })),
+    juiz,
+  );
+  for (let i = 0; i < itens.length; i++) {
+    const c = comps[i]!;
+    itens[i]!.compatibilidadeProduto = c.compatibilidadeProduto;
+    itens[i]!.motivoCompatibilidade = c.motivoCompatibilidade;
+  }
+
   return { itens, provider: state.provider.nome };
 }
 

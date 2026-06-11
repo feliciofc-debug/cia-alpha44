@@ -100,6 +100,9 @@ export const itemSchema = z.object({
   ncmPlanilhaOriginal: z.string().optional(),
   ncmDescricaoOficial: z.string().optional(),
   ncmAvisos: z.array(z.string()).optional(),
+  /** Compatibilidade semântica produto × NCM (T5 — independente de ncmValido Siscomex). */
+  compatibilidadeProduto: z.enum(["compativel", "incompativel", "revisar"]).optional(),
+  motivoCompatibilidade: z.string().optional(),
 });
 export type Item = z.infer<typeof itemSchema>;
 

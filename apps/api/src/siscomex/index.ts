@@ -12,6 +12,7 @@ import { criarStubSiscomexProvider } from "./stub.js";
 export * from "./types.js";
 export * from "./config.js";
 export * from "./conferencia.js";
+export * from "./compatibilidade-produto.js";
 
 export function escolherSiscomexProvider() {
   const escolha = (process.env.SISCOMEX_PROVIDER ?? "auto").toLowerCase();
