@@ -33,6 +33,12 @@ export function escolherProvider(seed: ComexEntry[]): LlmProvider {
   return mock;
 }
 
+/** Mensagem curta para log de fallback (sem credenciais). */
+function motivoFallback(e: unknown): string {
+  if (e instanceof Error) return e.message.slice(0, 200);
+  return String(e).slice(0, 200);
+}
+
 /** Envolve um provider para nunca derrubar a requisição: em erro, cai no mock. */
 export function comFallback(primario: LlmProvider, mock: LlmProvider): LlmProvider {
   if (!primario.disponivel) return primario;
@@ -42,7 +48,8 @@ export function comFallback(primario: LlmProvider, mock: LlmProvider): LlmProvid
     async classify(itens) {
       try {
         return await primario.classify(itens);
-      } catch {
+      } catch (e) {
+        console.warn(`[LLM fallback] ${primario.nome} classify → mock: ${motivoFallback(e)}`);
         return mock.classify(itens);
       }
     },
@@ -50,7 +57,8 @@ export function comFallback(primario: LlmProvider, mock: LlmProvider): LlmProvid
       if (primario.classify2Passes) {
         try {
           return await primario.classify2Passes(catalog, itens);
-        } catch {
+        } catch (e) {
+          console.warn(`[LLM fallback] ${primario.nome} classify2Passes → mock: ${motivoFallback(e)}`);
           return mock.classify2Passes!(catalog, itens);
         }
       }

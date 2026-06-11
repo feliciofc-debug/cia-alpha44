@@ -260,8 +260,18 @@ export async function buildServer() {
 
   // Linhas cruas → itens de domínio (tradução + NCM + DUIMP via IA, alíquotas via TEC).
   app.post("/api/classificar", async (req, reply) => {
-    const body = z.object({ linhas: z.array(z.any()) }).safeParse(req.body);
-    if (!body.success) return reply.status(400).send({ erro: "Body inválido", detalhe: body.error.flatten() });
+    const linhaSchema = z.object({
+      descOriginal: z.string().min(1, "descOriginal obrigatório"),
+    }).passthrough();
+    const body = z
+      .object({ linhas: z.array(linhaSchema).min(1, "Informe ao menos uma linha") })
+      .safeParse(req.body);
+    if (!body.success) {
+      return reply.status(400).send({
+        erro: "Body inválido — cada linha deve ter descOriginal (string não vazia)",
+        detalhe: body.error.flatten(),
+      });
+    }
     const { itens, provider } = await montarItens(body.data.linhas, getState());
     return { itens, provider };
   });
