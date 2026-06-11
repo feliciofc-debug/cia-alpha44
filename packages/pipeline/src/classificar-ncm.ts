@@ -6,6 +6,7 @@
 import type { NcmCandidato } from "@cia/shared";
 import type { NcmCatalog } from "./ncm-catalog.js";
 import { normNcm8 } from "./ncm-catalog.js";
+import { aplicarDesempateOutros } from "./desempate-outros.js";
 
 export interface FamiliaProduto {
   id: string;
@@ -26,6 +27,27 @@ export const FAMILIAS_PRODUTO: FamiliaProduto[] = [
     re: /lustre|lumin[aá]ria|chandelier|pendente|plafon|wall\s*lamp|aisle\s*light|ceiling\s*light|light\s*fixture|吊灯|灯|照明|candelabro|arandela|spot\s*light/i,
     termosBusca: "lustre luminaria eletrica teto parede suspenso LED",
     ncmPreferidos: ["94052100", "94051190", "94051900", "94052900"],
+  },
+  {
+    id: "audio_fones",
+    capitulo: "8518",
+    re: /fone|headphone|headset|earphone|earbud|tws|auscultador|auricular|耳机|耳塞/i,
+    termosBusca: "fones ouvido auscultador headset earphone microfone bluetooth",
+    ncmPreferidos: ["85183000"],
+  },
+  {
+    id: "recipientes_isotermicos",
+    capitulo: "9617",
+    re: /garrafa\s*t[eé]rm|termic|thermal\s*flask|termo|isot[eé]rm|vacuum\s*flask|vacuum\s*bottle|保温杯|保温瓶/i,
+    termosBusca: "garrafa termica recipiente isotermico vacuo isolamento",
+    ncmPreferidos: ["96170010"],
+  },
+  {
+    id: "moveis_assentos",
+    capitulo: "9401",
+    re: /cadeira|chair|assento|seat|escritorio|office|girator|swivel|rotativ|座椅/i,
+    termosBusca: "assento cadeira giratoria escritorio altura ajustavel",
+    ncmPreferidos: ["94013100", "94013900", "94014100"],
   },
   {
     id: "plasticos_chapas",
@@ -89,9 +111,10 @@ export function candidatosSiscomexPorDescricao(
   const cap = familia?.capitulo ?? descricao.replace(/\D/g, "").slice(0, 4);
   const cap4 = cap && cap.length === 4 && /^\d{4}$/.test(cap) ? cap : familia?.capitulo;
   const hits = catalog.buscarPorTexto(texto, cap4, limite + 5);
+  const hitsOrdenados = aplicarDesempateOutros(catalog, hits);
 
   const preferidos = new Set(familia?.ncmPreferidos ?? []);
-  const ordenados = [...hits].sort((a, b) => {
+  const ordenados = [...hitsOrdenados].sort((a, b) => {
     const pa = preferidos.has(a.ncm) ? 1 : 0;
     const pb = preferidos.has(b.ncm) ? 1 : 0;
     if (pa !== pb) return pb - pa;

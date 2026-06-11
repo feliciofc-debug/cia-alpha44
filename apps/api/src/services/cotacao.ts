@@ -22,20 +22,30 @@ import type { AppState } from "../state.js";
 
 const CLASSIFY_LOTE = 12;
 
-/** Classifica em lotes para não estourar tokens/tempo da IA em planilhas grandes. */
+/** Classifica em lotes — tenta 2 passes; fallback ao fluxo legado em falha. */
 async function classificarEmLotes(
   state: AppState,
   linhas: LinhaCrua[],
 ): Promise<Awaited<ReturnType<AppState["provider"]["classify"]>>> {
   const { contextoSiscomexParaItem } = await import("../llm/ncm-contexto-siscomex.js");
+  const { classificarItens2Passes } = await import("../llm/classificar-ncm-2passes.js");
+
   const inputs = linhas.map((l) => ({
     descOriginal: l.descOriginal,
     ncmInformado: l.ncm,
     contexto: contextoSiscomexParaItem(state.ncmCatalog, l.descOriginal, l.ncm),
   }));
+
   const saida: Awaited<ReturnType<AppState["provider"]["classify"]>> = [];
+
   for (let i = 0; i < inputs.length; i += CLASSIFY_LOTE) {
-    const parte = await state.provider.classify(inputs.slice(i, i + CLASSIFY_LOTE));
+    const lote = inputs.slice(i, i + CLASSIFY_LOTE);
+    const doisPasses = await classificarItens2Passes(state.provider, state.ncmCatalog, lote);
+    if (doisPasses) {
+      saida.push(...doisPasses);
+      continue;
+    }
+    const parte = await state.provider.classify(lote);
     saida.push(...parte);
   }
   return saida;
@@ -72,6 +82,14 @@ export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise
     const pesoLiq = resolvePesoLiqLinha(l);
     const fobTotal = l.fobTotalUS ?? 0;
 
+    const avisosClassificacao: string[] = [];
+    if (c?.classificacaoBaixaConfianca) {
+      avisosClassificacao.push("Classificação com baixa confiança — revisar");
+    }
+    if (c?.justificativaRGI) {
+      avisosClassificacao.push(`RGI: ${c.justificativaRGI.slice(0, 200)}`);
+    }
+
     itens.push({
       descOriginal: l.descOriginal,
       descPt: c?.descPt ?? l.descOriginal,
@@ -82,8 +100,8 @@ export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise
       ncmFonte: resolvido.fonte,
       ncmDescricaoOficial: resolvido.descricaoOficial ?? undefined,
       ncmPlanilhaOriginal: resolvido.ncmPlanilhaOriginal ?? undefined,
-      ncmAvisos: [...resolvido.avisos, ...validacao.avisos].length
-        ? [...resolvido.avisos, ...validacao.avisos]
+      ncmAvisos: [...resolvido.avisos, ...validacao.avisos, ...avisosClassificacao].length
+        ? [...resolvido.avisos, ...validacao.avisos, ...avisosClassificacao]
         : undefined,
       pesoBrutoKg: l.pesoBrutoKg,
       pesoLiqKg: pesoLiq,

@@ -78,6 +78,13 @@ export {
   type NcmVigenteCache,
   type NcmVigenteEntry,
 } from "./ncm-catalog.js";
+export {
+  montarCandidatosPasse1,
+  listarNcm8DaPosicao,
+  type PosicaoCandidata,
+  type Ncm8Posicao,
+} from "./ncm-posicoes.js";
+export { isFolhaGenericaOutros, aplicarDesempateOutros } from "./desempate-outros.js";
 export { resolveNcm, type ResolveNcmResult, type NcmFonte } from "./resolve-ncm.js";
 export {
   detectarFamilia,

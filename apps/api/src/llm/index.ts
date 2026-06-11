@@ -46,5 +46,15 @@ export function comFallback(primario: LlmProvider, mock: LlmProvider): LlmProvid
         return mock.classify(itens);
       }
     },
+    async classify2Passes(catalog, itens) {
+      if (primario.classify2Passes) {
+        try {
+          return await primario.classify2Passes(catalog, itens);
+        } catch {
+          return mock.classify2Passes!(catalog, itens);
+        }
+      }
+      return mock.classify2Passes!(catalog, itens);
+    },
   };
 }

@@ -14,6 +14,7 @@ import {
 } from "./classificar-ncm.js";
 import type { NcmCatalog } from "./ncm-catalog.js";
 import { normNcm8 } from "./ncm-catalog.js";
+import { aplicarDesempateOutros } from "./desempate-outros.js";
 
 export type NcmFonte = "planilha" | "ia" | "siscomex" | "pendente";
 
@@ -57,7 +58,8 @@ function candidatosDeBusca(
   descricao: string,
   capitulo4?: string,
 ): NcmCandidato[] {
-  return catalog.buscarPorTexto(descricao, capitulo4, 5).map((r, i) => ({
+  const hits = aplicarDesempateOutros(catalog, catalog.buscarPorTexto(descricao, capitulo4, 5));
+  return hits.map((r, i) => ({
     ncm: r.ncm,
     descricaoOficial: r.descricao,
     confianca: Math.max(0.35, 0.85 - i * 0.12),

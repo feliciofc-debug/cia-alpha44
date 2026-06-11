@@ -27,6 +27,10 @@ export interface NcmCatalog {
   descricao(ncm: string): string | null;
   descricaoCompleta(ncm: string): string | null;
   listarPorCapitulo(capitulo4: string): Array<{ ncm: string; descricao: string }>;
+  /** Capítulos SH-2 distintos no catálogo. */
+  listarCapitulos(): Array<{ capitulo2: string; titulo: string }>;
+  /** Posições NCM-4 distintas em um capítulo (2 dígitos). */
+  listarPosicoes4(capitulo2: string): Array<{ posicao4: string; descricao: string }>;
   /** Busca NCMs vigentes por palavras na descrição oficial Siscomex. */
   buscarPorTexto(texto: string, capitulo4?: string, limite?: number): Array<{ ncm: string; descricao: string; score: number }>;
 }
@@ -123,6 +127,33 @@ export function criarNcmCatalog(cache: NcmVigenteCache): NcmCatalog {
       return Object.entries(itens)
         .filter(([k]) => k.startsWith(cap))
         .map(([ncm, raw]) => ({ ncm, descricao: normalizarEntrada(raw).folha }));
+    },
+    listarCapitulos() {
+      const caps = new Set<string>();
+      for (const ncm of Object.keys(itens)) caps.add(ncm.slice(0, 2));
+      return [...caps]
+        .sort()
+        .map((capitulo2) => {
+          const rep = Object.keys(itens).find((k) => k.startsWith(capitulo2));
+          const completa = rep ? normalizarEntrada(itens[rep]!).completa : "";
+          const titulo = completa.split(" > ")[0]?.trim() ?? capitulo2;
+          return { capitulo2, titulo };
+        });
+    },
+    listarPosicoes4(capitulo2: string) {
+      const cap2 = capitulo2.replace(/\D/g, "").slice(0, 2);
+      const pos = new Set<string>();
+      for (const ncm of Object.keys(itens)) {
+        if (ncm.startsWith(cap2)) pos.add(ncm.slice(0, 4));
+      }
+      return [...pos].sort().map((posicao4) => {
+        const rep = Object.keys(itens).find((k) => k.startsWith(posicao4));
+        const folha = rep ? normalizarEntrada(itens[rep]!).folha : posicao4;
+        const completa = rep ? normalizarEntrada(itens[rep]!).completa : "";
+        const partes = completa.split(" > ").map((p) => p.trim());
+        const descricao = partes.length >= 2 ? partes[1]! : folha;
+        return { posicao4, descricao };
+      });
     },
     buscarPorTexto(texto: string, capitulo4?: string, limite = 5) {
       const cap = capitulo4?.replace(/\D/g, "").slice(0, 4);
