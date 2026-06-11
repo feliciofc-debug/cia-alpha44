@@ -76,6 +76,7 @@ export {
   normNcm8,
   type NcmCatalog,
   type NcmVigenteCache,
+  type NcmVigenteEntry,
 } from "./ncm-catalog.js";
 export { resolveNcm, type ResolveNcmResult, type NcmFonte } from "./resolve-ncm.js";
 export {
