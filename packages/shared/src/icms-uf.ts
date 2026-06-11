@@ -1,6 +1,10 @@
 /**
- * Alíquotas internas de ICMS por UF (operações internas — formação de preço).
- * Benefício ALAGOAS: 4% na saída quando destino = AL (planilha 66); demais UFs usam alíquota do destino.
+ * ICMS por UF — saída (interna × interestadual) e entrada (regime de desembaraço).
+ *
+ * Saída: Res. Senado Federal 13/2012 — mercadoria importada, operação interestadual = 4%
+ * (nacional; independe do regime). Interna: ICMS_INTERNO_UF[ufEmpresa] quando destino = ufEmpresa.
+ *
+ * Entrada: regime AL_DIFERIDO → 0 (diferido); NORMAL → 0 v1 + aviso obrigatório.
  */
 
 export const UFS_BRASIL = [
@@ -34,6 +38,16 @@ export const UFS_BRASIL = [
 ] as const;
 
 export type UfBrasil = (typeof UFS_BRASIL)[number];
+
+export type RegimeIcms = "AL_DIFERIDO" | "NORMAL";
+
+/** Alíquota interestadual importação — Res. Senado Federal 13/2012. */
+export const ICMS_SAIDA_INTERESTADUAL_IMPORT = 0.04;
+
+export const FUNDAMENTO_ICMS_SAIDA_INTERESTADUAL = "Res. Senado Federal 13/2012";
+
+export const AVISO_REGIME_ICMS_NORMAL =
+  "ICMS de importação não calculado neste regime (v1)";
 
 /** Alíquota interna padrão (decimal). Fonte: tabela ICMS interestadual — revisar conforme NCM/regime. */
 export const ICMS_INTERNO_UF: Record<UfBrasil, number> = {
@@ -96,6 +110,7 @@ export const UF_NOMES: Record<UfBrasil, string> = {
   TO: "Tocantins",
 };
 
+/** @deprecated Preferir resolverIcmsEfetivo — benefício AL 4% só em operação interna AL (legado). */
 export const ICMS_BENEF_ALAGOAS = 0.04;
 
 export function normalizarUf(uf: string): UfBrasil | null {
@@ -103,14 +118,70 @@ export function normalizarUf(uf: string): UfBrasil | null {
   return (UFS_BRASIL as readonly string[]).includes(s) ? (s as UfBrasil) : null;
 }
 
-/** ICMS efetivo na cascata de saída conforme UF destino e benefício fiscal. */
-export function icmsSaidaParaDestino(destino: string, benefFiscal = "ALAGOAS"): number {
-  const uf = normalizarUf(destino) ?? "SP";
-  const benef = benefFiscal.toUpperCase();
-  if (benef === "ALAGOAS" && uf === "AL") {
-    return ICMS_BENEF_ALAGOAS;
+export interface ResolverIcmsInput {
+  /** UF do estabelecimento vendedor (default AL). */
+  ufEmpresa: string;
+  destino: string;
+  regimeIcms: RegimeIcms;
+  icmsSaidaManual?: number | null;
+  icmsSaidaManualFlag?: boolean;
+}
+
+export interface IcmsEfetivoResult {
+  icmsEntradaEfetivo: number;
+  icmsSaidaEfetivo: number;
+  fundamentoSaida: string;
+  operacaoInterestadual: boolean;
+  avisoRegimeIcms?: string;
+}
+
+/** Resolve ICMS entrada (regime) e saída (interna × interestadual × manual). */
+export function resolverIcmsEfetivo(input: ResolverIcmsInput): IcmsEfetivoResult {
+  const ufEmpresa = normalizarUf(input.ufEmpresa) ?? "AL";
+  const destino = normalizarUf(input.destino) ?? "SP";
+  const interestadual = destino !== ufEmpresa;
+
+  let icmsSaidaEfetivo: number;
+  let fundamentoSaida: string;
+
+  if (input.icmsSaidaManualFlag && input.icmsSaidaManual != null) {
+    icmsSaidaEfetivo = input.icmsSaidaManual;
+    fundamentoSaida = "manual (editado na cotação)";
+  } else if (interestadual) {
+    icmsSaidaEfetivo = ICMS_SAIDA_INTERESTADUAL_IMPORT;
+    fundamentoSaida = FUNDAMENTO_ICMS_SAIDA_INTERESTADUAL;
+  } else {
+    icmsSaidaEfetivo = ICMS_INTERNO_UF[ufEmpresa];
+    fundamentoSaida = `ICMS interno UF ${ufEmpresa}`;
   }
-  return ICMS_INTERNO_UF[uf];
+
+  const icmsEntradaEfetivo = 0;
+  const avisoRegimeIcms =
+    input.regimeIcms === "NORMAL" ? AVISO_REGIME_ICMS_NORMAL : undefined;
+
+  return {
+    icmsEntradaEfetivo,
+    icmsSaidaEfetivo,
+    fundamentoSaida,
+    operacaoInterestadual: interestadual,
+    avisoRegimeIcms,
+  };
+}
+
+/**
+ * @deprecated Use resolverIcmsEfetivo. Mantido para compat — assume ufEmpresa=AL, AL_DIFERIDO.
+ * benefFiscal ignorado na saída (regra nacional Res. Senado 13/2012).
+ */
+export function icmsSaidaParaDestino(
+  destino: string,
+  _benefFiscal = "ALAGOAS",
+  ufEmpresa = "AL",
+): number {
+  return resolverIcmsEfetivo({
+    ufEmpresa,
+    destino,
+    regimeIcms: "AL_DIFERIDO",
+  }).icmsSaidaEfetivo;
 }
 
 export interface UfFiscalInfo {
@@ -120,11 +191,15 @@ export interface UfFiscalInfo {
   icmsEfetivoSaida: number;
 }
 
-export function listarUfsFiscais(benefFiscal = "ALAGOAS"): UfFiscalInfo[] {
+export function listarUfsFiscais(ufEmpresa = "AL"): UfFiscalInfo[] {
   return UFS_BRASIL.map((sigla) => ({
     sigla,
     nome: UF_NOMES[sigla],
     icmsInterno: ICMS_INTERNO_UF[sigla],
-    icmsEfetivoSaida: icmsSaidaParaDestino(sigla, benefFiscal),
+    icmsEfetivoSaida: resolverIcmsEfetivo({
+      ufEmpresa,
+      destino: sigla,
+      regimeIcms: "AL_DIFERIDO",
+    }).icmsSaidaEfetivo,
   }));
 }
