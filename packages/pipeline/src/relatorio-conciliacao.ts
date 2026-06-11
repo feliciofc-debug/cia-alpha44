@@ -4,10 +4,15 @@
 
 import ExcelJS from "exceljs";
 import type { Cotacao, Item } from "@cia/shared";
+import {
+  colunasConsultadoEmExport,
+  fonteExibicaoTributo,
+  rastrosEfetivosItem,
+} from "@cia/shared";
 import type { ResultadoCotacao } from "@cia/fiscal-engine";
 import { pesoParaBaseFob } from "./detectar-base-peso-fob.js";
 
-/** T7 substituirá por rastro real por tributo {valor, fonte, consultadoEm}. */
+/** @deprecated T7 — use rastros por tributo (fonteII…fonteCOFINS). */
 export const FONTE_ALIQUOTA_TEC_PADRAO =
   "TEC Res. Gecex 770/2025 + TIPI Decreto 12.665/2025";
 
@@ -36,7 +41,15 @@ export interface LinhaConciliacao {
   ipiPct: string;
   pisPct: string;
   cofinsPct: string;
-  fonteAliquota: string;
+  fonteII: string;
+  fonteIPI: string;
+  fontePIS: string;
+  fonteCOFINS: string;
+  consultadoEm?: string;
+  consultadoEmII?: string;
+  consultadoEmIPI?: string;
+  consultadoEmPIS?: string;
+  consultadoEmCOFINS?: string;
   qtd: string;
   pesoLiqUnitKg: string;
   pesoBrutoUnitKg: string;
@@ -50,7 +63,7 @@ export interface LinhaConciliacao {
   avisos: string;
 }
 
-const COLUNAS: (keyof LinhaConciliacao)[] = [
+const COLUNAS_BASE: (keyof LinhaConciliacao)[] = [
   "num",
   "modelo",
   "descZhEn",
@@ -66,7 +79,13 @@ const COLUNAS: (keyof LinhaConciliacao)[] = [
   "ipiPct",
   "pisPct",
   "cofinsPct",
-  "fonteAliquota",
+  "fonteII",
+  "fonteIPI",
+  "fontePIS",
+  "fonteCOFINS",
+];
+
+const COLUNAS_POS_FONTE: (keyof LinhaConciliacao)[] = [
   "qtd",
   "pesoLiqUnitKg",
   "pesoBrutoUnitKg",
@@ -96,7 +115,15 @@ const ROTULOS: Record<keyof LinhaConciliacao, string> = {
   ipiPct: "IPI %",
   pisPct: "PIS %",
   cofinsPct: "COFINS %",
-  fonteAliquota: "Fonte alíquota",
+  fonteII: "Fonte II",
+  fonteIPI: "Fonte IPI",
+  fontePIS: "Fonte PIS",
+  fonteCOFINS: "Fonte COFINS",
+  consultadoEm: "Consultado em",
+  consultadoEmII: "Consultado em II",
+  consultadoEmIPI: "Consultado em IPI",
+  consultadoEmPIS: "Consultado em PIS",
+  consultadoEmCOFINS: "Consultado em COFINS",
   qtd: "Qtd",
   pesoLiqUnitKg: "Peso líq. unit. (kg)",
   pesoBrutoUnitKg: "Peso bruto unit. (kg)",
@@ -136,8 +163,13 @@ export function parseDescZhEn(descOriginal: string): string {
   return descOriginal;
 }
 
+/** @deprecated T7 — use fonteExibicaoTributo com aliquotasRastro. */
 export function fonteAliquotaItem(it: Item): string {
-  if (it.aliquotasOverride) return "manual (editado na cotação)";
+  const r = rastrosEfetivosItem(it);
+  if (it.aliquotasOverride || r?.ii?.origem === "manual") {
+    return r?.ii?.fonte ?? "manual (editado na cotação)";
+  }
+  if (r?.ii?.fonte && r.ii.origem !== "legado") return r.ii.fonte;
   return FONTE_ALIQUOTA_TEC_PADRAO;
 }
 
@@ -150,6 +182,32 @@ function avisosItem(it: Item): string {
   return parts.join(" · ") || "—";
 }
 
+export function colunasConsultadoEmConciliacao(itens: Item[]): (keyof LinhaConciliacao)[] {
+  const diverge = itens.some((it) => {
+    const cols = colunasConsultadoEmExport(rastrosEfetivosItem(it));
+    return "consultadoEmII" in cols;
+  });
+  if (diverge) {
+    return ["consultadoEmII", "consultadoEmIPI", "consultadoEmPIS", "consultadoEmCOFINS"];
+  }
+  return ["consultadoEm"];
+}
+
+export function colunasConciliacao(itens: Item[]): (keyof LinhaConciliacao)[] {
+  return [...COLUNAS_BASE, ...colunasConsultadoEmConciliacao(itens), ...COLUNAS_POS_FONTE];
+}
+
+function fontesLinha(it: Item): Pick<LinhaConciliacao, "fonteII" | "fonteIPI" | "fontePIS" | "fonteCOFINS"> {
+  const r = rastrosEfetivosItem(it);
+  const legado = !it.aliquotasRastro;
+  return {
+    fonteII: fonteExibicaoTributo(r?.ii, { legado, aliquotasOverride: it.aliquotasOverride }),
+    fonteIPI: fonteExibicaoTributo(r?.ipi, { legado, aliquotasOverride: it.aliquotasOverride }),
+    fontePIS: fonteExibicaoTributo(r?.pis, { legado, aliquotasOverride: it.aliquotasOverride }),
+    fonteCOFINS: fonteExibicaoTributo(r?.cofins, { legado, aliquotasOverride: it.aliquotasOverride }),
+  };
+}
+
 export function montarLinhasConciliacao(itens: Item[]): LinhaConciliacao[] {
   return itens.map((it, i) => {
     const qtd = it.qtd != null && it.qtd > 0 ? it.qtd : null;
@@ -159,6 +217,7 @@ export function montarLinhasConciliacao(itens: Item[]): LinhaConciliacao[] {
     const brutoUnit = qtd && brutoTot ? brutoTot / qtd : null;
     const pesoFob = pesoParaBaseFob(it.fobKgBase ?? "liquido", it.pesoBrutoKg, it.pesoLiqKg);
     const fobKg = pesoFob > 0 && it.fobTotalUS > 0 ? it.fobTotalUS / pesoFob : null;
+    const datas = colunasConsultadoEmExport(rastrosEfetivosItem(it));
 
     return {
       num: i + 1,
@@ -176,7 +235,8 @@ export function montarLinhasConciliacao(itens: Item[]): LinhaConciliacao[] {
       ipiPct: pctFracao(it.aliquotas.ipi),
       pisPct: pctFracao(it.aliquotas.pis),
       cofinsPct: pctFracao(it.aliquotas.cofins),
-      fonteAliquota: fonteAliquotaItem(it),
+      ...fontesLinha(it),
+      ...datas,
       qtd: qtd != null ? String(qtd) : "—",
       pesoLiqUnitKg: liqUnit != null ? numFmt(liqUnit, 2) : "—",
       pesoBrutoUnitKg: brutoUnit != null ? numFmt(brutoUnit, 2) : "—",
@@ -241,20 +301,40 @@ function csvEscape(v: string): string {
   return v;
 }
 
+function indiceColuna(colunas: (keyof LinhaConciliacao)[], chave: keyof LinhaConciliacao): number {
+  return colunas.indexOf(chave);
+}
+
+function montarFooterTotais(
+  colunas: (keyof LinhaConciliacao)[],
+  tot: TotaisConciliacao,
+): string[] {
+  const footer: string[] = Array.from({ length: colunas.length }, () => "");
+  footer[indiceColuna(colunas, "num")] = csvEscape("TOTAIS");
+  const iiIdx = indiceColuna(colunas, "iiPct");
+  const ipiIdx = indiceColuna(colunas, "ipiPct");
+  const pisIdx = indiceColuna(colunas, "pisPct");
+  const cofinsIdx = indiceColuna(colunas, "cofinsPct");
+  const liqIdx = indiceColuna(colunas, "pesoLiqTotalKg");
+  const brutoIdx = indiceColuna(colunas, "pesoBrutoTotalKg");
+  const fobIdx = indiceColuna(colunas, "fobTotalUS");
+  if (iiIdx >= 0 && tot.iiTotal != null) footer[iiIdx] = csvEscape(numFmt(tot.iiTotal, 2));
+  if (ipiIdx >= 0 && tot.ipiTotal != null) footer[ipiIdx] = csvEscape(numFmt(tot.ipiTotal, 2));
+  if (pisIdx >= 0 && tot.pisTotal != null) footer[pisIdx] = csvEscape(numFmt(tot.pisTotal, 2));
+  if (cofinsIdx >= 0 && tot.cofinsTotal != null) footer[cofinsIdx] = csvEscape(numFmt(tot.cofinsTotal, 2));
+  if (liqIdx >= 0) footer[liqIdx] = csvEscape(numFmt(tot.pesoLiqKg, 2));
+  if (brutoIdx >= 0) footer[brutoIdx] = csvEscape(numFmt(tot.pesoBrutoKg, 2));
+  if (fobIdx >= 0) footer[fobIdx] = csvEscape(numFmt(tot.fobTotalUS, 2));
+  return footer;
+}
+
 export function gerarCsvConciliacao(input: RelatorioConciliacaoInput): Buffer {
   const linhas = montarLinhasConciliacao(input.itens);
+  const colunas = colunasConciliacao(input.itens);
   const tot = totaisConciliacao(input.itens, input.resultado);
-  const header = COLUNAS.map((k) => csvEscape(ROTULOS[k]));
-  const rows = linhas.map((l) => COLUNAS.map((k) => csvEscape(String(l[k]))));
-  const footer: string[] = Array.from({ length: COLUNAS.length }, () => "");
-  footer[0] = csvEscape("TOTAIS");
-  footer[12] = tot.iiTotal != null ? csvEscape(numFmt(tot.iiTotal, 2)) : "";
-  footer[13] = tot.ipiTotal != null ? csvEscape(numFmt(tot.ipiTotal, 2)) : "";
-  footer[14] = tot.pisTotal != null ? csvEscape(numFmt(tot.pisTotal, 2)) : "";
-  footer[15] = tot.cofinsTotal != null ? csvEscape(numFmt(tot.cofinsTotal, 2)) : "";
-  footer[19] = csvEscape(numFmt(tot.pesoLiqKg, 2));
-  footer[20] = csvEscape(numFmt(tot.pesoBrutoKg, 2));
-  footer[22] = csvEscape(numFmt(tot.fobTotalUS, 2));
+  const header = colunas.map((k) => csvEscape(ROTULOS[k]));
+  const rows = linhas.map((l) => colunas.map((k) => csvEscape(String(l[k] ?? ""))));
+  const footer = montarFooterTotais(colunas, tot);
   const body = [header, ...rows, footer].map((r) => r.join(";")).join("\n");
   return Buffer.from("\uFEFF" + body, "utf8");
 }
@@ -278,24 +358,32 @@ export async function gerarXlsxConciliacao(input: RelatorioConciliacaoInput): Pr
   ];
   shMeta.addRows([["Campo", "Valor"], ...metaRows]);
 
+  const colunas = colunasConciliacao(input.itens);
   const sh = wb.addWorksheet("Conciliacao");
-  sh.addRow(COLUNAS.map((k) => ROTULOS[k]));
+  sh.addRow(colunas.map((k) => ROTULOS[k]));
   const linhas = montarLinhasConciliacao(input.itens);
   for (const l of linhas) {
-    sh.addRow(COLUNAS.map((k) => l[k]));
+    sh.addRow(colunas.map((k) => l[k] ?? ""));
   }
 
   const tot = totaisConciliacao(input.itens, input.resultado);
   sh.addRow([]);
-  const footerRow: (string | number | null)[] = Array.from({ length: COLUNAS.length }, () => "");
-  footerRow[0] = "TOTAIS";
-  footerRow[12] = tot.iiTotal != null ? numRaw(tot.iiTotal, 2) : "";
-  footerRow[13] = tot.ipiTotal != null ? numRaw(tot.ipiTotal, 2) : "";
-  footerRow[14] = tot.pisTotal != null ? numRaw(tot.pisTotal, 2) : "";
-  footerRow[15] = tot.cofinsTotal != null ? numRaw(tot.cofinsTotal, 2) : "";
-  footerRow[19] = numRaw(tot.pesoLiqKg, 2);
-  footerRow[20] = numRaw(tot.pesoBrutoKg, 2);
-  footerRow[22] = numRaw(tot.fobTotalUS, 2);
+  const footerRow: (string | number | null)[] = Array.from({ length: colunas.length }, () => "");
+  footerRow[indiceColuna(colunas, "num")] = "TOTAIS";
+  const iiIdx = indiceColuna(colunas, "iiPct");
+  const ipiIdx = indiceColuna(colunas, "ipiPct");
+  const pisIdx = indiceColuna(colunas, "pisPct");
+  const cofinsIdx = indiceColuna(colunas, "cofinsPct");
+  const liqIdx = indiceColuna(colunas, "pesoLiqTotalKg");
+  const brutoIdx = indiceColuna(colunas, "pesoBrutoTotalKg");
+  const fobIdx = indiceColuna(colunas, "fobTotalUS");
+  if (iiIdx >= 0) footerRow[iiIdx] = tot.iiTotal != null ? numRaw(tot.iiTotal, 2) : "";
+  if (ipiIdx >= 0) footerRow[ipiIdx] = tot.ipiTotal != null ? numRaw(tot.ipiTotal, 2) : "";
+  if (pisIdx >= 0) footerRow[pisIdx] = tot.pisTotal != null ? numRaw(tot.pisTotal, 2) : "";
+  if (cofinsIdx >= 0) footerRow[cofinsIdx] = tot.cofinsTotal != null ? numRaw(tot.cofinsTotal, 2) : "";
+  if (liqIdx >= 0) footerRow[liqIdx] = numRaw(tot.pesoLiqKg, 2);
+  if (brutoIdx >= 0) footerRow[brutoIdx] = numRaw(tot.pesoBrutoKg, 2);
+  if (fobIdx >= 0) footerRow[fobIdx] = numRaw(tot.fobTotalUS, 2);
   sh.addRow(footerRow);
 
   const buf = await wb.xlsx.writeBuffer();

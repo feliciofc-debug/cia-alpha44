@@ -99,10 +99,25 @@ ok_pend = len(pendentes) == 0
 ok_linha = len(pecas_linha) == 11
 ok_preco = len(partes_preco) == 0
 
+# T7 — rastro por tributo após classificar
+com_rastro = [it for it in itens if it.get("aliquotasRastro", {}).get("ii", {}).get("fonte")]
+pis_ok = all(
+    "Gecex" not in (it.get("aliquotasRastro") or {}).get("pis", {}).get("fonte", "")
+    and "TEC" not in (it.get("aliquotasRastro") or {}).get("pis", {}).get("fonte", "").upper()
+    for it in itens
+    if (it.get("aliquotasRastro") or {}).get("pis")
+)
+print(f"\nRastro T7: {len(com_rastro)}/{len(itens)} itens com fonteII")
+if com_rastro:
+    ex = com_rastro[0]["aliquotasRastro"]["ii"]
+    print(f"  exemplo II: origem={ex.get('origem')} fonte={ex.get('fonte', '')[:60]}")
+ok_rastro = len(com_rastro) >= max(1, len(itens) // 2) and pis_ok
+
 print(
     f"\nRESULTADO: fob={'OK' if ok_fob else 'FAIL'} net={'OK' if ok_net else 'FAIL'} "
     f"gross={'OK' if ok_gross else 'FAIL'} dist={'OK' if ok_dist else 'FAIL'} "
-    f"pend={'OK' if ok_pend else 'FAIL'} linha={'OK' if ok_linha else 'FAIL'}"
+    f"pend={'OK' if ok_pend else 'FAIL'} linha={'OK' if ok_linha else 'FAIL'} "
+    f"rastro={'OK' if ok_rastro else 'FAIL'}"
 )
-ok = ok_fob and ok_net and ok_gross and ok_dist and ok_pend and ok_linha and ok_preco
+ok = ok_fob and ok_net and ok_gross and ok_dist and ok_pend and ok_linha and ok_preco and ok_rastro
 sys.exit(0 if ok else 1)

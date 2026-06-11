@@ -144,6 +144,7 @@ export {
 } from "./classificar-ncm.js";
 export {
   criarTecSource,
+  montarRastrosCache,
   type TecEntry,
   type TecEntryLegado,
   type TecCache,
@@ -160,6 +161,8 @@ export {
   montarLinhasConciliacao,
   nomeArquivoConciliacao,
   fonteAliquotaItem,
+  colunasConciliacao,
+  colunasConsultadoEmConciliacao,
   parseModelo,
   parseDescZhEn,
   totaisConciliacao,

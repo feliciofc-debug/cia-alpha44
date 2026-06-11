@@ -581,14 +581,17 @@ export async function buildServer() {
       .array(
         z.object({
           ordem: z.number().int().nonnegative(),
-          aliquotas: z.object({
-            ii: z.number().min(0).max(1),
-            ipi: z.number().min(0).max(1),
-            pis: z.number().min(0).max(1),
-            cofins: z.number().min(0).max(1),
-            icmsEntrada: z.number().min(0).max(1),
-          }),
+          aliquotas: z
+            .object({
+              ii: z.number().min(0).max(1),
+              ipi: z.number().min(0).max(1),
+              pis: z.number().min(0).max(1),
+              cofins: z.number().min(0).max(1),
+              icmsEntrada: z.number().min(0).max(1),
+            })
+            .optional(),
           aliquotasOverride: z.boolean().optional(),
+          desfazerTributos: z.array(z.enum(["ii", "ipi", "pis", "cofins"])).optional(),
         }),
       )
       .optional(),

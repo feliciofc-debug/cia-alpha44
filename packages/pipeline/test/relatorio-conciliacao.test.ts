@@ -8,6 +8,7 @@ import {
   nomeArquivoConciliacao,
   totaisConciliacao,
 } from "../src/relatorio-conciliacao.js";
+import { montarRastroTributo, PIS_COFINS_FONTE_PADRAO } from "@cia/shared";
 import type { Item } from "@cia/shared";
 
 function itemBase(partial: Partial<Item> & Pick<Item, "descOriginal">): Item {
@@ -68,11 +69,28 @@ describe("relatorio-conciliacao", () => {
     expect(linha!.descZhEn).toContain("减震器");
   });
 
-  it("fonte alíquota — TEC vs manual", () => {
-    expect(fonteAliquotaItem(itemBase({ descOriginal: "x" }))).toBe(FONTE_ALIQUOTA_TEC_PADRAO);
+  it("fonte alíquota — rastro por tributo vs manual vs legado", () => {
+    const comRastro = itemBase({
+      descOriginal: "x",
+      aliquotasRastro: {
+        ii: montarRastroTributo(0.18, "tec-cache", "Res. Gecex 770/2025", "2026-06-11T10:00:00Z"),
+        ipi: montarRastroTributo(0.35, "tec-cache", "Decreto 12.665/2025", "2026-06-11T10:00:00Z"),
+        pis: montarRastroTributo(0.021, "tec-cache", PIS_COFINS_FONTE_PADRAO, "2026-06-11T10:00:00Z"),
+        cofins: montarRastroTributo(0.0965, "tec-cache", PIS_COFINS_FONTE_PADRAO, "2026-06-11T10:00:00Z"),
+      },
+    });
+    const [linhaRastro] = montarLinhasConciliacao([comRastro]);
+    expect(linhaRastro!.fonteII).toContain("Gecex");
+    expect(linhaRastro!.fontePIS).toBe(PIS_COFINS_FONTE_PADRAO);
+    expect(linhaRastro!.consultadoEm).toBeTruthy();
+
     expect(
       fonteAliquotaItem(itemBase({ descOriginal: "x", aliquotasOverride: true })),
     ).toBe("manual (editado na cotação)");
+
+    const [linhaLegado] = montarLinhasConciliacao([itemBase({ descOriginal: "x" })]);
+    expect(linhaLegado!.fonteII).toBe("legado");
+    expect(fonteAliquotaItem(itemBase({ descOriginal: "x" }))).toBe(FONTE_ALIQUOTA_TEC_PADRAO);
   });
 
   it("CSV UTF-8 BOM + separador ; + descrição chinesa", () => {
@@ -117,7 +135,8 @@ describe("relatorio-conciliacao", () => {
     const text = buf.toString("utf8");
     expect(text).toContain(";");
     expect(text).toContain("滑板车T1 MAX");
-    expect(text.split("\n")[0]).toContain("Descrição ZH/EN");
+    expect(text).toContain("Fonte II");
+    expect(text).toContain("Fonte PIS");
   });
 
   it("fobKg usa base bruta quando fobKgBase=bruto", () => {

@@ -159,6 +159,7 @@ export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise
           fobUnitarioUS: l.fobUnitarioUS,
           fobTotalUS: fobTotal,
           aliquotas: tec?.aliquotas ?? { ii: 0, ipi: 0, pis: 0.021, cofins: 0.0965, icmsEntrada: 0 },
+          aliquotasRastro: tec?.rastros,
           aliquotasOverride: false,
           anuencia: [],
           antidumping: false,

@@ -10,9 +10,11 @@ import {
   validarConfirmacaoNcmItens,
 } from "@cia/shared";
 import {
+  aplicarPatchesAliquotasItem,
   icmsSaidaParaDestino,
   inferirQtdContainers,
   normalizarUf,
+  type ChaveTributoRastro,
   type Cotacao,
   type Despesa,
   type Item,
@@ -428,8 +430,9 @@ export interface AtualizarCotacaoInput {
   /** Override de alíquotas de importação por item (ordem = índice na cotação). */
   itensAliquotas?: Array<{
     ordem: number;
-    aliquotas: Item["aliquotas"];
+    aliquotas?: Item["aliquotas"];
     aliquotasOverride?: boolean;
+    desfazerTributos?: ChaveTributoRastro[];
   }>;
 }
 
@@ -462,11 +465,11 @@ export async function atualizarCotacao(id: string, state: AppState, opts: Atuali
       ? itensAtuais.map((it, ordem) => {
           const patch = opts.itensAliquotas!.find((p) => p.ordem === ordem);
           if (!patch) return it;
-          return {
-            ...it,
+          return aplicarPatchesAliquotasItem(it, {
             aliquotas: patch.aliquotas,
-            aliquotasOverride: patch.aliquotasOverride ?? true,
-          };
+            aliquotasOverride: patch.aliquotasOverride,
+            desfazerTributos: patch.desfazerTributos,
+          });
         })
       : itensAtuais;
 
@@ -508,12 +511,19 @@ export async function atualizarCotacao(id: string, state: AppState, opts: Atuali
     if (opts.itensAliquotas?.length) {
       for (const patch of opts.itensAliquotas) {
         const itemRow = row.itens.find((i) => i.ordem === patch.ordem);
-        if (!itemRow) continue;
+        const patchedItem = itensValidados[patch.ordem];
+        if (!itemRow || !patchedItem) continue;
+        const metaAtual = (itemRow.meta as import("@cia/pipeline").ItemMetaPersistido | null) ?? {};
+        const metaNovo = {
+          ...metaAtual,
+          ...extrairItemMeta(patchedItem),
+        };
         await tx.item.update({
           where: { id: itemRow.id },
           data: {
-            aliquotas: patch.aliquotas as Prisma.InputJsonValue,
-            aliquotasOverride: patch.aliquotasOverride ?? true,
+            aliquotas: patchedItem.aliquotas as Prisma.InputJsonValue,
+            aliquotasOverride: patchedItem.aliquotasOverride ?? false,
+            meta: metaNovo as Prisma.InputJsonValue,
           },
         });
       }

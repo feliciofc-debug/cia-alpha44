@@ -20,6 +20,8 @@ import { BenchmarkReferenciaView } from "./benchmark-referencia-view.tsx";
 import { PreviewOrcamentoCliente } from "./preview-orcamento-cliente.tsx";
 import { cotacaoParaSalvar, itensParaSalvar } from "./lib/cotacao-payload.ts";
 import { pdfBloqueadoPorNcm, resumoBloqueioNcm, avisoCompatibilidadePdf, itemPodeConfirmarNcm, itemPodeDesfazerNcm, metaConfirmacaoNcm, limparConfirmacaoNcm } from "./lib/ncm.ts";
+import { aplicarOverrideManualAliquota, desfazerOverrideManualAliquota, type ChaveTributoRastro } from "@cia/shared";
+import { DetalheRastroAliquota } from "./lib/aliquota-rastro-ui.tsx";
 import type { ClienteResumo, DashboardKpis, DashboardSeries } from "./lib/types.ts";
 
 type View = NavItem | "detalhe";
@@ -201,6 +203,8 @@ function AnalisePainel({
   irParaOrcamento,
   onAlterarAliquota,
   recalculandoAliquota,
+  onDesfazerAliquota,
+  desfazendoAliquota,
   onConfirmarNcm,
   confirmandoNcm,
   onDesfazerNcm,
@@ -218,6 +222,8 @@ function AnalisePainel({
   irParaOrcamento?: number;
   onAlterarAliquota?: (idx: number, campo: AliquotaCampo, valor: number) => void | Promise<void>;
   recalculandoAliquota?: boolean;
+  onDesfazerAliquota?: (idx: number, campo: ChaveTributoRastro) => void | Promise<void>;
+  desfazendoAliquota?: { idx: number; campo: ChaveTributoRastro } | null;
   onConfirmarNcm?: (idx: number) => void | Promise<void>;
   confirmandoNcm?: number | null;
   onDesfazerNcm?: (idx: number) => void | Promise<void>;
@@ -430,7 +436,7 @@ function AnalisePainel({
                       </span>
                     )}
                   </td>
-                  {(["ii", "ipi", "pis", "cofins", "icmsEntrada"] as const).map((campo) => (
+                  {(["ii", "ipi", "pis", "cofins"] as const).map((campo) => (
                     <td key={campo} className="p-2 align-top">
                       {onAlterarAliquota ? (
                         <InputAliquotaImport
@@ -441,11 +447,31 @@ function AnalisePainel({
                       ) : (
                         <span>{pct(it.aliquotas[campo])}</span>
                       )}
-                      {it.aliquotasOverride && (
-                        <span className="block text-[9px] text-brand-300/80">manual</span>
-                      )}
+                      <DetalheRastroAliquota
+                        it={it}
+                        campo={campo}
+                        onDesfazer={
+                          onDesfazerAliquota && it.aliquotasRastro?.[campo]?.origem === "manual"
+                            ? () => void onDesfazerAliquota(i, campo)
+                            : undefined
+                        }
+                        desfazendo={
+                          desfazendoAliquota?.idx === i && desfazendoAliquota?.campo === campo
+                        }
+                      />
                     </td>
                   ))}
+                  <td className="p-2 align-top">
+                    {onAlterarAliquota ? (
+                      <InputAliquotaImport
+                        value={it.aliquotas.icmsEntrada}
+                        disabled={recalculandoAliquota}
+                        onCommit={(v) => void onAlterarAliquota(i, "icmsEntrada", v)}
+                      />
+                    ) : (
+                      <span>{pct(it.aliquotas.icmsEntrada)}</span>
+                    )}
+                  </td>
                   <td className="p-2 whitespace-nowrap">{it.fobTotalUS > 0 ? it.fobTotalUS.toFixed(2) : "—"}</td>
                   <td className="p-2 whitespace-nowrap">
                     {fobKg.principal != null ? (
@@ -688,6 +714,9 @@ export function Dashboard() {
   const [editorDraft, setEditorDraft] = useState<EditorDraft | null>(null);
   const [aplicandoEditor, setAplicandoEditor] = useState(false);
   const [recalculandoAliquota, setRecalculandoAliquota] = useState(false);
+  const [desfazendoAliquota, setDesfazendoAliquota] = useState<{ idx: number; campo: ChaveTributoRastro } | null>(
+    null,
+  );
   const [confirmandoNcm, setConfirmandoNcm] = useState<number | null>(null);
   const [pdfBaixando, setPdfBaixando] = useState<"cliente" | "trade" | null>(null);
   const [irParaOrcamento, setIrParaOrcamento] = useState(0);
@@ -843,9 +872,18 @@ export function Dashboard() {
   async function alterarAliquotaItem(idx: number, campo: AliquotaCampo, valor: number) {
     const base = analise ?? detalhe;
     if (!base) return;
-    const itens = base.itens.map((it, i) =>
-      i === idx ? { ...it, aliquotas: { ...it.aliquotas, [campo]: valor }, aliquotasOverride: true } : it,
-    );
+    const itAtual = base.itens[idx];
+    if (!itAtual) return;
+    const editadoPor = user?.email ?? user?.nome;
+    const itEditado =
+      campo === "icmsEntrada"
+        ? {
+            ...itAtual,
+            aliquotas: { ...itAtual.aliquotas, icmsEntrada: valor },
+            aliquotasOverride: true,
+          }
+        : aplicarOverrideManualAliquota(itAtual, campo, valor, editadoPor);
+    const itens = base.itens.map((it, i) => (i === idx ? itEditado : it));
     const draft = editorDraft ?? editorFromCotacao(base.cotacao, "cliente" in base ? base.cotacao.cliente : cliente);
     const cotacao = { ...aplicarEditorNaCotacao(base.cotacao, draft), itens };
     setRecalculandoAliquota(true);
@@ -854,11 +892,13 @@ export function Dashboard() {
       if (detalhe?.id) {
         const atualizada = await api.atualizarCotacao(detalhe.id, {
           ...payloadAtualizar(draft),
-          itensAliquotas: itens.map((it, ordem) => ({
-            ordem,
-            aliquotas: it.aliquotas,
-            aliquotasOverride: it.aliquotasOverride,
-          })),
+          itensAliquotas: [
+            {
+              ordem: idx,
+              aliquotas: itEditado.aliquotas,
+              aliquotasOverride: itEditado.aliquotasOverride,
+            },
+          ],
         });
         setDetalhe(atualizada);
         setEditorDraft(editorFromCotacao(atualizada.cotacao));
@@ -870,6 +910,37 @@ export function Dashboard() {
       setErro(e instanceof Error ? e.message : "Falha ao recalcular alíquotas.");
     } finally {
       setRecalculandoAliquota(false);
+    }
+  }
+
+  async function desfazerAliquotaItem(idx: number, campo: ChaveTributoRastro) {
+    const base = analise ?? detalhe;
+    if (!base) return;
+    setDesfazendoAliquota({ idx, campo });
+    setErro("");
+    try {
+      if (detalhe?.id) {
+        const draft = editorDraft ?? editorFromCotacao(base.cotacao);
+        const atualizada = await api.atualizarCotacao(detalhe.id, {
+          ...payloadAtualizar(draft),
+          itensAliquotas: [{ ordem: idx, desfazerTributos: [campo] }],
+        });
+        setDetalhe(atualizada);
+        setEditorDraft(editorFromCotacao(atualizada.cotacao));
+        return;
+      }
+      const itAtual = base.itens[idx];
+      if (!itAtual) return;
+      const itEditado = desfazerOverrideManualAliquota(itAtual, campo);
+      const itens = base.itens.map((it, i) => (i === idx ? itEditado : it));
+      const draft = editorDraft ?? editorFromCotacao(base.cotacao, "cliente" in base ? base.cotacao.cliente : cliente);
+      const cotacao = { ...aplicarEditorNaCotacao(base.cotacao, draft), itens };
+      const { resultado, itens: itensNovos } = await api.calcular(cotacao);
+      if (analise) setAnalise({ ...analise, cotacao, resultado, itens: itensNovos });
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao desfazer alíquota.");
+    } finally {
+      setDesfazendoAliquota(null);
     }
   }
 
@@ -1337,6 +1408,8 @@ export function Dashboard() {
                 irParaOrcamento={irParaOrcamento}
                 onAlterarAliquota={alterarAliquotaItem}
                 recalculandoAliquota={recalculandoAliquota}
+                onDesfazerAliquota={desfazerAliquotaItem}
+                desfazendoAliquota={desfazendoAliquota}
                 onConfirmarNcm={confirmarNcmItem}
                 confirmandoNcm={confirmandoNcm}
                 onDesfazerNcm={desfazerNcmItem}
@@ -1427,6 +1500,8 @@ export function Dashboard() {
                   onBaixarPdfCliente={baixarPdfClienteOrcamento}
                   onAlterarAliquota={alterarAliquotaItem}
                   recalculandoAliquota={recalculandoAliquota}
+                  onDesfazerAliquota={desfazerAliquotaItem}
+                  desfazendoAliquota={desfazendoAliquota}
                   onConfirmarNcm={confirmarNcmItem}
                   confirmandoNcm={confirmandoNcm}
                   onDesfazerNcm={desfazerNcmItem}

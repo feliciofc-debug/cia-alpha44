@@ -87,6 +87,7 @@ export interface Item {
   uso?: string;
   material?: string;
   ncmConfianca?: number;
+  aliquotasRastro?: import("@cia/shared").RastroAliquotas;
 }
 
 export interface Despesa {

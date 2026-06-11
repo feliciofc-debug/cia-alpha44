@@ -130,6 +130,67 @@ export const itemSchema = z.object({
   fobPendente: z.boolean().optional(),
   fobKgBase: z.enum(["bruto", "liquido", "indeterminado"]).optional(),
   fobKgAvisos: z.array(z.string()).optional(),
+  /** Rastro auditável por tributo (II/IPI/PIS/COFINS) — T7. */
+  aliquotasRastro: z
+    .object({
+      ii: z
+        .object({
+          valor: z.number(),
+          origem: z.enum(["ttce", "tec-cache", "manual", "legado"]),
+          fonte: z.string(),
+          consultadoEm: z.string(),
+          valorOriginal: z.number().optional(),
+          origemOriginal: z.enum(["ttce", "tec-cache", "manual", "legado"]).optional(),
+          fonteOriginal: z.string().optional(),
+          consultadoEmOriginal: z.string().optional(),
+          editadoEm: z.string().optional(),
+          editadoPor: z.string().optional(),
+        })
+        .optional(),
+      ipi: z
+        .object({
+          valor: z.number(),
+          origem: z.enum(["ttce", "tec-cache", "manual", "legado"]),
+          fonte: z.string(),
+          consultadoEm: z.string(),
+          valorOriginal: z.number().optional(),
+          origemOriginal: z.enum(["ttce", "tec-cache", "manual", "legado"]).optional(),
+          fonteOriginal: z.string().optional(),
+          consultadoEmOriginal: z.string().optional(),
+          editadoEm: z.string().optional(),
+          editadoPor: z.string().optional(),
+        })
+        .optional(),
+      pis: z
+        .object({
+          valor: z.number(),
+          origem: z.enum(["ttce", "tec-cache", "manual", "legado"]),
+          fonte: z.string(),
+          consultadoEm: z.string(),
+          valorOriginal: z.number().optional(),
+          origemOriginal: z.enum(["ttce", "tec-cache", "manual", "legado"]).optional(),
+          fonteOriginal: z.string().optional(),
+          consultadoEmOriginal: z.string().optional(),
+          editadoEm: z.string().optional(),
+          editadoPor: z.string().optional(),
+        })
+        .optional(),
+      cofins: z
+        .object({
+          valor: z.number(),
+          origem: z.enum(["ttce", "tec-cache", "manual", "legado"]),
+          fonte: z.string(),
+          consultadoEm: z.string(),
+          valorOriginal: z.number().optional(),
+          origemOriginal: z.enum(["ttce", "tec-cache", "manual", "legado"]).optional(),
+          fonteOriginal: z.string().optional(),
+          consultadoEmOriginal: z.string().optional(),
+          editadoEm: z.string().optional(),
+          editadoPor: z.string().optional(),
+        })
+        .optional(),
+    })
+    .optional(),
 });
 export type Item = z.infer<typeof itemSchema>;
 

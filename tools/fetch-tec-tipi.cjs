@@ -139,6 +139,7 @@ async function main() {
       cofins: pisCof.cofins,
       fonte,
       vigencia,
+      fundamentoPisCofins: pisCof.fundamento,
       ...(avisos.length ? { avisos } : {}),
       ...(ipiEntry?.ipiNt ? { ipiNt: true } : {}),
     };
