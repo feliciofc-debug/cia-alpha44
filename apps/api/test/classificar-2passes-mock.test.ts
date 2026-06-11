@@ -1,14 +1,28 @@
 import { describe, it, expect } from "vitest";
 import { criarNcmCatalog, loadNcmVigente } from "@cia/pipeline";
 import { criarMockProvider } from "../src/llm/mock.js";
+import {
+  PRODUTOS_PROVA_CLASSIFICACAO,
+  PROMPT_PASSE2_VERSION,
+  SYSTEM_PASSE2,
+} from "../src/llm/prompt-2passes.js";
 
 const catalog = criarNcmCatalog(loadNcmVigente());
 const mock = criarMockProvider([]);
+const CADEIRA_GABARITO = PRODUTOS_PROVA_CLASSIFICACAO[2];
+
+describe("prompt-2passes — versão auditável", () => {
+  it("PROMPT_PASSE2_V2 com regra 9401.31/39", () => {
+    expect(PROMPT_PASSE2_VERSION).toBe("PROMPT_PASSE2_V2");
+    expect(SYSTEM_PASSE2).toContain("9401.31/39");
+    expect(CADEIRA_GABARITO).toContain("de altura ajustável");
+  });
+});
 
 describe("mock classify2Passes — determinístico CI", () => {
   it("garrafa térmica inox → 9617 / 96170010 (não 7323)", async () => {
     const [r] = await mock.classify2Passes!(catalog, [
-      { descOriginal: "Garrafa térmica inox 500ml isolamento vácuo" },
+      { descOriginal: PRODUTOS_PROVA_CLASSIFICACAO[0] },
     ]);
     expect(r!.posicaoPasse1).toBe("9617");
     expect(r!.ncmCandidatos[0]!.ncm).toBe("96170010");
@@ -18,17 +32,34 @@ describe("mock classify2Passes — determinístico CI", () => {
 
   it("fone bluetooth TWS → 8518 / 85183000", async () => {
     const [r] = await mock.classify2Passes!(catalog, [
-      { descOriginal: "Fone bluetooth TWS wireless earphone" },
+      { descOriginal: PRODUTOS_PROVA_CLASSIFICACAO[1] },
     ]);
     expect(r!.posicaoPasse1).toBe("8518");
     expect(r!.ncmCandidatos[0]!.ncm).toBe("85183000");
   });
 
-  it("cadeira escritório giratória → 9401 / 94013100", async () => {
-    const [r] = await mock.classify2Passes!(catalog, [
-      { descOriginal: "Cadeira escritório giratória altura ajustável" },
-    ]);
+  it("cadeira escritório → 9401 / 94013900 (não 94017100 metal)", async () => {
+    const [r] = await mock.classify2Passes!(catalog, [{ descOriginal: CADEIRA_GABARITO }]);
     expect(r!.posicaoPasse1).toBe("9401");
-    expect(r!.ncmCandidatos[0]!.ncm).toBe("94013100");
+    expect(r!.ncmCandidatos[0]!.ncm).toBe("94013900");
+    expect(r!.ncmCandidatos[0]!.ncm).not.toBe("94017100");
+    expect(r!.avisoMaterial).toBeUndefined();
+    expect(r!.avisoAtributo).toBeUndefined();
+  });
+
+  it("cadeira sem material informado emite avisoMaterial", async () => {
+    const [r] = await mock.classify2Passes!(catalog, [
+      { descOriginal: "Cadeira escritório giratória de altura ajustável" },
+    ]);
+    expect(r!.ncmCandidatos[0]!.ncm).toBe("94013900");
+    expect(r!.avisoMaterial).toMatch(/material não informado/i);
+  });
+
+  it("cadeira sem altura ajustável informada emite avisoAtributo", async () => {
+    const [r] = await mock.classify2Passes!(catalog, [
+      { descOriginal: "Cadeira de escritório giratória estofada, base metálica" },
+    ]);
+    expect(r!.ncmCandidatos[0]!.ncm).toBe("94013900");
+    expect(r!.avisoAtributo).toMatch(/atributo determinante não informado: altura ajustável/i);
   });
 });

@@ -47,9 +47,12 @@ describe("ncm-posicoes — passe 1 e passe 2", () => {
     expect(listarNcm8DaPosicao(catalog, "8518").map((o) => o.ncm)).toContain("85183000");
   });
 
-  it("cadeira escritório giratória inclui posição 9401", () => {
-    const cands = montarCandidatosPasse1(catalog, "Cadeira escritório giratória altura ajustável");
+  it("cadeira escritório inclui posição 9401 e NCM 94013900", () => {
+    const desc = "Cadeira de escritório giratória de altura ajustável, estofada, base metálica";
+    const cands = montarCandidatosPasse1(catalog, desc);
     expect(cands.some((c) => c.posicao4 === "9401")).toBe(true);
-    expect(listarNcm8DaPosicao(catalog, "9401").map((o) => o.ncm)).toContain("94013100");
+    expect(listarNcm8DaPosicao(catalog, "9401").map((o) => o.ncm)).toContain("94013900");
+    expect(catalog.existe("94013900")).toBe(true);
+    expect(catalog.descricao("94013900")).toMatch(/Outros/i);
   });
 });

@@ -46,8 +46,8 @@ export const FAMILIAS_PRODUTO: FamiliaProduto[] = [
     id: "moveis_assentos",
     capitulo: "9401",
     re: /cadeira|chair|assento|seat|escritorio|office|girator|swivel|rotativ|座椅/i,
-    termosBusca: "assento cadeira giratoria escritorio altura ajustavel",
-    ncmPreferidos: ["94013100", "94013900", "94014100"],
+    termosBusca: "assento cadeira giratoria escritorio estofada base metalica altura ajustavel",
+    ncmPreferidos: ["94013900", "94013100", "94014100"],
   },
   {
     id: "plasticos_chapas",

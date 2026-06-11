@@ -103,6 +103,8 @@ export async function executar2PassesComLlm(
       confiancaPasse2: confianca,
       justificativaRGI: p2.justificativaRGI || p1.justificativaRGI,
       classificacaoBaixaConfianca: confianca < BAIXA_CONFIANCA,
+      avisoMaterial: p2.avisoMaterial,
+      avisoAtributo: p2.avisoAtributo,
     };
   });
 }

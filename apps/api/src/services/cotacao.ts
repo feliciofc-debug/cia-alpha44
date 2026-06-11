@@ -89,6 +89,12 @@ export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise
     if (c?.justificativaRGI) {
       avisosClassificacao.push(`RGI: ${c.justificativaRGI.slice(0, 200)}`);
     }
+    if (c?.avisoMaterial) {
+      avisosClassificacao.push(c.avisoMaterial);
+    }
+    if (c?.avisoAtributo) {
+      avisosClassificacao.push(c.avisoAtributo);
+    }
 
     itens.push({
       descOriginal: l.descOriginal,

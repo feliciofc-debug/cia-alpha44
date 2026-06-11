@@ -68,5 +68,6 @@ export function listarNcm8DaPosicao(catalog: NcmCatalog, posicao4: string): Ncm8
       ncm,
       folha,
       completa: catalog.descricaoCompleta(ncm) ?? folha,
-    }));
+    }))
+    .sort((a, b) => a.ncm.localeCompare(b.ncm));
 }

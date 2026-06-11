@@ -22,6 +22,10 @@ export interface ClassifyItemOutput {
   confiancaPasse2?: number;
   justificativaRGI?: string;
   classificacaoBaixaConfianca?: boolean;
+  /** Passe 2: material determinante ausente na descrição. */
+  avisoMaterial?: string;
+  /** Passe 2: atributo determinante (ex.: altura ajustável) ausente na descrição. */
+  avisoAtributo?: string;
 }
 
 export interface LlmProvider {

@@ -36,6 +36,11 @@ function mock2PassesItem(catalog: NcmCatalog, it: ClassifyItemInput): ClassifyIt
   let ncm = "";
   let confianca = 0.88;
   let justificativaRGI = "RGI 3a — subposição mais específica";
+  let avisoMaterial: string | undefined;
+  let avisoAtributo: string | undefined;
+
+  const rgiExclusao9401 =
+    "9401.61/69 (outros assentos) e 9401.71/79 (metal) não se aplicam — produto é assento giratório de altura ajustável (9401.3x).";
 
   if (/garrafa|termic|termo|thermal|flask|isoterm|vacuum|inox/.test(desc)) {
     posicao4 = "9617";
@@ -48,8 +53,28 @@ function mock2PassesItem(catalog: NcmCatalog, it: ClassifyItemInput): ClassifyIt
     justificativaRGI = "RGI 1 — fones de ouvido, mesmo combinados com microfone (8518.30).";
   } else if (/cadeira|chair|escritorio|office|girator|rotativ|swivel/.test(desc)) {
     posicao4 = "9401";
-    ncm = "94013100";
-    justificativaRGI = "RGI 1 — assento giratório de altura ajustável, de madeira (9401.31).";
+    const alturaAjust = /altura\s*ajust|height\s*adjust|adjustable\s*height/.test(desc);
+    if (/madeira|wood|madera/.test(desc) && alturaAjust) {
+      ncm = "94013100";
+      justificativaRGI = `RGI 1 + RGI 6 — assento giratório de altura ajustável, madeira (9401.31). ${rgiExclusao9401}`;
+    } else if (/estofad|metalic|metal|aco|aço|aluminio|polipropilen|plastic/.test(desc)) {
+      ncm = "94013900";
+      if (!alturaAjust) {
+        avisoAtributo =
+          "atributo determinante não informado: altura ajustável — confirme para validar a subposição";
+        confianca = 0.55;
+      }
+      justificativaRGI = `RGI 1 + RGI 6 — assento giratório estofado, base metálica (9401.39). ${rgiExclusao9401}`;
+    } else {
+      ncm = "94013900";
+      confianca = 0.55;
+      avisoMaterial = "material não informado — classificação assume estofado com base metálica (9401.39)";
+      if (!alturaAjust) {
+        avisoAtributo =
+          "atributo determinante não informado: altura ajustável — confirme para validar a subposição";
+      }
+      justificativaRGI = `RGI 1 + RGI 6 — assento giratório; material não especificado (9401.39). ${rgiExclusao9401}`;
+    }
   } else if (/lustre|lumin[aá]ria|chandelier|wall lamp|pendente|ceiling light/i.test(it.descOriginal)) {
     posicao4 = "9405";
     ncm = "94052100";
@@ -84,6 +109,8 @@ function mock2PassesItem(catalog: NcmCatalog, it: ClassifyItemInput): ClassifyIt
     confiancaPasse2: confianca,
     justificativaRGI,
     classificacaoBaixaConfianca: confianca < 0.6,
+    avisoMaterial,
+    avisoAtributo,
   };
 }
 
