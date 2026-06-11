@@ -11,7 +11,6 @@ import {
   loadNcmVigenteCache,
   lookupBenchmark,
   preencherFobKgPlanilha,
-  confiancaNcmFinal,
   resolveNcm,
   resolvePesoLiqLinha,
   textoClassificacaoIa,
