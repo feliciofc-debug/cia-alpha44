@@ -16,8 +16,8 @@ export * from "./types.js";
 
 export function escolherProvider(seed: ComexEntry[]): LlmProvider {
   const escolha = (process.env.LLM_PROVIDER ?? "auto").toLowerCase();
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
-  const openaiKey = process.env.OPENAI_API_KEY;
+  const anthropicKey = process.env.ANTHROPIC_API_KEY?.replace(/\s/g, "");
+  const openaiKey = process.env.OPENAI_API_KEY?.replace(/\s/g, "");
   const mock = criarMockProvider(seed);
 
   try {
