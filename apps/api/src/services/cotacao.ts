@@ -86,14 +86,7 @@ async function classificarEmLotes(
       }
       return await classificarItemComFallback(state, input, classificarItens2Passes);
     } catch {
-      const [legado] = await state.provider.classify([input]);
-      return (
-        legado ?? {
-          descPt: input.descOriginal,
-          descDuimp: input.descOriginal,
-          ncmCandidatos: [],
-        }
-      );
+      return await classificarItemComFallback(state, input, classificarItens2Passes);
     }
   });
 }

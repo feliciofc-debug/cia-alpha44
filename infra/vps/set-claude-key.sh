@@ -21,7 +21,9 @@ fi
 
 TMP=$(mktemp)
 grep -v '^ANTHROPIC_API_KEY=' "$ENV_API" > "$TMP"
-printf 'ANTHROPIC_API_KEY=%s\n' "$KEY" >> "$TMP"
+# Remove whitespace acidental (CRLF, newline no meio da chave)
+KEY_CLEAN=$(printf '%s' "$KEY" | tr -d '\r\n\t ')
+printf 'ANTHROPIC_API_KEY=%s\n' "$KEY_CLEAN" >> "$TMP"
 chmod 600 "$TMP"
 mv "$TMP" "$ENV_API"
 

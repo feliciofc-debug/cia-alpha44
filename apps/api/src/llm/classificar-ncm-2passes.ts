@@ -26,6 +26,7 @@ import {
   type Passe1ItemInput,
   type Passe2ItemInput,
 } from "./prompt-2passes.js";
+import { traduzirDescricaoClassificacaoMock } from "./traducao-classificacao-mock.js";
 
 const BAIXA_CONFIANCA = 0.6;
 const AVISO_PENDENTE = "Classificação pendente — revisar";
@@ -63,6 +64,11 @@ interface TraducaoResult {
 export type { TraducaoResult };
 
 function fallbackTraducao(itens: ClassifyItemInput[]): TraducaoResult {
+  const descricoes = itens.map((it) => traduzirDescricaoClassificacaoMock(it.descOriginal));
+  const melhorou = descricoes.some((pt, i) => pt !== itens[i]!.descOriginal);
+  if (melhorou) {
+    return { descricoes, traducaoIndisponivel: true };
+  }
   return {
     descricoes: itens.map((it) => it.descOriginal),
     traducaoIndisponivel: true,
@@ -133,12 +139,11 @@ export async function executar2PassesComLlm(
   for (let i = 0; i < itens.length; i++) {
     const it = itens[i]!;
     const descPt = descricoesPt[i]!;
-    const descBusca = traducaoIndisponivel ? it.descOriginal : descPt;
     const desc = descricaoIa(it, descPt);
-    const detInput = { descOriginal: descBusca, uso: it.uso };
+    const detInput = { descOriginal: descPt, uso: it.uso };
     const candidatos = montarCandidatosPasse1(
       catalog,
-      descBusca,
+      descPt,
       detectarFamilia(detInput),
       undefined,
       detInput,

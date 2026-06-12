@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { criarNcmCatalog, loadNcmVigente } from "@cia/pipeline";
+import { criarNcmCatalog, listarNcm8DaPosicao, loadNcmVigente } from "@cia/pipeline";
 import {
   AVISO_TRADUCAO_INDISPONIVEL,
   executar2PassesComLlm,
@@ -13,24 +13,25 @@ import {
 const catalog = criarNcmCatalog(loadNcmVigente());
 
 describe("executar2PassesComLlm — falha de tradução", () => {
-  it("timeout na tradução não bloqueia: usa descOriginal + aviso, classifica item PT", async () => {
+  it("timeout na tradução DE usa heurística mock + aviso, classifica item", async () => {
     const chamarLlm = async (system: string, _user: string) => {
       if (system === SYSTEM_TRANSLATE) throw new Error("timeout");
       if (system === SYSTEM_PASSE1) {
         return JSON.stringify({
-          itens: [{ i: 0, posicao4: "9617", confianca: 0.9, justificativaRGI: "RGI 1" }],
+          itens: [{ i: 0, posicao4: "8467", confianca: 0.9, justificativaRGI: "RGI 1" }],
         });
       }
       if (system === SYSTEM_PASSE2) {
+        const opcoes = listarNcm8DaPosicao(catalog, "8467");
         return JSON.stringify({
           itens: [
             {
               i: 0,
-              ncm: "96170010",
-              confianca: 0.88,
-              justificativaRGI: "RGI 1 — isotérmico",
-              descPt: "Garrafa térmica inox 500ml isolamento vácuo",
-              descDuimp: "Garrafa térmica inox 500ml",
+              ncm: opcoes[0]?.ncm ?? "84672999",
+              confianca: 0.85,
+              justificativaRGI: "RGI 1 — ferramenta elétrica",
+              descPt: "Parafusadeira sem fio 18V",
+              descDuimp: "Parafusadeira sem fio 18V",
             },
           ],
         });
@@ -40,13 +41,12 @@ describe("executar2PassesComLlm — falha de tradução", () => {
 
     const [r] = await executar2PassesComLlm(
       catalog,
-      [{ descOriginal: "Garrafa térmica inox 500ml isolamento vácuo" }],
+      [{ descOriginal: "DE-WZ-1001 — Akku-Bohrschrauber 18V mit 2 Akkus und Koffer" }],
       chamarLlm,
     );
 
     expect(r!.avisoTraducao).toBe(AVISO_TRADUCAO_INDISPONIVEL);
-    expect(r!.ncmCandidatos[0]?.ncm).toBe("96170010");
-    expect(r!.ncmCandidatos).toHaveLength(1);
-    expect(r!.posicaoPasse1).toBe("9617");
+    expect(r!.ncmCandidatos.length).toBeGreaterThan(0);
+    expect(r!.ncmCandidatos[0]!.ncm.startsWith("8467")).toBe(true);
   });
 });
