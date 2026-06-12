@@ -17,10 +17,12 @@
     "db:generate": "prisma generate",
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
+    "db:backfill-icms-p2-2": "tsx scripts/backfill-icms-p2-2.ts",
     "db:seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@cia/shared": "*",
     "@prisma/client": "^6.19.0"
   },
   "devDependencies": {

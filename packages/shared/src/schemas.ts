@@ -219,6 +219,9 @@ export type ParamsSaida = z.infer<typeof paramsSaidaSchema>;
 export const BENEFICIOS_FISCAIS = ["ALAGOAS", "NENHUM"] as const;
 export type BeneficioFiscal = (typeof BENEFICIOS_FISCAIS)[number];
 
+export const regimeIcmsSchema = z.enum(["AL_DIFERIDO", "NORMAL"]);
+export type RegimeIcmsPersistido = z.infer<typeof regimeIcmsSchema>;
+
 export const cotacaoSchema = z.object({
   id: z.string().optional(),
   /** Importadora / empresa trade (quem opera a importação). */
@@ -236,6 +239,14 @@ export const cotacaoSchema = z.object({
   incoterm: z.string().default("CFR"),
   origem: z.string().default("RJ"),
   destino: z.string().default("SP"),
+  /** UF do estabelecimento vendedor (P2.2). */
+  ufEmpresa: z.string().default("AL"),
+  /** Regime ICMS entrada/desembaraço (P2.2). */
+  regimeIcms: regimeIcmsSchema.default("AL_DIFERIDO"),
+  /** true = icmsSaida em params foi fixado manualmente ou legado divergente. */
+  icmsSaidaManualFlag: z.boolean().default(false),
+  /** Avisos fiscais persistidos (ex.: legado ICMS). */
+  avisosFiscais: z.array(z.string()).default([]),
   itens: z.array(itemSchema),
   despesas: z.array(despesaSchema),
   /** Número de containers — despesas locais são escaladas por este fator (default planilha 66). */

@@ -12,6 +12,7 @@ import {
 } from "@cia/shared";
 import {
   aplicarPatchesAliquotasItem,
+  defaultsIcmsPersistencia,
   icmsSaidaParaDestino,
   inferirQtdContainers,
   normalizarUf,
@@ -20,6 +21,7 @@ import {
   type Despesa,
   type Item,
   type ParamsSaida,
+  type RegimeIcmsPersistido,
 } from "@cia/shared";
 import type { Prisma } from "@prisma/client";
 import { extrairResumoFinanceiro } from "../lib/financeiro.js";
@@ -113,6 +115,25 @@ function numOrNull(v: Prisma.Decimal | number | null | undefined): number | null
   return typeof v === "number" ? v : Number(v);
 }
 
+function parseAvisosFiscais(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((a): a is string => typeof a === "string");
+}
+
+function regimePersistido(raw: string | null | undefined): RegimeIcmsPersistido {
+  return raw === "NORMAL" ? "NORMAL" : "AL_DIFERIDO";
+}
+
+function icmsPersistData(cotacao: Cotacao) {
+  const d = defaultsIcmsPersistencia();
+  return {
+    ufEmpresa: cotacao.ufEmpresa ?? d.ufEmpresa,
+    regimeIcms: cotacao.regimeIcms ?? d.regimeIcms,
+    icmsSaidaManualFlag: cotacao.icmsSaidaManualFlag ?? d.icmsSaidaManualFlag,
+    avisosFiscais: cotacao.avisosFiscais ?? d.avisosFiscais,
+  };
+}
+
 export function mapRowParaDominio(row: CotacaoComRelacoes): {
   cotacao: Cotacao;
   itens: Item[];
@@ -176,6 +197,10 @@ export function mapRowParaDominio(row: CotacaoComRelacoes): {
     incoterm: row.incoterm,
     origem: row.origem,
     destino: row.destino,
+    ufEmpresa: row.ufEmpresa ?? "AL",
+    regimeIcms: regimePersistido(row.regimeIcms),
+    icmsSaidaManualFlag: row.icmsSaidaManualFlag ?? false,
+    avisosFiscais: parseAvisosFiscais(row.avisosFiscais),
     itens,
     despesas,
     qtdContainers: inferirQtdContainers(despesas),
@@ -221,6 +246,7 @@ export async function salvarCotacao(input: SalvarCotacaoInput) {
       incoterm: cotacao.incoterm,
       origem: cotacao.origem,
       destino: cotacao.destino,
+      ...icmsPersistData(cotacao),
       outrasDespesasBaseBRL: cotacao.outrasDespesasBaseBRL ?? null,
       params: cotacao.params,
       status: resultado ? "CALCULADA" : "RASCUNHO",
@@ -309,6 +335,7 @@ function formatCotacaoSalva(row: CotacaoComRelacoes, provider?: string) {
     itens,
     resultado,
     avisoFiscal: resultado ? null : "Cotação salva sem totais fiscais.",
+    avisosFiscais: cotacao.avisosFiscais,
   };
 }
 
@@ -396,6 +423,7 @@ export async function duplicarCotacao(
     id: undefined,
     cliente: opts?.cliente?.trim() || `${cotacao.cliente} (cópia)`,
     params,
+    avisosFiscais: [...(cotacao.avisosFiscais ?? [])],
     itens: cotacao.itens.map((it) => ({ ...it, id: undefined })),
   };
 
@@ -538,6 +566,7 @@ export async function atualizarCotacao(id: string, state: AppState, opts: Atuali
         empresaTrade,
         cliente,
         params,
+        ...icmsPersistData(atualizada),
         ...(opts.cambio != null ? { cambio: opts.cambio } : {}),
         ...(opts.freteTotalUS != null ? { freteTotalUS: opts.freteTotalUS } : {}),
         ...(opts.siscomex != null ? { siscomex: opts.siscomex } : {}),

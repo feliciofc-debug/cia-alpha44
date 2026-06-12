@@ -18,7 +18,7 @@ services:
     plan: starter
     rootDir: .
     buildCommand: npm ci && npm run build:api
-    preDeployCommand: npm run db:migrate:deploy -w @cia/db
+    preDeployCommand: npm run db:migrate:deploy -w @cia/db && npm run db:backfill-icms-p2-2 -w @cia/db
     startCommand: npm run start:api
     healthCheckPath: /api/health
     envVars:

@@ -79,6 +79,7 @@ set -a
 source "$ENV_API"
 set +a
 npm run db:migrate:deploy -w @cia/db
+npm run db:backfill-icms-p2-2 -w @cia/db
 npm run db:seed -w @cia/db
 
 echo ">> systemd $SERVICE..."

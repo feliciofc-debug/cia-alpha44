@@ -52,6 +52,14 @@ model Cotacao {
   incoterm              String  @default("CFR")
   origem                String  @default("RJ")
   destino               String  @default("SP")
+  /// UF estabelecimento vendedor (P2.2 ICMS)
+  ufEmpresa             String  @default("AL")
+  /// AL_DIFERIDO | NORMAL
+  regimeIcms            String  @default("AL_DIFERIDO")
+  /// true quando icmsSaida em params é override/legado divergente do resolver
+  icmsSaidaManualFlag   Boolean @default(false)
+  /// Avisos fiscais persistidos (JSON string[])
+  avisosFiscais         Json    @default("[]")
   outrasDespesasBaseBRL Decimal? @db.Decimal(14, 2)
   /// ParamsSaida — mesmo shape do shared (markupPct, pisSaida, etc.)
   params                Json

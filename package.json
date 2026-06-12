@@ -20,6 +20,7 @@
     "engine:test": "npm run test -w @cia/fiscal-engine",
     "db:generate": "npm run db:generate -w @cia/db",
     "db:migrate:deploy": "npm run db:migrate:deploy -w @cia/db",
+    "db:backfill-icms-p2-2": "npm run db:backfill-icms-p2-2 -w @cia/db",
     "db:seed": "npm run db:seed -w @cia/db",
     "seed:comexstat": "npm run build -w @cia/pipeline && node tools/fetch-comexstat-api.cjs"
   },
