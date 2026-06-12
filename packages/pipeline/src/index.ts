@@ -152,6 +152,7 @@ export {
   prefixoBuscaPrincipal,
   enriquecerTextoClassificacao,
   textoClassificacaoIa,
+  MIN_SCORE_BUSCA_NCM,
   FAMILIAS_PRODUTO,
   type FamiliaProduto,
   type FamiliaDetectada,

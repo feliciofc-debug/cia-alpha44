@@ -16,6 +16,9 @@ import {
   type FamiliaProduto,
 } from "./familias/index.js";
 
+/** Score mínimo em buscarPorTexto — abaixo disso não há candidato válido. */
+export const MIN_SCORE_BUSCA_NCM = 0.12;
+
 export type { FamiliaProduto } from "./familias/index.js";
 export {
   FAMILIAS_PRODUTO,
@@ -38,16 +41,23 @@ export function enriquecerTextoClassificacao(descricao: string, familia: Familia
   return partes.filter(Boolean).join(" ");
 }
 
-/** Texto enriquecido para IA (2 passes) — material/uso quando presentes na planilha. */
+/** Texto enriquecido para IA (2 passes) — tradução PT + material/uso quando presentes. */
 export function textoClassificacaoIa(input: {
   descOriginal: string;
+  descPt?: string | null;
   material?: string | null;
   uso?: string | null;
 }): string {
   const partes = [input.descOriginal.trim()];
+  const pt = input.descPt?.trim();
+  if (pt && pt !== input.descOriginal.trim()) partes.push(`Tradução PT: ${pt}`);
   if (input.material?.trim()) partes.push(`Material: ${input.material.trim()}`);
   if (input.uso?.trim()) partes.push(`Uso: ${input.uso.trim()}`);
   return partes.filter(Boolean).join(" · ");
+}
+
+function filtrarHitsBusca<T extends { score: number }>(hits: T[]): T[] {
+  return hits.filter((h) => h.score >= MIN_SCORE_BUSCA_NCM);
 }
 
 /** Candidatos Siscomex por busca textual + preferência por família (fallback). */
@@ -60,7 +70,7 @@ export function candidatosSiscomexPorDescricao(
   const texto = enriquecerTextoClassificacao(descricao, familia);
   const cap4 = prefixoBuscaPrincipal(familia) ?? descricao.replace(/\D/g, "").slice(0, 4);
   const capBusca = cap4 && /^\d{2,4}$/.test(cap4) ? cap4 : undefined;
-  const hits = catalog.buscarPorTexto(texto, capBusca, limite + 5);
+  const hits = filtrarHitsBusca(catalog.buscarPorTexto(texto, capBusca, limite + 5));
   const hitsOrdenados = aplicarDesempateOutros(catalog, hits);
 
   const preferidos = new Set(familia?.ncmPreferidos ?? []);

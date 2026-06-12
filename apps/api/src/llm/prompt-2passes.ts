@@ -46,6 +46,37 @@ export const SYSTEM_PASSE2 = [
   "Responda APENAS JSON válido.",
 ].join("\n\n");
 
+export const SYSTEM_TRANSLATE = [
+  "Você traduz descrições comerciais de produtos para português do Brasil.",
+  "Mantenha marcas, modelos, códigos SKU e medidas técnicas.",
+  "Responda APENAS JSON válido.",
+].join("\n\n");
+
+export function buildTranslatePrompt(
+  itens: Array<{ i: number; descOriginal: string; material?: string | null; uso?: string | null }>,
+): string {
+  const lista = itens.map((it) => ({
+    i: it.i,
+    descOriginal: it.descOriginal,
+    material: it.material ?? null,
+    uso: it.uso ?? null,
+  }));
+  return (
+    `Traduza cada descOriginal para português do Brasil (descPt):\n${JSON.stringify(lista, null, 0)}\n\n` +
+    `Responda: {"itens":[{"i":0,"descPt":"..."}]}`
+  );
+}
+
+export function parseTranslateResponse(texto: string, qtd: number): string[] {
+  const obj = parseJson(texto) as { itens?: unknown[] };
+  const out: string[] = [];
+  for (let i = 0; i < qtd; i++) {
+    const r = (obj.itens?.[i] ?? {}) as Record<string, unknown>;
+    out.push(String(r.descPt ?? "").trim());
+  }
+  return out;
+}
+
 export interface Passe1ItemInput {
   i: number;
   descricao: string;

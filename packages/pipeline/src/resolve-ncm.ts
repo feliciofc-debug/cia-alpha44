@@ -9,6 +9,7 @@ import {
   detectarFamilias,
   enriquecerTextoClassificacao,
   filtrarCandidatosIaCoerentes,
+  MIN_SCORE_BUSCA_NCM,
   ncmCoerenteComFamilia,
   prefixoBuscaPrincipal,
   type FamiliaProduto,
@@ -69,12 +70,17 @@ function iaIncoerenteAceitavel(ncm: string, familia: FamiliaProduto): boolean {
   });
 }
 
+const CONFIANCA_IA_MINIMA = 0.6;
+const AVISO_CLASSIFICACAO_PENDENTE = "Classificação pendente — revisar";
+
 function candidatosDeBusca(
   catalog: NcmCatalog,
   descricao: string,
   capitulo4?: string,
 ): NcmCandidato[] {
-  const hits = aplicarDesempateOutros(catalog, catalog.buscarPorTexto(descricao, capitulo4, 5));
+  const hits = aplicarDesempateOutros(catalog, catalog.buscarPorTexto(descricao, capitulo4, 5)).filter(
+    (h) => h.score >= MIN_SCORE_BUSCA_NCM,
+  );
   return hits.map((r, i) => ({
     ncm: r.ncm,
     descricaoOficial: r.descricao,
@@ -126,13 +132,19 @@ function escolherSubstituto(
     prepararCandidatosIa(catalog, input, familia, avisos ?? []);
   }
 
-  const escolhaIa = iaCoerentes[0] ?? (familia && validosRaw[0] && iaIncoerenteAceitavel(validosRaw[0].ncm, familia)
-    ? validosRaw[0]
-    : null);
+  const escolhaIaRaw =
+    iaCoerentes[0] ??
+    (familia && validosRaw[0] && iaIncoerenteAceitavel(validosRaw[0].ncm, familia) ? validosRaw[0] : null);
+  const escolhaIa =
+    escolhaIaRaw && (escolhaIaRaw.confianca ?? 0) >= CONFIANCA_IA_MINIMA ? escolhaIaRaw : null;
+
+  if (escolhaIaRaw && !escolhaIa && avisos) {
+    avisos.push(`${AVISO_CLASSIFICACAO_PENDENTE} (confiança IA ${(escolhaIaRaw.confianca ?? 0).toFixed(2)} < ${CONFIANCA_IA_MINIMA}).`);
+  }
 
   if (escolhaIa) {
     const conf = escolhaIa.confianca ?? 0.5;
-    if (conf < 0.6 && avisos) {
+    if (conf < CONFIANCA_IA_MINIMA && avisos) {
       avisos.push("Classificação com baixa confiança — revisar");
     }
     if (familia && !ncmCoerenteComFamilia(escolhaIa.ncm, familia) && avisos) {
@@ -150,17 +162,6 @@ function escolherSubstituto(
 
   if (siscomex[0]) return { ncm: siscomex[0].ncm, fonte: "siscomex", candidatos: siscomex };
 
-  if (cap) {
-    const capList = catalog.listarPorCapitulo(cap).slice(0, 5);
-    if (capList[0]) {
-      const candidatos = capList.map((c, i) => ({
-        ncm: c.ncm,
-        descricaoOficial: c.descricao,
-        confianca: 0.35 - i * 0.03,
-      }));
-      return { ncm: candidatos[0]!.ncm, fonte: "siscomex", candidatos };
-    }
-  }
   return null;
 }
 
@@ -250,7 +251,7 @@ export function resolveNcm(catalog: NcmCatalog, input: ResolveNcmInput): Resolve
       fonte: "pendente",
       valido: false,
       descricaoOficial: null,
-      avisos: [...avisos, "Sem substituto automático — selecione NCM manualmente na tabela Siscomex."],
+      avisos: [...avisos, AVISO_CLASSIFICACAO_PENDENTE, "Sem substituto automático — selecione NCM manualmente na tabela Siscomex."],
       ncmCandidatos: candidatosValidos,
       ncmPlanilhaOriginal: planilha,
     };
@@ -273,6 +274,7 @@ export function resolveNcm(catalog: NcmCatalog, input: ResolveNcmInput): Resolve
     };
   }
 
+  avisos.push(AVISO_CLASSIFICACAO_PENDENTE);
   avisos.push("NCM não informado e sem correspondência na tabela Siscomex.");
   return {
     ncm: "",

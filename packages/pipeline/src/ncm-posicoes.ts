@@ -3,7 +3,7 @@
  */
 
 import type { NcmCatalog } from "./ncm-catalog.js";
-import { enriquecerTextoClassificacao } from "./classificar-ncm.js";
+import { enriquecerTextoClassificacao, MIN_SCORE_BUSCA_NCM } from "./classificar-ncm.js";
 import {
   detectarFamilias,
   prefixosDasFamilias,
@@ -55,7 +55,7 @@ function addPrefixoAoMap(
 }
 
 /**
- * Candidatos do passe 1: família(s) + top-10 busca hierárquica + fallback capítulos.
+ * Candidatos do passe 1: família(s) + top-10 busca hierárquica (sem fallback arbitrário).
  */
 export function montarCandidatosPasse1(
   catalog: NcmCatalog,
@@ -80,18 +80,8 @@ export function montarCandidatosPasse1(
 
   const familiaEnriquecimento = familias[0] ?? familiaLegado;
   const texto = enriquecerTextoClassificacao(descricaoBusca, familiaEnriquecimento);
-  const hits = catalog.buscarPorTexto(texto, undefined, 10);
+  const hits = catalog.buscarPorTexto(texto, undefined, 10).filter((h) => h.score >= MIN_SCORE_BUSCA_NCM);
   for (const h of hits) addPrefixoAoMap(catalog, map, h.ncm.slice(0, 4));
-
-  if (map.size === 0) {
-    for (const cap of catalog.listarCapitulos().slice(0, 20)) {
-      for (const p of catalog.listarPosicoes4(cap.capitulo2).slice(0, 3)) {
-        addPrefixoAoMap(catalog, map, p.posicao4, p.descricao);
-        if (map.size >= limite) break;
-      }
-      if (map.size >= limite) break;
-    }
-  }
 
   return [...map.values()].slice(0, limite);
 }

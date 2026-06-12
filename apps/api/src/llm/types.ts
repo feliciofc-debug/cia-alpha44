@@ -28,6 +28,8 @@ export interface ClassifyItemOutput {
   avisoMaterial?: string;
   /** Passe 2: atributo determinante (ex.: altura ajustável) ausente na descrição. */
   avisoAtributo?: string;
+  /** Falha de tradução LLM — classificação segue com descOriginal. */
+  avisoTraducao?: string;
 }
 
 export interface LlmProvider {

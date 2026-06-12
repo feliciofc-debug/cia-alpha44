@@ -133,6 +133,9 @@ export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise
     if (c?.avisoAtributo) {
       avisosClassificacao.push(c.avisoAtributo);
     }
+    if (c?.avisoTraducao) {
+      avisosClassificacao.push(c.avisoTraducao);
+    }
 
     itens.push(
       anexarMetaFobItem(

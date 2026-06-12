@@ -12,6 +12,19 @@ import {
   type NcmCatalog,
 } from "@cia/pipeline";
 import type { ClassifyItemInput, ClassifyItemOutput, LlmProvider } from "./types.js";
+import { traduzirDescricaoClassificacaoMock } from "./traducao-classificacao-mock.js";
+
+const AVISO_PENDENTE = "Classificação pendente — revisar";
+
+function saidaPendente(descOriginal: string, descPt: string): ClassifyItemOutput {
+  return {
+    descPt,
+    descDuimp: `${descPt} — ${AVISO_PENDENTE}.`,
+    ncmCandidatos: [],
+    classificacaoBaixaConfianca: true,
+    justificativaRGI: "Sem candidatos válidos — classificação pendente.",
+  };
+}
 
 function tokens(s: string): string[] {
   return s
@@ -31,7 +44,8 @@ function normDesc(desc: string): string {
 
 /** Respostas determinísticas 2 passes para produtos-teste (CI). */
 function mock2PassesItem(catalog: NcmCatalog, it: ClassifyItemInput): ClassifyItemOutput {
-  const desc = normDesc(it.descOriginal);
+  const descPt = traduzirDescricaoClassificacaoMock(it.descOriginal);
+  const desc = normDesc(`${descPt} ${it.descOriginal}`);
 
   let posicao4 = "";
   let ncm = "";
@@ -85,7 +99,12 @@ function mock2PassesItem(catalog: NcmCatalog, it: ClassifyItemInput): ClassifyIt
     confianca = 0.92;
     justificativaRGI =
       "RGI 1 — scooter/patinete elétrico completo (87.11.60); material estrutural não altera capítulo do veículo.";
-  } else if (/螺丝|parafus|bolt|screw/i.test(desc) || /螺丝/.test(it.descOriginal)) {
+  } else if (/bohrschrauber|parafusadeira sem fio|parafusadeira/.test(desc)) {
+    posicao4 = "8467";
+    ncm = listarNcm8DaPosicao(catalog, posicao4).find((o) => o.ncm.startsWith("8467"))?.ncm ?? "";
+    confianca = 0.82;
+    justificativaRGI = "RGI 1 — ferramenta elétrica portátil (84.67).";
+  } else if (/螺丝|parafuso|bolt|screw/i.test(desc) || /螺丝/.test(it.descOriginal)) {
     posicao4 = "7318";
     ncm = "73181500";
     confianca = 0.9;
@@ -116,25 +135,84 @@ function mock2PassesItem(catalog: NcmCatalog, it: ClassifyItemInput): ClassifyIt
     confianca = 0.82;
     justificativaRGI =
       "RGI 1 — parte/acessório de veículo leve (8714), coerente com material ferro e uso 配件.";
+  } else if (/schraubendreher|chave de fenda|jogo de chaves/.test(desc)) {
+    posicao4 = "8205";
+    ncm = listarNcm8DaPosicao(catalog, posicao4)[0]?.ncm ?? "";
+    confianca = 0.8;
+    justificativaRGI = "RGI 1 — ferramentas manuais (82.05).";
+  } else if (/kochtopf|panelas|jogo de panelas/.test(desc)) {
+    posicao4 = "7323";
+    ncm = listarNcm8DaPosicao(catalog, posicao4)[0]?.ncm ?? "";
+    confianca = 0.78;
+    justificativaRGI = "RGI 1 — artigos de uso doméstico de aço inox (73.23).";
+  } else if (/deckenleuchte|luminaria de teto|luminária de teto|led/.test(desc) && /teto|ceiling|decken/.test(desc)) {
+    posicao4 = "9405";
+    ncm = "94052100";
+    justificativaRGI = "RGI 1 — luminária elétrica de teto/parede.";
+  } else if (/elektroroller|patinete eletrico|patinete elétrico|scooter 350/.test(desc)) {
+    posicao4 = "8711";
+    ncm = "87116000";
+    confianca = 0.9;
+    justificativaRGI = "RGI 1 — veículo elétrico de duas rodas (87.11.60).";
+  } else if (/kinderroller|patinete infantil|3 rodas/.test(desc)) {
+    posicao4 = "9503";
+    ncm = listarNcm8DaPosicao(catalog, posicao4).find((o) => o.folha.match(/patinete|scooter|rodas/i))?.ncm
+      ?? listarNcm8DaPosicao(catalog, posicao4)[0]?.ncm
+      ?? "";
+    confianca = 0.75;
+    justificativaRGI = "RGI 1 — brinquedo/patinete infantil (95.03).";
+  } else if (/stossdampfer|stoßdämpfer|amortecedor.*patinete|amortecedor traseiro/.test(desc)) {
+    posicao4 = "8714";
+    ncm = "87141000";
+    confianca = 0.86;
+    justificativaRGI = "RGI 1 — parte/acessório de patinete elétrico (87.14.10).";
+  } else if (/sechskantschrauben|parafuso sextavado|parafuso.*m8/.test(desc)) {
+    posicao4 = "7318";
+    ncm = "73181500";
+    confianca = 0.88;
+    justificativaRGI = "Nota 2 Seção XVII — parafuso de uso geral (73.18).";
+  } else if (/handtuch|toalha.*microfibra|microfibra/.test(desc)) {
+    posicao4 = "6302";
+    ncm = listarNcm8DaPosicao(catalog, posicao4)[0]?.ncm ?? "";
+    confianca = 0.72;
+    justificativaRGI = "RGI 1 — artigos de toucador de têxteis (63.02).";
+  } else if (/t-shirt|camiseta.*algod|baumwolle|herren/.test(desc)) {
+    posicao4 = "6109";
+    ncm = listarNcm8DaPosicao(catalog, posicao4).find((o) => o.folha.match(/algod|malha/i))?.ncm
+      ?? listarNcm8DaPosicao(catalog, posicao4)[0]?.ncm
+      ?? "";
+    confianca = 0.74;
+    justificativaRGI = "RGI 1 — camisetas de malha de algodão (61.09).";
+  } else if (/ladegerat|ladegerät|carregador usb|schnellladegerat/.test(desc)) {
+    posicao4 = "8504";
+    ncm = "85044010";
+    confianca = 0.88;
+    justificativaRGI = "Nota 2 Seção XVII — carregador/adaptador elétrico (85.04.40).";
+  } else if (/burostuhl|bürostuhl|cadeira de escritorio|cadeira de escritório/.test(desc)) {
+    posicao4 = "9401";
+    ncm = "94013900";
+    confianca = 0.84;
+    justificativaRGI = "RGI 1 + RGI 6 — assento giratório estofado de altura ajustável (9401.39).";
   } else if (/lustre|lumin[aá]ria|chandelier|wall lamp|pendente|ceiling light/i.test(it.descOriginal)) {
     posicao4 = "9405";
     ncm = "94052100";
     justificativaRGI = "RGI 1 — luminária elétrica de teto/parede.";
   } else {
-    const cands = montarCandidatosPasse1(catalog, it.descOriginal);
-    posicao4 = cands[0]?.posicao4 ?? "9405";
+    const detInput = { descOriginal: descPt, uso: it.uso };
+    const cands = montarCandidatosPasse1(catalog, descPt, undefined, 25, detInput);
+    if (!cands.length) return saidaPendente(it.descOriginal, descPt);
+    posicao4 = cands[0]!.posicao4;
     const opcoes = listarNcm8DaPosicao(catalog, posicao4);
-    ncm = opcoes[0]?.ncm ?? "";
-    confianca = 0.45;
-    justificativaRGI = "RGI 6 — fallback mock por busca Siscomex.";
+    if (!opcoes.length) return saidaPendente(it.descOriginal, descPt);
+    ncm = opcoes[0]!.ncm;
+    confianca = 0.65;
+    justificativaRGI = "RGI 6 — candidato Siscomex por busca em PT (mock).";
   }
 
-  if (!catalog.existe(ncm)) {
-    const opcoes = listarNcm8DaPosicao(catalog, posicao4 || ncm.slice(0, 4));
-    ncm = opcoes[0]?.ncm ?? ncm;
+  if (!ncm || !catalog.existe(ncm)) {
+    return saidaPendente(it.descOriginal, descPt);
   }
 
-  const descPt = it.descOriginal;
   return {
     descPt,
     descDuimp: `${descPt} — classificação mock (configure IA para DUIMP automática).`,

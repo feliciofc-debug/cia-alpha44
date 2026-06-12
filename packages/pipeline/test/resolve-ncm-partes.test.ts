@@ -14,14 +14,19 @@ describe("resolveNcm — partes genéricas (item 3a)", () => {
     expect(r.avisos.some((a) => a.includes("inferido pela tabela Siscomex"))).toBe(false);
   });
 
-  it("confiança IA < 0,6: mantém NCM da IA + aviso revisar (não Siscomex)", () => {
+  it("confiança IA < 0,6: rejeita IA arbitrária — Siscomex ou pendente", () => {
     const r = resolveNcm(catalog, {
       descricao: "配件 spare part scooter",
       candidatosIa: [{ ncm: "87141000", confianca: 0.55 }],
     });
-    expect(r.fonte).toBe("ia");
-    expect(r.ncm).toBe("87141000");
-    expect(r.avisos.some((a) => a.includes("baixa confiança"))).toBe(true);
+    expect(r.fonte).not.toBe("ia");
+    if (r.fonte === "siscomex") {
+      expect(catalog.existe(r.ncm)).toBe(true);
+    } else {
+      expect(r.fonte).toBe("pendente");
+      expect(r.ncm).toBe("");
+    }
+    expect(r.avisos.some((a) => /classificação pendente|confiança IA/i.test(a))).toBe(true);
   });
 
   it("sem candidato IA → fallback Siscomex", () => {
