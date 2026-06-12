@@ -4,7 +4,12 @@ import type { LlmCallFn } from "./classificar-ncm-2passes.js";
 
 /** Remove whitespace acidental (CRLF no env, newline no meio da chave). */
 export function limparChaveApi(key: string): string {
-  return key.replace(/\s/g, "");
+  let k = key.replace(/\s/g, "");
+  // Corrupção conhecida: ...AA + CR + 'n' no api.env → 109 chars inválidos
+  if (k.length === 109 && k.endsWith("n") && k.slice(-3, -1) === "AA") {
+    k = k.slice(0, -1);
+  }
+  return k;
 }
 
 export function criarChamadaAnthropic(apiKey: string, model: string): LlmCallFn {

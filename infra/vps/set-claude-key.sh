@@ -19,10 +19,15 @@ if [[ -z "$KEY" ]]; then
   exit 1
 fi
 
-TMP=$(mktemp)
-grep -v '^ANTHROPIC_API_KEY=' "$ENV_API" > "$TMP"
 # Remove whitespace acidental (CRLF, newline no meio da chave)
 KEY_CLEAN=$(printf '%s' "$KEY" | tr -d '\r\n\t ')
+# Corrupção conhecida VPS: 'n' órfão após sufixo AA (109 → 108)
+if [[ ${#KEY_CLEAN} -eq 109 && "${KEY_CLEAN: -1}" == "n" && "${KEY_CLEAN: -3:2}" == "AA" ]]; then
+  KEY_CLEAN="${KEY_CLEAN%?}"
+fi
+
+TMP=$(mktemp)
+grep -v '^ANTHROPIC_API_KEY=' "$ENV_API" > "$TMP"
 printf 'ANTHROPIC_API_KEY=%s\n' "$KEY_CLEAN" >> "$TMP"
 chmod 600 "$TMP"
 mv "$TMP" "$ENV_API"
