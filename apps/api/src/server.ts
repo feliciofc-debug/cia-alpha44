@@ -285,8 +285,9 @@ export async function buildServer() {
   app.post("/api/calcular", async (req, reply) => {
     const parsed = cotacaoSchema.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ erro: "Cotação inválida", detalhe: parsed.error.flatten() });
-    const { resultado, itens } = calcularCotacao(parsed.data, getState());
-    return { resultado, itens };
+    const { resultado, itens, icms, params } = calcularCotacao(parsed.data, getState());
+    const avisosFiscais = parsed.data.avisosFiscais ?? icms.avisosFiscais ?? [];
+    return { resultado, itens, icms, avisosFiscais, params };
   });
 
   const salvarBody = z.object({
@@ -587,6 +588,7 @@ export async function buildServer() {
     outrasDespesasBaseBRL: z.number().nonnegative().optional(),
     despesas: z.array(despesaBody).optional(),
     icmsAuto: z.boolean().optional(),
+    confirmarIcmsSaida: z.boolean().optional(),
     params: z
       .object({
         pisSaida: z.number().min(0).max(1).optional(),

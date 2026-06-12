@@ -11,9 +11,9 @@ import {
   ncm8Limpo,
 } from "@cia/shared";
 import {
+  aplicarIcmsCotacao,
   aplicarPatchesAliquotasItem,
   defaultsIcmsPersistencia,
-  icmsSaidaParaDestino,
   inferirQtdContainers,
   normalizarUf,
   type ChaveTributoRastro,
@@ -322,6 +322,7 @@ export async function salvarCotacao(input: SalvarCotacaoInput) {
 function formatCotacaoSalva(row: CotacaoComRelacoes, provider?: string) {
   const { cotacao, itens, resultado } = mapRowParaDominio(row);
   const financeiro = extrairResumoFinanceiro(resultado, cotacao.params.markupPct);
+  const icms = aplicarIcmsCotacao(cotacao).meta;
   return {
     id: row.id,
     status: row.status,
@@ -334,6 +335,7 @@ function formatCotacaoSalva(row: CotacaoComRelacoes, provider?: string) {
     cotacao,
     itens,
     resultado,
+    icms,
     avisoFiscal: resultado ? null : "Cotação salva sem totais fiscais.",
     avisosFiscais: cotacao.avisosFiscais,
   };
@@ -429,13 +431,10 @@ export async function duplicarCotacao(
 
   const destino = normalizarUf(nova.destino) ?? "SP";
   nova.destino = destino;
-  nova.params = {
-    ...params,
-    icmsSaida: icmsSaidaParaDestino(destino, nova.benefFiscal),
-  };
 
-  const { resultado, itens } = calcularCotacao(nova, state);
-  return salvarCotacao({ cotacao: nova, itens, resultado });
+  const { resultado, itens, params: paramsCalc } = calcularCotacao(nova, state);
+  nova.params = paramsCalc;
+  return salvarCotacao({ cotacao: nova, itens, resultado, provider: undefined });
 }
 
 export interface AtualizarCotacaoInput {
@@ -454,8 +453,10 @@ export interface AtualizarCotacaoInput {
   outrasDespesasBaseBRL?: number;
   despesas?: Despesa[];
   params?: Partial<ParamsSaida>;
-  /** Se true, recalcula icmsSaida a partir de destino+benefício (ignora override manual). */
+  /** Se true, recalcula icmsSaida via resolver (ignora override manual). avisosFiscais preservados. */
   icmsAuto?: boolean;
+  /** Aceita ICMS calculado pelo resolver — limpa avisos legado e icmsSaidaManualFlag. */
+  confirmarIcmsSaida?: boolean;
   /** Override de alíquotas de importação por item (ordem = índice na cotação). */
   itensAliquotas?: Array<{
     ordem: number;
@@ -465,18 +466,38 @@ export interface AtualizarCotacaoInput {
   }>;
 }
 
-function mergeParams(
-  base: ParamsSaida,
-  destino: string,
-  benefFiscal: string,
+function mergeIcmsAtualizacao(
+  cotacao: Cotacao,
   opts: AtualizarCotacaoInput,
-): ParamsSaida {
-  const params = { ...base, ...opts.params };
+): Pick<Cotacao, "params" | "icmsSaidaManualFlag" | "avisosFiscais"> {
+  let manualFlag = cotacao.icmsSaidaManualFlag ?? false;
+  let avisos = [...(cotacao.avisosFiscais ?? [])];
+  const params = { ...cotacao.params, ...opts.params };
   if (opts.markupPct != null) params.markupPct = opts.markupPct;
-  if (opts.icmsAuto !== false && opts.params?.icmsSaida == null) {
-    params.icmsSaida = icmsSaidaParaDestino(destino, benefFiscal);
+
+  if (opts.confirmarIcmsSaida) {
+    manualFlag = false;
+    avisos = [];
+  } else if (opts.params?.icmsSaida != null && opts.icmsAuto === false) {
+    manualFlag = true;
+  } else if (opts.icmsAuto === true) {
+    manualFlag = false;
   }
-  return params;
+
+  const applied = aplicarIcmsCotacao({
+    ufEmpresa: cotacao.ufEmpresa,
+    destino: opts.destino ? (normalizarUf(opts.destino) ?? cotacao.destino) : cotacao.destino,
+    regimeIcms: cotacao.regimeIcms,
+    icmsSaidaManualFlag: manualFlag,
+    params,
+    avisosFiscais: avisos,
+  });
+
+  return {
+    params: applied.params,
+    icmsSaidaManualFlag: manualFlag,
+    avisosFiscais: avisos,
+  };
 }
 
 export async function atualizarCotacao(id: string, state: AppState, opts: AtualizarCotacaoInput) {
@@ -509,7 +530,7 @@ export async function atualizarCotacao(id: string, state: AppState, opts: Atuali
   const cliente = opts.cliente !== undefined ? opts.cliente.trim() || "Sem cliente" : cotacao.cliente;
   const despesas = opts.despesas ?? cotacao.despesas;
   const outrasDespesasBaseBRL = opts.outrasDespesasBaseBRL ?? cotacao.outrasDespesasBaseBRL;
-  const params = mergeParams(cotacao.params, destino, benefFiscal, opts);
+  const icmsMerged = mergeIcmsAtualizacao(cotacao, opts);
 
   const atualizada: Cotacao = {
     ...cotacao,
@@ -520,16 +541,19 @@ export async function atualizarCotacao(id: string, state: AppState, opts: Atuali
     cliente,
     despesas,
     outrasDespesasBaseBRL,
+    params: icmsMerged.params,
+    icmsSaidaManualFlag: icmsMerged.icmsSaidaManualFlag,
+    avisosFiscais: icmsMerged.avisosFiscais,
     ...(opts.cambio != null ? { cambio: opts.cambio } : {}),
     ...(opts.freteTotalUS != null ? { freteTotalUS: opts.freteTotalUS } : {}),
     ...(opts.siscomex != null ? { siscomex: opts.siscomex } : {}),
     ...(opts.adicionaisVaUS != null ? { adicionaisVaUS: opts.adicionaisVaUS } : {}),
     ...(opts.reducaoBaseUS != null ? { reducaoBaseUS: opts.reducaoBaseUS } : {}),
     ...(opts.qtdContainers != null ? { qtdContainers: opts.qtdContainers } : {}),
-    params,
     itens: itensDom,
   };
-  const { resultado, itens } = calcularCotacao(atualizada, state);
+  const { resultado, itens, params } = calcularCotacao(atualizada, state);
+  atualizada.params = params;
   const itensValidados = validarConfirmacaoNcmItens(itens);
   const canal = canalPredominante(itensValidados);
 

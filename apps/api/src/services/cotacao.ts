@@ -1,7 +1,7 @@
 /** Orquestração da cotação: montar itens (parser→IA→TEC) e calcular (engine+benchmark+risco). */
 
 import { calcCotacao, type CotacaoFiscalInput } from "@cia/fiscal-engine";
-import { validarConfirmacaoNcmItens } from "@cia/shared";
+import { validarConfirmacaoNcmItens, aplicarIcmsCotacao, type IcmsCotacaoMeta } from "@cia/shared";
 import {
   analisarRisco,
   anexarMetaFobItem,
@@ -197,28 +197,17 @@ export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise
 export interface ResultadoCompleto {
   resultado: ReturnType<typeof calcCotacao>;
   itens: Item[];
-}
-
-function pesoEngineItem(it: Item): number {
-  return resolvePesoLiqRateio({ pesoLiqKg: it.pesoLiqKg, pesoBrutoKg: it.pesoBrutoKg });
-}
-
-function fobUsadoNoEngine(it: Item, calibracao: ReturnType<typeof calibrarFobKg>): number {
-  if (it.fobPendente) return 0;
-  const pesoRateio = pesoEngineItem(it);
-  // FOB explícito na planilha prevalece — ComexStat só eleva se faltava preço ou calibragem defensiva (ajustado).
-  if (it.fobTotalUS > 0 && calibracao.fobKgOriginal && calibracao.fobKgOriginal > 0 && !calibracao.ajustado) {
-    return it.fobTotalUS;
-  }
-  if (calibracao.fobKgCalibrado > 0 && pesoRateio > 0) {
-    return calibracao.fobKgCalibrado * pesoRateio;
-  }
-  return it.fobTotalUS;
+  icms: IcmsCotacaoMeta;
+  /** params com icmsSaida/icmsEntrada efetivos para persistência. */
+  params: Cotacao["params"];
 }
 
 /** Enriquece itens (benchmark/calibragem/risco) e roda o engine fiscal. */
 export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCompleto {
-  const itensComFob = aplicarRegrasFobItens(cotacao.itens, state.benchmarkIndex);
+  const { params: paramsIcms, meta: icms } = aplicarIcmsCotacao(cotacao);
+  const cotacaoIcms = { ...cotacao, params: paramsIcms };
+
+  const itensComFob = aplicarRegrasFobItens(cotacaoIcms.itens, state.benchmarkIndex);
 
   const itensEnriquecidos: Item[] = itensComFob.map((it) => {
     const pesoRateio = pesoEngineItem(it);
@@ -259,12 +248,12 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
   });
 
   const engineInput: CotacaoFiscalInput = {
-    cambio: cotacao.cambio,
-    freteTotalUS: cotacao.freteTotalUS,
-    adicionaisVaUS: cotacao.adicionaisVaUS,
-    reducaoBaseUS: cotacao.reducaoBaseUS,
-    siscomex: cotacao.siscomex,
-    antidumpingBRL: cotacao.antidumpingBRL,
+    cambio: cotacaoIcms.cambio,
+    freteTotalUS: cotacaoIcms.freteTotalUS,
+    adicionaisVaUS: cotacaoIcms.adicionaisVaUS,
+    reducaoBaseUS: cotacaoIcms.reducaoBaseUS,
+    siscomex: cotacaoIcms.siscomex,
+    antidumpingBRL: cotacaoIcms.antidumpingBRL,
     itens: itensEnriquecidos.map((it) => ({
       ref: it.ncm,
       ncm: it.ncm,
@@ -276,16 +265,33 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
       aliqCOFINS: it.aliquotas.cofins,
       aliqICMSEntrada: it.aliquotas.icmsEntrada,
     })),
-    despesas: cotacao.despesas.map((d) => ({
+    despesas: cotacaoIcms.despesas.map((d) => ({
       nome: d.nome,
       valorBRL: d.valorBRL,
       entraBaseSaida: d.entraBaseSaida,
       entraBaseNota: d.entraBaseNota,
     })),
-    outrasDespesasBaseBRL: cotacao.outrasDespesasBaseBRL,
-    params: cotacao.params,
+    outrasDespesasBaseBRL: cotacaoIcms.outrasDespesasBaseBRL,
+    params: paramsIcms,
   };
 
   const resultado = calcCotacao(engineInput);
-  return { resultado, itens: validarConfirmacaoNcmItens(itensEnriquecidos) };
+  return { resultado, itens: validarConfirmacaoNcmItens(itensEnriquecidos), icms, params: paramsIcms };
+}
+
+function pesoEngineItem(it: Item): number {
+  return resolvePesoLiqRateio({ pesoLiqKg: it.pesoLiqKg, pesoBrutoKg: it.pesoBrutoKg });
+}
+
+function fobUsadoNoEngine(it: Item, calibracao: ReturnType<typeof calibrarFobKg>): number {
+  if (it.fobPendente) return 0;
+  const pesoRateio = pesoEngineItem(it);
+  // FOB explícito na planilha prevalece — ComexStat só eleva se faltava preço ou calibragem defensiva (ajustado).
+  if (it.fobTotalUS > 0 && calibracao.fobKgOriginal && calibracao.fobKgOriginal > 0 && !calibracao.ajustado) {
+    return it.fobTotalUS;
+  }
+  if (calibracao.fobKgCalibrado > 0 && pesoRateio > 0) {
+    return calibracao.fobKgCalibrado * pesoRateio;
+  }
+  return it.fobTotalUS;
 }
