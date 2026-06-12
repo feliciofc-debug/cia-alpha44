@@ -51,13 +51,14 @@ async function classificarItemComFallback(
   );
 }
 
-/** Classifica em paralelo (2 passes por item) — fallback legado por item em falha. */
+/** Classifica em paralelo (2 passes por item) — tradução em lote + fallback legado por item. */
 async function classificarEmLotes(
   state: AppState,
   linhas: LinhaCrua[],
 ): Promise<ClassifyItemOutput[]> {
   const { contextoSiscomexParaItem } = await import("../llm/ncm-contexto-siscomex.js");
-  const { classificarItens2Passes } = await import("../llm/classificar-ncm-2passes.js");
+  const { classificarItens2Passes, executar2PassesComLlm, traduzirDescricoesClassificacao } =
+    await import("../llm/classificar-ncm-2passes.js");
 
   const inputs: ClassifyItemInput[] = linhas.map((l) => ({
     descOriginal: l.descOriginal,
@@ -67,8 +68,22 @@ async function classificarEmLotes(
     contexto: contextoSiscomexParaItem(state.ncmCatalog, l.descOriginal, l.ncm),
   }));
 
-  return mapComConcorrencia(inputs, CLASSIFY_CONCORRENCIA, async (input) => {
+  const chamarLlm = state.provider.chamarLlm;
+  const batchTrad =
+    chamarLlm && state.provider.disponivel
+      ? await traduzirDescricoesClassificacao(inputs, chamarLlm)
+      : null;
+
+  return mapComConcorrencia(inputs, CLASSIFY_CONCORRENCIA, async (input, i) => {
     try {
+      if (chamarLlm && batchTrad) {
+        const pre = {
+          descricoes: [batchTrad.descricoes[i]!],
+          traducaoIndisponivel: batchTrad.traducaoIndisponivel,
+        };
+        const [doisPasses] = await executar2PassesComLlm(state.ncmCatalog, [input], chamarLlm, pre);
+        if (doisPasses) return doisPasses;
+      }
       return await classificarItemComFallback(state, input, classificarItens2Passes);
     } catch {
       const [legado] = await state.provider.classify([input]);

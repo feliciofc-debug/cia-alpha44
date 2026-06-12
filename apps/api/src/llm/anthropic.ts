@@ -11,6 +11,7 @@ export function criarAnthropicProvider(apiKey: string, model = process.env.ANTHR
   return {
     nome: `anthropic:${model}`,
     disponivel: true,
+    chamarLlm,
     async classify(itens: ClassifyItemInput[]): Promise<ClassifyItemOutput[]> {
       const texto = await chamarLlm(SYSTEM_PROMPT, buildUserPrompt(itens));
       return parseClassifyResponse(texto, itens.length);

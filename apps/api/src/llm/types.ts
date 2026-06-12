@@ -40,4 +40,6 @@ export interface LlmProvider {
   classify(itens: ClassifyItemInput[]): Promise<ClassifyItemOutput[]>;
   /** Classificação NCM em 2 passes (posição → NCM-8). Opcional — mock/anthropic/openai. */
   classify2Passes?(catalog: import("@cia/pipeline").NcmCatalog, itens: ClassifyItemInput[]): Promise<ClassifyItemOutput[]>;
+  /** Chamada LLM bruta — usada para tradução em lote antes da classificação paralela. */
+  chamarLlm?: import("./classificar-ncm-2passes.js").LlmCallFn;
 }

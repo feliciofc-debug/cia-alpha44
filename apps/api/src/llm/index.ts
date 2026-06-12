@@ -45,6 +45,7 @@ export function comFallback(primario: LlmProvider, mock: LlmProvider): LlmProvid
   return {
     nome: primario.nome,
     disponivel: primario.disponivel,
+    chamarLlm: primario.chamarLlm,
     async classify(itens) {
       try {
         return await primario.classify(itens);

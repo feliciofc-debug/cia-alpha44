@@ -11,6 +11,7 @@ export function criarOpenAiProvider(apiKey: string, model = process.env.OPENAI_M
   return {
     nome: `openai:${model}`,
     disponivel: true,
+    chamarLlm,
     async classify(itens: ClassifyItemInput[]): Promise<ClassifyItemOutput[]> {
       const texto = await chamarLlm(SYSTEM_PROMPT, buildUserPrompt(itens));
       return parseClassifyResponse(texto, itens.length);

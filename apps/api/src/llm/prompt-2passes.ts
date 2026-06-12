@@ -69,10 +69,17 @@ export function buildTranslatePrompt(
 
 export function parseTranslateResponse(texto: string, qtd: number): string[] {
   const obj = parseJson(texto) as { itens?: unknown[] };
+  const raw = obj.itens ?? [];
+  const byIndex = new Map<number, string>();
+  for (let j = 0; j < raw.length; j++) {
+    const r = raw[j] as Record<string, unknown>;
+    const idx = Number.isFinite(Number(r.i)) ? Number(r.i) : j;
+    const pt = String(r.descPt ?? r.descricao ?? r.traducao ?? "").trim();
+    if (pt) byIndex.set(idx, pt);
+  }
   const out: string[] = [];
   for (let i = 0; i < qtd; i++) {
-    const r = (obj.itens?.[i] ?? {}) as Record<string, unknown>;
-    out.push(String(r.descPt ?? "").trim());
+    out.push(byIndex.get(i) ?? "");
   }
   return out;
 }

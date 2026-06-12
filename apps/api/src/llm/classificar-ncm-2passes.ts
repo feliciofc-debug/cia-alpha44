@@ -60,6 +60,8 @@ interface TraducaoResult {
   traducaoIndisponivel: boolean;
 }
 
+export type { TraducaoResult };
+
 function fallbackTraducao(itens: ClassifyItemInput[]): TraducaoResult {
   return {
     descricoes: itens.map((it) => it.descOriginal),
@@ -71,7 +73,7 @@ async function traduzirDescricoes(
   itens: ClassifyItemInput[],
   chamarLlm: LlmCallFn,
 ): Promise<TraducaoResult> {
-  try {
+  const tentar = async (): Promise<TraducaoResult> => {
     const texto = await chamarLlm(
       SYSTEM_TRANSLATE,
       buildTranslatePrompt(
@@ -83,18 +85,31 @@ async function traduzirDescricoes(
         })),
       ),
     );
+    const traduzidos = parseTranslateResponse(texto, itens.length);
+    const anyOk = traduzidos.some((pt) => pt.length > 0);
+    if (!anyOk) return fallbackTraducao(itens);
+    return {
+      descricoes: traduzidos.map((pt, i) => pt || itens[i]!.descOriginal),
+      traducaoIndisponivel: false,
+    };
+  };
+  try {
+    return await tentar();
+  } catch {
     try {
-      const traduzidos = parseTranslateResponse(texto, itens.length);
-      return {
-        descricoes: traduzidos.map((pt, i) => pt || itens[i]!.descOriginal),
-        traducaoIndisponivel: false,
-      };
+      return await tentar();
     } catch {
       return fallbackTraducao(itens);
     }
-  } catch {
-    return fallbackTraducao(itens);
   }
+}
+
+/** Tradução em lote — uma chamada LLM para todos os itens (evita rate limit paralelo). */
+export async function traduzirDescricoesClassificacao(
+  itens: ClassifyItemInput[],
+  chamarLlm: LlmCallFn,
+): Promise<TraducaoResult> {
+  return traduzirDescricoes(itens, chamarLlm);
 }
 
 /** Executa 2 passes via função de chamada LLM (Anthropic/OpenAI/mock). */
@@ -102,8 +117,10 @@ export async function executar2PassesComLlm(
   catalog: NcmCatalog,
   itens: ClassifyItemInput[],
   chamarLlm: LlmCallFn,
+  preTraducao?: TraducaoResult,
 ): Promise<ClassifyItemOutput[]> {
-  const { descricoes: descricoesPt, traducaoIndisponivel } = await traduzirDescricoes(itens, chamarLlm);
+  const { descricoes: descricoesPt, traducaoIndisponivel } =
+    preTraducao ?? (await traduzirDescricoes(itens, chamarLlm));
   const avisoTraducao = traducaoIndisponivel ? AVISO_TRADUCAO_INDISPONIVEL : undefined;
   const resultados: ClassifyItemOutput[] = itens.map((it, i) => ({
     ...saidaPendente(it, descricoesPt[i]!),
