@@ -32,6 +32,8 @@ export {
   itemBloqueiaPdfNcm,
   itensBloqueandoPdf,
   itensPendentesConfirmacaoNcm,
+  itensResolucaoNcm,
+  itemPrecisaResolucaoNcm,
   LIMIAR_CONFIANCA_NCM,
 } from "@cia/shared";
 

@@ -8,6 +8,7 @@ import {
   metaConfirmacaoNcm,
   validarConfirmacaoNcmItem,
   validarConfirmacaoNcmItens,
+  ncm8Limpo,
 } from "@cia/shared";
 import {
   aplicarPatchesAliquotasItem,
@@ -655,6 +656,74 @@ export async function desfazerConfirmacaoNcmItem(cotacaoId: string, ordem: numbe
   });
   if (!atualizada) return null;
   return formatCotacaoSalva(atualizada as CotacaoComRelacoes, provider);
+}
+
+/** Altera NCM do item salvo, limpa confirmação humana e recalcula a cotação. */
+export async function alterarNcmItem(cotacaoId: string, ordem: number, ncmNovo: string, state: AppState) {
+  if (!dbAtivo()) throw new PersistenciaIndisponivelError();
+
+  const ncm = ncm8Limpo(ncmNovo);
+  if (!ncm || ncm === "00000000") throw new Error("NCM inválido (8 dígitos).");
+
+  const row = await prisma.cotacao.findUnique({
+    where: { id: cotacaoId },
+    include: { itens: true, despesas: true },
+  });
+  if (!row) return null;
+
+  const itemRow = row.itens.find((i) => i.ordem === ordem);
+  if (!itemRow) return null;
+
+  const metaAtual = (itemRow.meta as import("@cia/pipeline").ItemMetaPersistido | null) ?? {};
+  const base = mesclarItemMeta(
+    {
+      descOriginal: itemRow.descOriginal,
+      descPt: itemRow.descPt,
+      descDuimp: itemRow.descDuimp,
+      ncm: itemRow.ncm,
+      pesoLiqKg: num(itemRow.pesoLiqKg),
+      fobTotalUS: num(itemRow.fobTotalUS),
+    } as Item,
+    metaAtual,
+  );
+  const novoMeta = extrairItemMeta(limparConfirmacaoNcm({ ...base, ncm }));
+
+  await prisma.item.update({
+    where: { id: itemRow.id },
+    data: { ncm, meta: novoMeta as Prisma.InputJsonValue },
+  });
+
+  const refreshed = await prisma.cotacao.findUnique({
+    where: { id: cotacaoId },
+    include: { itens: true, despesas: true },
+  });
+  if (!refreshed) return null;
+
+  const { cotacao } = mapRowParaDominio(refreshed);
+  const { resultado, itens } = calcularCotacao(cotacao, state);
+  const itensValidados = validarConfirmacaoNcmItens(itens);
+  const canal = canalPredominante(itensValidados);
+
+  await prisma.cotacao.update({
+    where: { id: cotacaoId },
+    data: {
+      status: resultado ? "CALCULADA" : row.status,
+      totalBRL: resultado?.totalBRL ?? null,
+      totalUS: resultado?.totalUS ?? null,
+      canalPredominante: canal,
+      resultadoCalculo: (resultado ?? undefined) as unknown as Prisma.InputJsonValue | undefined,
+      calculadoEm: resultado ? new Date() : row.calculadoEm,
+    },
+  });
+
+  const salva = formatCotacaoSalva(refreshed as CotacaoComRelacoes);
+  return {
+    ...salva,
+    id: cotacaoId,
+    itens: itensValidados,
+    resultado,
+    criadoEm: refreshed.criadoEm.toISOString(),
+  };
 }
 
 export async function excluirCotacao(id: string): Promise<boolean> {

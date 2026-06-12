@@ -6,7 +6,7 @@ import {
   metaConfirmacaoNcm,
   validarConfirmacaoNcmItem,
 } from "@cia/shared";
-import { itemBloqueiaPdfNcm, itensBloqueandoPdf, itemPodeConfirmarNcm } from "@cia/shared";
+import { itemBloqueiaPdfNcm, itensBloqueandoPdf, itemPodeConfirmarNcm, itensResolucaoNcm } from "@cia/shared";
 
 function item(partial: Partial<Item>): Item {
   return {
@@ -109,5 +109,15 @@ describe("pdf-ncm", () => {
     expect(itemPodeConfirmarNcm(baixaConf)).toBe(true);
     expect(itemBloqueiaPdfNcm(baixaConf)).toBe(false);
     expect(itensBloqueandoPdf([baixaConf])).toHaveLength(0);
+  });
+
+  it("itensResolucaoNcm inclui revisar e incompatível", () => {
+    const itens = [
+      item({ compatibilidadeProduto: "revisar" }),
+      item({ compatibilidadeProduto: "compativel" }),
+      item({ compatibilidadeProduto: "incompativel" }),
+    ];
+    const fila = itensResolucaoNcm(itens);
+    expect(fila.map((f) => f.idx)).toEqual([0, 2]);
   });
 });

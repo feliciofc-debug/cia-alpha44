@@ -255,6 +255,13 @@ export const api = {
       method: "POST",
     }).then(handle<CotacaoSalva>),
 
+  alterarNcmItem: (cotacaoId: string, ordem: number, ncm: string) =>
+    fetch(`${BASE}/api/cotacoes/${cotacaoId}/itens/${ordem}/ncm`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ncm }),
+    }).then(handle<CotacaoSalva>),
+
   /** @deprecated use atualizarCotacao */
   atualizarFiscal: (id: string, opts: Record<string, unknown>) =>
     fetch(`${BASE}/api/cotacoes/${id}/fiscal`, {

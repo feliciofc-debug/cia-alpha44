@@ -19,7 +19,8 @@ import { PainelKpisView } from "./painel-kpis.tsx";
 import { BenchmarkReferenciaView } from "./benchmark-referencia-view.tsx";
 import { PreviewOrcamentoCliente } from "./preview-orcamento-cliente.tsx";
 import { cotacaoParaSalvar, itensParaSalvar } from "./lib/cotacao-payload.ts";
-import { pdfBloqueadoPorNcm, resumoBloqueioNcm, avisoCompatibilidadePdf, itemPodeConfirmarNcm, itemPodeDesfazerNcm, itensPendentesConfirmacaoNcm, metaConfirmacaoNcm, limparConfirmacaoNcm } from "./lib/ncm.ts";
+import { pdfBloqueadoPorNcm, resumoBloqueioNcm, avisoCompatibilidadePdf, itemPodeConfirmarNcm, itemPodeDesfazerNcm, itensPendentesConfirmacaoNcm, itensResolucaoNcm, metaConfirmacaoNcm, limparConfirmacaoNcm } from "./lib/ncm.ts";
+import { BarraResolucaoNcm } from "./barra-resolucao-ncm.tsx";
 import { aplicarOverrideManualAliquota, desfazerOverrideManualAliquota, type ChaveTributoRastro } from "@cia/shared";
 import { DetalheRastroAliquota } from "./lib/aliquota-rastro-ui.tsx";
 import type { ClienteResumo, DashboardKpis, DashboardSeries } from "./lib/types.ts";
@@ -208,6 +209,8 @@ function AnalisePainel({
   onConfirmarNcm,
   confirmandoNcm,
   onDesfazerNcm,
+  onAlterarNcm,
+  alterandoNcm,
 }: {
   analise: AnaliseView;
   onSalvar?: () => void;
@@ -224,18 +227,22 @@ function AnalisePainel({
   recalculandoAliquota?: boolean;
   onDesfazerAliquota?: (idx: number, campo: ChaveTributoRastro) => void | Promise<void>;
   desfazendoAliquota?: { idx: number; campo: ChaveTributoRastro } | null;
-  onConfirmarNcm?: (idx: number) => void | Promise<void>;
+  onConfirmarNcm: (idx: number) => void | Promise<void>;
   confirmandoNcm?: number | null;
   onDesfazerNcm?: (idx: number) => void | Promise<void>;
+  onAlterarNcm: (idx: number, ncm: string) => void | Promise<void>;
+  alterandoNcm?: number | null;
 }) {
   const itens = analise.itens;
   const qtdPendentesNcm = itensPendentesConfirmacaoNcm(itens).length;
+  const qtdResolucao = itensResolucaoNcm(itens).length;
   const ncmBloqueiaPdfInicial = pdfBloqueadoPorNcm(itens);
   const [aba, setAba] = useState<"orcamento" | "tecnica">(() => {
     if (qtdPendentesNcm > 0 || ncmBloqueiaPdfInicial) return "tecnica";
     if (salvaId && contarItensComFoto(itens) === 0) return "tecnica";
     return "orcamento";
   });
+  const [resolucaoAberta, setResolucaoAberta] = useState(qtdResolucao > 0);
   const [exportandoConc, setExportandoConc] = useState<"xlsx" | "csv" | null>(null);
 
   async function exportarConciliacao(fmt: "xlsx" | "csv") {
@@ -411,10 +418,10 @@ function AnalisePainel({
                       </span>
                     )}
                     <div className="mt-1.5 space-y-1 border-t border-white/10 pt-1">
-                    {itemPodeConfirmarNcm(it) && onConfirmarNcm && (
+                    {itemPodeConfirmarNcm(it) && (
                       <button
                         type="button"
-                        className="block w-full rounded bg-emerald-600 px-2 py-1 text-[10px] font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+                        className="block w-full rounded bg-emerald-600 px-2 py-1.5 text-xs font-bold text-white shadow hover:bg-emerald-500 disabled:opacity-50"
                         disabled={confirmandoNcm === i}
                         onClick={() => void onConfirmarNcm(i)}
                       >
@@ -586,6 +593,47 @@ function AnalisePainel({
         {analise.avisoFiscal && <p className="mt-2 text-sm text-amber-300">{analise.avisoFiscal}</p>}
       </div>
 
+      {(ncmBloqueiaPdf || avisoCompatPdf || qtdResolucao > 0) && (
+        <div className="space-y-2">
+          {ncmBloqueiaPdf && (
+            <button
+              type="button"
+              className="w-full rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-left text-sm text-red-200 transition hover:bg-red-500/20 focus:outline-none focus:ring-2 focus:ring-red-400/50"
+              onClick={() => {
+                setResolucaoAberta(true);
+                setAba("tecnica");
+              }}
+            >
+              {motivoBloqueioPdf}
+              <span className="mt-1 block text-xs font-semibold text-red-100 underline">Clique para resolver →</span>
+            </button>
+          )}
+          {avisoCompatPdf && (
+            <button
+              type="button"
+              className="w-full rounded-xl border border-orange-500/40 bg-orange-500/10 px-4 py-3 text-left text-sm text-orange-200 transition hover:bg-orange-500/20 focus:outline-none focus:ring-2 focus:ring-orange-400/50"
+              onClick={() => {
+                setResolucaoAberta(true);
+                setAba("tecnica");
+              }}
+            >
+              {avisoCompatPdf}
+              <span className="mt-1 block text-xs font-semibold text-orange-100 underline">Clique para revisar →</span>
+            </button>
+          )}
+          <BarraResolucaoNcm
+            itens={itens}
+            aberta={resolucaoAberta}
+            onToggle={() => setResolucaoAberta((v) => !v)}
+            onConfirmarNcm={onConfirmarNcm}
+            onDesfazerNcm={onDesfazerNcm}
+            onAlterarNcm={onAlterarNcm}
+            confirmandoNcm={confirmandoNcm}
+            alterandoNcm={alterandoNcm}
+          />
+        </div>
+      )}
+
       <div className="flex gap-2 border-b border-white/10 pb-1">
         <button
           type="button"
@@ -617,13 +665,19 @@ function AnalisePainel({
           {ncmBloqueiaPdf && (
             <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
               {motivoBloqueioPdf}
-              {qtdPendentesNcm > 0 && (
+              {qtdResolucao > 0 && (
                 <button
                   type="button"
-                  className="mt-2 block rounded bg-emerald-600/90 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500"
-                  onClick={() => setAba("tecnica")}
+                  className="mt-2 block rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-500"
+                  onClick={() => {
+                    setResolucaoAberta(true);
+                    setAba("tecnica");
+                    requestAnimationFrame(() =>
+                      document.getElementById("barra-resolucao-ncm")?.scrollIntoView({ behavior: "smooth", block: "start" }),
+                    );
+                  }}
                 >
-                  Confirmar NCM ({qtdPendentesNcm} item{qtdPendentesNcm === 1 ? "" : "s"}) — abrir Detalhamento técnico
+                  Resolver pendências ({qtdResolucao}) — abrir painel NCM
                 </button>
               )}
             </div>
@@ -745,6 +799,7 @@ export function Dashboard() {
     null,
   );
   const [confirmandoNcm, setConfirmandoNcm] = useState<number | null>(null);
+  const [alterandoNcm, setAlterandoNcm] = useState<number | null>(null);
   const [pdfBaixando, setPdfBaixando] = useState<"cliente" | "trade" | null>(null);
   const [irParaOrcamento, setIrParaOrcamento] = useState(0);
   const [kpis, setKpis] = useState<DashboardKpis | null>(null);
@@ -1021,6 +1076,47 @@ export function Dashboard() {
       setErro(e instanceof Error ? e.message : "Falha ao desfazer confirmação.");
     } finally {
       setConfirmandoNcm(null);
+    }
+  }
+
+  async function alterarNcmItem(idx: number, ncmRaw: string) {
+    const base = analise ?? detalhe;
+    if (!base) return;
+    const ncm = ncmRaw.replace(/\D/g, "").padStart(8, "0").slice(0, 8);
+    if (ncm.length !== 8 || ncm === "00000000") {
+      setErro("Informe um NCM válido com 8 dígitos.");
+      return;
+    }
+    setAlterandoNcm(idx);
+    setErro("");
+    try {
+      const idSalvo = detalhe?.id ?? salvaId;
+      const itEditado = limparConfirmacaoNcm({ ...base.itens[idx]!, ncm });
+      const itensLocal = base.itens.map((it, i) => (i === idx ? itEditado : it));
+      const draft = editorDraft ?? editorFromCotacao(base.cotacao, "cliente" in base ? base.cotacao.cliente : cliente);
+      const cotacao = { ...aplicarEditorNaCotacao(base.cotacao, draft), itens: itensLocal };
+
+      if (idSalvo) {
+        const atualizada = await api.alterarNcmItem(idSalvo, idx, ncm);
+        if (detalhe?.id) {
+          setDetalhe(atualizada);
+        } else if (analise) {
+          setAnalise({
+            ...analise,
+            cotacao: atualizada.cotacao,
+            resultado: atualizada.resultado,
+            itens: atualizada.itens,
+          });
+        }
+        return;
+      }
+
+      const { resultado, itens } = await api.calcular(cotacao);
+      if (analise) setAnalise({ ...analise, cotacao, resultado, itens });
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao alterar NCM.");
+    } finally {
+      setAlterandoNcm(null);
     }
   }
 
@@ -1440,6 +1536,8 @@ export function Dashboard() {
                 onConfirmarNcm={confirmarNcmItem}
                 confirmandoNcm={confirmandoNcm}
                 onDesfazerNcm={desfazerNcmItem}
+                onAlterarNcm={alterarNcmItem}
+                alterandoNcm={alterandoNcm}
               />
             </div>
           </div>
@@ -1532,6 +1630,8 @@ export function Dashboard() {
                   onConfirmarNcm={confirmarNcmItem}
                   confirmandoNcm={confirmandoNcm}
                   onDesfazerNcm={desfazerNcmItem}
+                  onAlterarNcm={alterarNcmItem}
+                  alterandoNcm={alterandoNcm}
                 />
                 {salvaId && (
                   <button type="button" className="btn-ghost mt-4 w-full" onClick={() => void abrirCotacao(salvaId)}>

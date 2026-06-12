@@ -35,6 +35,20 @@ export function itensPendentesConfirmacaoNcm(itens: Item[]): Item[] {
   return itens.filter(itemPodeConfirmarNcm);
 }
 
+/** Item exige ação humana na barra de resolução (confirmar e/ou editar NCM). */
+export function itemPrecisaResolucaoNcm(it: Item): boolean {
+  if (it.compatibilidadeProduto === "incompativel") return true;
+  if (itemPodeConfirmarNcm(it)) return true;
+  if (itemBloqueiaPdfNcm(it) && !confirmacaoNcmVigente(it)) return true;
+  return false;
+}
+
+export function itensResolucaoNcm(itens: Item[]): Array<{ idx: number; item: Item }> {
+  return itens
+    .map((item, idx) => ({ idx, item }))
+    .filter(({ item }) => itemPrecisaResolucaoNcm(item));
+}
+
 export function itensBloqueandoPdf(itens: Item[]): Item[] {
   return itens.filter(itemBloqueiaPdfNcm);
 }

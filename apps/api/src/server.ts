@@ -11,6 +11,7 @@ import { buscarCambioPtax } from "./services/cambio.js";
 import { calcularCotacao, montarItens } from "./services/cotacao.js";
 import {
   atualizarCotacao,
+  alterarNcmItem,
   buscarCotacao,
   confirmarNcmItem,
   desfazerConfirmacaoNcmItem,
@@ -477,6 +478,25 @@ export async function buildServer() {
       if (!atualizada) return reply.status(404).send({ erro: "Cotação ou item não encontrado." });
       return atualizada;
     } catch (e) {
+      return persistenciaErro(reply, e);
+    }
+  });
+
+  app.patch("/api/cotacoes/:id/itens/:ordem/ncm", async (req, reply) => {
+    try {
+      const { id, ordem } = req.params as { id: string; ordem: string };
+      const idx = Number(ordem);
+      if (!Number.isFinite(idx) || idx < 0) {
+        return reply.status(400).send({ erro: "Índice de item inválido." });
+      }
+      const body = z.object({ ncm: z.string().min(1) }).safeParse(req.body ?? {});
+      if (!body.success) return reply.status(400).send({ erro: "NCM obrigatório." });
+      const atualizada = await alterarNcmItem(id, idx, body.data.ncm, getState());
+      if (!atualizada) return reply.status(404).send({ erro: "Cotação ou item não encontrado." });
+      return atualizada;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Falha ao alterar NCM.";
+      if (msg.includes("NCM inválido")) return reply.status(400).send({ erro: msg });
       return persistenciaErro(reply, e);
     }
   });
