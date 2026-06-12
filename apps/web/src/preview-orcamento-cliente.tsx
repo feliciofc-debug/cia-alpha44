@@ -1,7 +1,7 @@
-import { useState } from "react";
 import { fmtNcm } from "./lib/format.ts";
 import { fotoItemSrc } from "./lib/item-foto.ts";
 import type { Cotacao, Despesa, Item, ResultadoCotacao } from "./lib/types.ts";
+import { PdfDownloadBar } from "./pdf-download-bar.tsx";
 
 function parseDataIso(iso?: string) {
   const src = iso?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
@@ -128,6 +128,8 @@ export function PreviewOrcamentoCliente({
   pdfBloqueado = false,
   motivoBloqueioPdf,
   avisoCompatibilidade,
+  qtdPendenciasNcm = 0,
+  onIrParaResolucaoNcm,
 }: {
   cotacao: Cotacao;
   itens: Item[];
@@ -142,20 +144,9 @@ export function PreviewOrcamentoCliente({
   motivoBloqueioPdf?: string;
   /** Aviso não bloqueante — incompatibilidade semântica produto × NCM. */
   avisoCompatibilidade?: string | null;
+  qtdPendenciasNcm?: number;
+  onIrParaResolucaoNcm?: () => void;
 }) {
-  const [baixando, setBaixando] = useState(false);
-
-  async function handleBaixarPdf() {
-    if (!onBaixarPdf || baixando) return;
-    setBaixando(true);
-    try {
-      await onBaixarPdf();
-    } catch {
-      // mensagem de erro exibida pelo Dashboard
-    } finally {
-      setBaixando(false);
-    }
-  }
   const dataStr = fmtDataBr(criadoEm);
   const porto = `PORTO ${cotacao.origem || "RJ"}`;
   const fatura = tituloFatura(cotacao.cliente || "CLIENTE", criadoEm);
@@ -335,15 +326,13 @@ export function PreviewOrcamentoCliente({
                 : "Salve a cotação para manter o histórico; você ainda pode baixar um PDF de preview."}
             </p>
           )}
-          <button
-            type="button"
-            className="btn-primary shrink-0 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={baixando || pdfBloqueado}
-            title={pdfBloqueado ? motivoBloqueioPdf : undefined}
-            onClick={() => void handleBaixarPdf()}
-          >
-            {baixando ? "Gerando PDF…" : "Baixar PDF deste orçamento"}
-          </button>
+          <PdfDownloadBar
+            bloqueado={pdfBloqueado}
+            motivoBloqueio={motivoBloqueioPdf}
+            qtdPendencias={qtdPendenciasNcm}
+            onBaixar={onBaixarPdf}
+            onIrParaResolucaoNcm={onIrParaResolucaoNcm}
+          />
         </div>
       )}
     </div>

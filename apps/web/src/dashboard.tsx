@@ -20,6 +20,7 @@ import { BenchmarkReferenciaView } from "./benchmark-referencia-view.tsx";
 import { PreviewOrcamentoCliente } from "./preview-orcamento-cliente.tsx";
 import { cotacaoParaSalvar, itensParaSalvar } from "./lib/cotacao-payload.ts";
 import { pdfBloqueadoPorNcm, resumoBloqueioNcm, avisoCompatibilidadePdf, itemPodeConfirmarNcm, itemPodeDesfazerNcm, itensPendentesConfirmacaoNcm, itensResolucaoNcm, metaConfirmacaoNcm, limparConfirmacaoNcm } from "./lib/ncm.ts";
+import { PdfDownloadBar } from "./pdf-download-bar.tsx";
 import { BarraResolucaoNcm } from "./barra-resolucao-ncm.tsx";
 import { aplicarOverrideManualAliquota, desfazerOverrideManualAliquota, type ChaveTributoRastro } from "@cia/shared";
 import { DetalheRastroAliquota } from "./lib/aliquota-rastro-ui.tsx";
@@ -202,6 +203,8 @@ function AnalisePainel({
   aplicandoEditor,
   onBaixarPdfCliente,
   irParaOrcamento,
+  solicitarResolucaoNcm,
+  onIrParaResolucaoNcm,
   onAlterarAliquota,
   recalculandoAliquota,
   onDesfazerAliquota,
@@ -223,6 +226,9 @@ function AnalisePainel({
   onBaixarPdfCliente?: () => void | Promise<void>;
   /** Incrementar para abrir a aba Orçamento cliente e rolar até o preview. */
   irParaOrcamento?: number;
+  /** Incrementar para abrir barra de resolução NCM (Detalhamento técnico). */
+  solicitarResolucaoNcm?: number;
+  onIrParaResolucaoNcm?: () => void;
   onAlterarAliquota?: (idx: number, campo: AliquotaCampo, valor: number) => void | Promise<void>;
   recalculandoAliquota?: boolean;
   onDesfazerAliquota?: (idx: number, campo: ChaveTributoRastro) => void | Promise<void>;
@@ -275,6 +281,19 @@ function AnalisePainel({
       document.getElementById("preview-orcamento-cliente")?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }, [irParaOrcamento]);
+
+  function irParaResolucaoNcm() {
+    setResolucaoAberta(true);
+    setAba("tecnica");
+    requestAnimationFrame(() =>
+      document.getElementById("barra-resolucao-ncm")?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
+  }
+  useEffect(() => {
+    if (!solicitarResolucaoNcm) return;
+    irParaResolucaoNcm();
+  }, [solicitarResolucaoNcm]);
+
   const qtdFotos = contarItensComFoto(itens);
   const ncmBloqueiaPdf = pdfBloqueadoPorNcm(itens);
   const motivoBloqueioPdf = resumoBloqueioNcm(itens);
@@ -670,11 +689,7 @@ function AnalisePainel({
                   type="button"
                   className="mt-2 block rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-500"
                   onClick={() => {
-                    setResolucaoAberta(true);
-                    setAba("tecnica");
-                    requestAnimationFrame(() =>
-                      document.getElementById("barra-resolucao-ncm")?.scrollIntoView({ behavior: "smooth", block: "start" }),
-                    );
+                    irParaResolucaoNcm();
                   }}
                 >
                   Resolver pendências ({qtdResolucao}) — abrir painel NCM
@@ -697,6 +712,8 @@ function AnalisePainel({
             pdfBloqueado={ncmBloqueiaPdf}
             motivoBloqueioPdf={motivoBloqueioPdf}
             avisoCompatibilidade={avisoCompatPdf}
+            qtdPendenciasNcm={qtdResolucao}
+            onIrParaResolucaoNcm={onIrParaResolucaoNcm ?? irParaResolucaoNcm}
           />
         </div>
       ) : (
@@ -800,8 +817,8 @@ export function Dashboard() {
   );
   const [confirmandoNcm, setConfirmandoNcm] = useState<number | null>(null);
   const [alterandoNcm, setAlterandoNcm] = useState<number | null>(null);
-  const [pdfBaixando, setPdfBaixando] = useState<"cliente" | "trade" | null>(null);
   const [irParaOrcamento, setIrParaOrcamento] = useState(0);
+  const [solicitarResolucaoNcm, setSolicitarResolucaoNcm] = useState(0);
   const [kpis, setKpis] = useState<DashboardKpis | null>(null);
   const [series, setSeries] = useState<DashboardSeries | null>(null);
   const [kpisLoading, setKpisLoading] = useState(false);
@@ -1120,36 +1137,16 @@ export function Dashboard() {
     }
   }
 
-  async function baixarPdf(tipo: "cliente" | "trade") {
-    if (!detalhe) return;
-    setPdfBaixando(tipo);
-    setErro("");
-    try {
-      await api.baixarPdf(detalhe.id, tipo);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : "Falha ao gerar PDF.");
-    } finally {
-      setPdfBaixando(null);
-    }
-  }
-
   async function baixarPdfClienteOrcamento() {
-    setErro("");
-    try {
-      const idSalvo = detalhe?.id ?? salvaId;
-      if (idSalvo) {
-        await api.baixarPdf(idSalvo, "cliente");
-        return;
-      }
-      if (!analise) return;
-      const draft = editorDraft ?? editorFromCotacao(analise.cotacao, cliente);
-      const cotacao = aplicarEditorNaCotacao(analise.cotacao, draft);
-      await api.previewPdf({ cotacao, itens: analise.itens, resultado: analise.resultado }, "cliente");
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Falha ao gerar PDF.";
-      setErro(msg.includes("abort") ? "Geração do PDF demorou demais. Tente novamente." : msg);
-      throw e;
+    const idSalvo = detalhe?.id ?? salvaId;
+    if (idSalvo) {
+      await api.baixarPdf(idSalvo, "cliente");
+      return;
     }
+    if (!analise) return;
+    const draft = editorDraft ?? editorFromCotacao(analise.cotacao, cliente);
+    const cotacao = aplicarEditorNaCotacao(analise.cotacao, draft);
+    await api.previewPdf({ cotacao, itens: analise.itens, resultado: analise.resultado }, "cliente");
   }
 
   async function aplicarEditorDetalhe() {
@@ -1477,17 +1474,14 @@ export function Dashboard() {
                 >
                   Ver orçamento cliente
                 </button>
-                <button
-                  type="button"
-                  className="btn-ghost disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={pdfBaixando != null || pdfBloqueadoPorNcm(detalhe.itens)}
-                  title={
-                    pdfBloqueadoPorNcm(detalhe.itens) ? resumoBloqueioNcm(detalhe.itens) : undefined
-                  }
-                  onClick={() => void baixarPdf("trade")}
-                >
-                  {pdfBaixando === "trade" ? "Gerando…" : "PDF trade"}
-                </button>
+                <PdfDownloadBar
+                  label="PDF trade"
+                  bloqueado={pdfBloqueadoPorNcm(detalhe.itens)}
+                  motivoBloqueio={resumoBloqueioNcm(detalhe.itens)}
+                  qtdPendencias={itensResolucaoNcm(detalhe.itens).length}
+                  onBaixar={() => api.baixarPdf(detalhe.id, "trade")}
+                  onIrParaResolucaoNcm={() => setSolicitarResolucaoNcm((n) => n + 1)}
+                />
                 <button
                   type="button"
                   className="btn-ghost"
@@ -1529,6 +1523,8 @@ export function Dashboard() {
                 aplicandoEditor={aplicandoEditor}
                 onBaixarPdfCliente={baixarPdfClienteOrcamento}
                 irParaOrcamento={irParaOrcamento}
+                solicitarResolucaoNcm={solicitarResolucaoNcm}
+                onIrParaResolucaoNcm={() => setSolicitarResolucaoNcm((n) => n + 1)}
                 onAlterarAliquota={alterarAliquotaItem}
                 recalculandoAliquota={recalculandoAliquota}
                 onDesfazerAliquota={desfazerAliquotaItem}
@@ -1623,6 +1619,9 @@ export function Dashboard() {
                   onAplicarEditor={() => void aplicarEditorAnalise()}
                   aplicandoEditor={aplicandoEditor}
                   onBaixarPdfCliente={baixarPdfClienteOrcamento}
+                  irParaOrcamento={irParaOrcamento}
+                  solicitarResolucaoNcm={solicitarResolucaoNcm}
+                  onIrParaResolucaoNcm={() => setSolicitarResolucaoNcm((n) => n + 1)}
                   onAlterarAliquota={alterarAliquotaItem}
                   recalculandoAliquota={recalculandoAliquota}
                   onDesfazerAliquota={desfazerAliquotaItem}

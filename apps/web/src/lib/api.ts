@@ -1,5 +1,6 @@
 import { despesasParaContainers, outrasDespesasBaseParaContainers, DEFAULT_FRETE_US, DEFAULT_SISCOMEX_BRL } from "./despesas.ts";
 import { icmsSaidaParaDestino } from "./icms-uf.ts";
+import { PdfDownloadError, type ItemInvalidoPdf } from "./pdf-erro.ts";
 import type {
   Cotacao,
   CotacaoLista,
@@ -20,6 +21,8 @@ export interface AnaliseCompleta {
   avisoFiscal: string | null;
   cotacao: Cotacao;
 }
+
+export { PdfDownloadError } from "./pdf-erro.ts";
 
 /** Vazio = proxy local do Vite (`/api` → localhost:3333). Produção: HTTPS direto na VPS. */
 const BASE = (import.meta.env.VITE_API_URL as string) || "";
@@ -276,25 +279,21 @@ export const api = {
       type PdfErroJson = {
         erro?: string;
         codigo?: string;
-        itensInvalidos?: { ordem: number; descricao: string; ncm: string }[];
+        itensInvalidos?: ItemInvalidoPdf[];
       };
       let parsed: PdfErroJson | null = null;
       try {
         parsed = JSON.parse(txt) as PdfErroJson;
-      } catch {
-        /* resposta não-JSON */
+      } catch (parseErr) {
+        void parseErr;
       }
       if (parsed?.erro) {
-        let msg = parsed.erro;
-        if (parsed.codigo === "NCM_INVALIDO" && parsed.itensInvalidos?.length) {
-          const linhas = parsed.itensInvalidos
-            .slice(0, 5)
-            .map((x) => `#${x.ordem} ${x.descricao} (${x.ncm})`);
-          msg += " — " + linhas.join("; ");
-        }
-        throw new Error(msg);
+        throw new PdfDownloadError(parsed.erro, {
+          codigo: parsed.codigo,
+          itensInvalidos: parsed.itensInvalidos,
+        });
       }
-      throw new Error(txt || `Falha ao gerar PDF (${res.status})`);
+      throw new PdfDownloadError(txt || `Falha ao gerar PDF (${res.status})`);
     }
     const blob = await res.blob();
     const disp = res.headers.get("Content-Disposition") ?? "";

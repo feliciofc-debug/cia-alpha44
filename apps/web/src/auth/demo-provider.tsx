@@ -16,8 +16,8 @@ export function DemoAuthProvider({ children }: { children: ReactNode }) {
     if (raw) {
       try {
         setUser(JSON.parse(raw) as User);
-      } catch {
-        /* ignore */
+      } catch (err) {
+        void err;
       }
     }
     setIsLoaded(true);
