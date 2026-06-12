@@ -5,6 +5,26 @@
 import * as XLSX from "xlsx";
 import type { LinhaCrua } from "./linha.js";
 import { calcularPesosTotaisLinha } from "./peso-total-linha.js";
+import { aplicarQuantidadesLinhas } from "./qtd-linha.js";
+import {
+  detectarTipoMultilingue,
+  mapearColunasPorSinonimos,
+  aplicarMapeamentoIA,
+  AVISO_MAPEAMENTO_SINONIMOS,
+  AVISO_MAPEAMENTO_MANUAL_INEXISTENTE,
+  AVISO_MAPEAMENTO_IA,
+  RE_QTD_CAIXAS_MULTILINGUE,
+  RE_QTD_POR_CAIXA_MULTILINGUE,
+  RE_MATERIAL_MULTILINGUE,
+  RE_USO_MULTILINGUE,
+  RE_SKU_MULTILINGUE,
+  RE_DESC_EN_MULTILINGUE,
+  RE_DESC_DE_MULTILINGUE,
+  RE_DESC_PT_MULTILINGUE,
+  type EntradaMapeamentoIA,
+  type MapeamentoColunasIA,
+} from "./parser-sinonimos.js";
+import { extrairMetadadosWorkbook, avisoMoedaPlanilha } from "./parser-metadados.js";
 import { associarFotosLinhas, extrairFotosXlsx, type FotoPlanilha } from "./xlsx-images.js";
 import { extrairImagensWpsOle, isOleXls, isZipXlsx, mapDispimgLinhas } from "./wps-images.js";
 
@@ -51,42 +71,194 @@ export interface ResultadoParse {
   colunas: ColunaMapeada[];
   linhas: LinhaFornecedor[];
   avisos: string[];
+  moedaPlanilha?: string;
+  sammelkarton?: string;
 }
 
-const PADROES: { tipo: ColunaDetectada; re: RegExp }[] = [
-  {
-    tipo: "descricao",
-    re: /desc|description|品名|货物|产品配置|配置|product\s*config|product|item\s*number|货号|nome|mercadoria|中文品名|英文品名/i,
-  },
-  { tipo: "qtd", re: /qty|quant|quantity|数量|总数量|pcs|qtd\b|unidade/i },
-  { tipo: "peso_bruto", re: /gross|bruto|毛重|gw\b/i },
-  { tipo: "peso", re: /peso|weight|净重|nw\b|net|kg/i },
-  { tipo: "fob", re: /fob|total.*usd|amount|valor.*us|总价/i },
-  { tipo: "preco", re: /price|preço|preco|unit|单价|usd\/kg/i },
-  { tipo: "ncm", re: /ncm|hs\s*code|tariff|税号|海关编码/i },
-  { tipo: "dimensoes", re: /dim|size|规格|measure/i },
-];
+export type MapearColunasIAFn = (entrada: EntradaMapeamentoIA) => Promise<MapeamentoColunasIA | null>;
+
+export interface ParsePlanilhaOpts {
+  nomeAba?: string;
+  sammelkarton?: string;
+  moedaPlanilha?: string;
+  mapearColunasIA?: MapearColunasIAFn;
+}
+
+/** Prefere aba de itens (Packliste, packing list) sobre metadados (Auftrag). */
+function escolherAbaItens(wb: XLSX.WorkBook, nomeAba?: string): string {
+  if (nomeAba && wb.SheetNames.includes(nomeAba)) return nomeAba;
+  const preferida = wb.SheetNames.find((n) =>
+    /packliste|packing|packinglist|lista\s*de\s*embalagem|装箱单|invoice\s*items|itens/i.test(n),
+  );
+  return preferida ?? wb.SheetNames[0]!;
+}
+
+function indiceDescricao(colunas: ColunaMapeada[]): number | undefined {
+  return (
+    colunas.find((c) => RE_DESC_DE_MULTILINGUE.test(c.header))?.indice ??
+    colunas.find((c) => /产品配置|product\s*config/i.test(c.header))?.indice ??
+    escolherColuna(colunas, "descricao", {
+      prefer: /portugues|português|warenbezeichnung|bezeichnung|beschreibung|model|modelo|英文|english|descripci[oó]n|d[eé]signation/i,
+      avoid: /^品名|product\s*image|imag|artikel-nr|pos\./i,
+    })
+  );
+}
+
+function extrairLinhasComColunas(
+  rows: unknown[][],
+  headerRow: number,
+  colunas: ColunaMapeada[],
+  sammelkarton?: string,
+): LinhaFornecedor[] {
+  const iDescPt = colunas.find((c) => RE_DESC_PT_MULTILINGUE.test(c.header))?.indice;
+  const iModel = colunas.find((c) => /model|modelo|产品型号/i.test(c.header))?.indice;
+  const iDescEn = colunas.find(
+    (c) => RE_DESC_EN_MULTILINGUE.test(c.header) && !RE_DESC_DE_MULTILINGUE.test(c.header) && !/^品名/i.test(c.header),
+  )?.indice;
+  const iDesc = indiceDescricao(colunas);
+  const iSku = colunas.find((c) => RE_SKU_MULTILINGUE.test(c.header))?.indice;
+  const iPos = colunas.find((c) => /^pos\.?$/i.test(c.header.trim()))?.indice;
+  const iQtd = escolherColuna(colunas, "qtd", {
+    prefer: /总数量|qtd\s*tot|quantidade\s*total|total.*qty|total.*quant|menge\s*gesamt/i,
+    avoid: /每箱|per\s*case|por\s*caixa|quantity\s*per|装箱量|单箱个数|caixas?|cartons?|kartons?|je\s*karton|stück\s*je|vpe/i,
+  });
+  const iQtdCaixas = indicePorHeader(colunas, RE_QTD_CAIXAS);
+  const iQtdPorCaixa = indicePorHeader(colunas, RE_QTD_POR_CAIXA);
+  const pesoLiqCols = resolverColunasPeso(colunas, false);
+  const pesoBrutoCols = resolverColunasPeso(colunas, true);
+  const iPreco = escolherColuna(colunas, "preco");
+  const iFob = escolherColuna(colunas, "fob", {
+    prefer: /valor\s*total\s*fob|total.*fob|fob\s*total|amount|总价|gesamtwert/i,
+    avoid: /\/\s*kg|fob\s*\/?\s*kg|usd\s*\/?\s*kg|stückpreis|einzelpreis|unit/i,
+  });
+  const iFobKg = escolherColuna(colunas, "fob_kg", {
+    prefer: /fob\s*\/?\s*kg|valor\s*fob\s*\/?\s*kg|usd\s*\/?\s*kg/i,
+    avoid: /total/i,
+  });
+  const iNcm = escolherColuna(colunas, "ncm");
+  const iMaterial = indicePorHeader(colunas, RE_MATERIAL);
+  const iUso = indicePorHeader(colunas, RE_USO);
+
+  const linhasBrutas: LinhaFornecedor[] = [];
+  for (let r = headerRow + 1; r < rows.length; r++) {
+    const row = rows[r] as unknown[] | undefined;
+    if (!row) continue;
+
+    const parteModel = iModel !== undefined ? String(row[iModel] ?? "").trim() : "";
+    const partePt = iDescPt !== undefined ? String(row[iDescPt] ?? "").trim() : "";
+    const parteEn = iDescEn !== undefined ? String(row[iDescEn] ?? "").trim() : "";
+    const parteDesc = iDesc !== undefined ? String(row[iDesc] ?? "").trim() : "";
+    const parteSku = iSku !== undefined ? String(row[iSku] ?? "").trim() : "";
+    const descricao =
+      [parteSku, parteModel, partePt || parteDesc || parteEn]
+        .filter((p, idx, arr) => p && arr.indexOf(p) === idx)
+        .join(" — ") ||
+      parteDesc ||
+      parteEn ||
+      parteSku;
+    if (!descricao || descricao.length < 2) continue;
+    if (/^total$/i.test(descricao.trim())) continue;
+    if (iPos !== undefined) {
+      const pos = String(row[iPos] ?? "").trim();
+      if (!pos || !/^\d+$/.test(pos)) continue;
+    }
+
+    const qtdRaw = iQtd !== undefined ? num(row[iQtd]) : null;
+    const qtdCaixas = iQtdCaixas !== undefined ? num(row[iQtdCaixas]) : null;
+    const qtdPorCaixa = iQtdPorCaixa !== undefined ? num(row[iQtdPorCaixa]) : null;
+    const pesoCalc = calcularPesosTotaisLinha({
+      pesoLiqTotal: pesoLiqCols.total !== undefined ? num(row[pesoLiqCols.total]) : null,
+      pesoBrutoTotal: pesoBrutoCols.total !== undefined ? num(row[pesoBrutoCols.total]) : null,
+      pesoLiqUnit: pesoLiqCols.unit !== undefined ? num(row[pesoLiqCols.unit]) : null,
+      pesoBrutoUnit: pesoBrutoCols.unit !== undefined ? num(row[pesoBrutoCols.unit]) : null,
+      qtd: qtdRaw,
+      qtdCaixas,
+      qtdPorCaixa,
+    });
+    const qtd = pesoCalc.qtd ?? qtdRaw;
+    let pesoLiqKg = pesoCalc.pesoLiqKg;
+    let pesoBrutoKg = pesoCalc.pesoBrutoKg;
+    const precoUnitario = iPreco !== undefined ? num(row[iPreco]) : null;
+    const fobKgRef = iFobKg !== undefined ? num(row[iFobKg]) : null;
+    let fobTotalUS = iFob !== undefined ? num(row[iFob]) : null;
+    if (fobTotalUS === null && precoUnitario !== null && qtd !== null) {
+      fobTotalUS = precoUnitario * qtd;
+    }
+    if (fobTotalUS === null && fobKgRef !== null && pesoLiqKg !== null && pesoLiqKg > 0) {
+      fobTotalUS = fobKgRef * pesoLiqKg;
+    }
+    if (fobTotalUS === null && fobKgRef !== null && pesoBrutoKg !== null && pesoBrutoKg > 0) {
+      fobTotalUS = fobKgRef * pesoBrutoKg;
+    }
+    const ncmRaw = iNcm !== undefined ? String(row[iNcm] ?? "").trim() : "";
+    const ncm = ncmRaw ? ncmRaw.replace(/\D/g, "").padStart(8, "0").slice(0, 8) : null;
+    const material = iMaterial !== undefined ? String(row[iMaterial] ?? "").trim() || null : null;
+    const uso = iUso !== undefined ? String(row[iUso] ?? "").trim() || null : null;
+
+    const raw: Record<string, unknown> = {};
+    colunas.forEach((c) => {
+      raw[c.header] = row[c.indice];
+    });
+
+    linhasBrutas.push({
+      linha: r + 1,
+      descricao,
+      qtd,
+      qtdCaixas,
+      qtdPorCaixa,
+      pesoLiqKg,
+      pesoBrutoKg,
+      precoUnitario,
+      fobTotalUS,
+      ncm: ncm && ncm.length === 8 ? ncm : null,
+      material,
+      uso,
+      raw,
+    });
+  }
+
+  return linhasBrutas;
+}
+
+function aplicarQtdLinhasFornecedor(linhas: LinhaFornecedor[], sammelkarton?: string): LinhaFornecedor[] {
+  const comQtd = aplicarQuantidadesLinhas(
+    linhas.map((l) => ({
+      descOriginal: l.descricao,
+      qtd: l.qtd,
+      qtdCaixas: l.qtdCaixas,
+      qtdPorCaixa: l.qtdPorCaixa,
+      fobUnitarioUS: l.precoUnitario,
+      fobTotalUS: l.fobTotalUS,
+      uso: l.uso,
+      sammelkarton,
+    })),
+  );
+  return linhas.map((l, i) => {
+    const r = comQtd[i]!;
+    const qtd = r.qtd;
+    let pesoLiqKg = l.pesoLiqKg;
+    let pesoBrutoKg = l.pesoBrutoKg;
+    if (pesoLiqKg != null && l.qtd != null && l.qtd > 0 && qtd != null && qtd !== l.qtd) {
+      pesoLiqKg = (pesoLiqKg / l.qtd) * qtd;
+    }
+    if (pesoBrutoKg != null && l.qtd != null && l.qtd > 0 && qtd != null && qtd !== l.qtd) {
+      pesoBrutoKg = (pesoBrutoKg / l.qtd) * qtd;
+    }
+    let fobTotalUS = r.fobTotalUS ?? l.fobTotalUS;
+    if ((fobTotalUS == null || fobTotalUS <= 0) && l.precoUnitario != null && qtd != null && qtd > 0) {
+      fobTotalUS = l.precoUnitario * qtd;
+    }
+    const raw = { ...l.raw };
+    if (r.avisosQtd.length) raw.__avisosQtd = r.avisosQtd;
+    return { ...l, qtd, pesoLiqKg, pesoBrutoKg, fobTotalUS, raw };
+  });
+}
 
 /** Ignora colunas de imagem/cor/tempo — não são itens. */
 const COLUNA_IGNORAR = /产品图片|product\s*image|^\s*颜色|colour|color|使用时间|usage\s*time|充电时间|charging/i;
 
 function detectarTipo(header: string): { tipo: ColunaDetectada; confianca: number } {
-  const h = String(header).trim();
-  if (!h) return { tipo: "desconhecido", confianca: 0 };
-  // "VALOR TOTAL FOB / KG" na planilha chinesa é valor total em US$, não preço por kg.
-  if (/total.*fob|fob.*total|valor\s*total\s*fob|fob\s*total/i.test(h)) {
-    return { tipo: "fob", confianca: 0.95 };
-  }
-  if (/fob\s*\/?\s*kg|pre[cç]o\s*fob|preco\s*fob|usd\s*\/?\s*kg\s*imp|dol.*kg.*imp/i.test(h)) {
-    return { tipo: "fob_kg", confianca: 0.92 };
-  }
-  if (/subitem\s*ncm/i.test(h) && !/cod/i.test(h)) {
-    return { tipo: "descricao", confianca: 0.88 };
-  }
-  for (const { tipo, re } of PADROES) {
-    if (re.test(h)) return { tipo, confianca: 0.85 };
-  }
-  return { tipo: "desconhecido", confianca: 0 };
+  return detectarTipoMultilingue(header);
 }
 
 function num(v: unknown): number | null {
@@ -118,7 +290,9 @@ function scoreHeaderRow(row: unknown[]): number {
     if (tipo === "fob") score += 3;
     if (tipo === "preco") score += 2;
   }
-  if (/description|品名|description/i.test(joined) && /qty|数量|quantity/i.test(joined)) score += 5;
+  if (/description|品名|warenbezeichnung|bezeichnung|descripci[oó]n|d[eé]signation/i.test(joined) && /qty|数量|quantity|menge|stück|stuck|cantidad|quantit[eé]/i.test(joined)) {
+    score += 5;
+  }
   if (/fob|总额|total.*usd/i.test(joined)) score += 2;
   if (/quotation|报价|incoterm|validity|客户/i.test(joined) && score < 8) score -= 3;
   return score;
@@ -162,13 +336,12 @@ function escolherColuna(
   return best.indice;
 }
 
-const RE_QTD_CAIXAS = /qtd\s*caixas|qtde\s*caixas|quantidade\s*caixas|箱数|number\s*of\s*cartons?|cartons?\s*qty/i;
-const RE_QTD_POR_CAIXA =
-  /qtd\s*por\s*caixa|qtde\s*por\s*caixa|por\s*caixa|per\s*box|per\s*case|每箱|单箱个数|装箱量|pcs\s*per/i;
-const RE_PESO_TOTAL = /总|total|合计/i;
-const RE_PESO_UNIT = /unit|unitário|unitario|unitario|单件|每件|per\s*unit|per\s*pc|per\s*piece|\/\s*un/i;
-const RE_MATERIAL = /material|材质|mat[eé]ria/i;
-const RE_USO = /uso|用途|usage|application|aplica[cç][aã]o/i;
+const RE_QTD_CAIXAS = RE_QTD_CAIXAS_MULTILINGUE;
+const RE_QTD_POR_CAIXA = RE_QTD_POR_CAIXA_MULTILINGUE;
+const RE_PESO_TOTAL = /总|total|合计|gesamt/i;
+const RE_PESO_UNIT = /unit|unitário|unitario|单件|每件|per\s*unit|per\s*pc|per\s*piece|\/\s*un|je\s*stück|je\s*stuck|pro\s*stück|nettogewicht|bruttogewicht/i;
+const RE_MATERIAL = RE_MATERIAL_MULTILINGUE;
+const RE_USO = RE_USO_MULTILINGUE;
 
 function indicePorHeader(colunas: ColunaMapeada[], re: RegExp): number | undefined {
   return colunas.find((c) => re.test(c.header.replace(/\s+/g, " ")))?.indice;
@@ -208,10 +381,10 @@ function resolverColunasPeso(
 
   const header = colunas.find((c) => c.indice === unico)?.header ?? "";
   if (RE_PESO_UNIT.test(header)) return { unit: unico };
-  if (!bruto && /净重|net\s*weight|nw\b|peso\s*l[ií]q/i.test(header) && !RE_PESO_TOTAL.test(header)) {
+  if (!bruto && /净重|net\s*weight|nw\b|peso\s*l[ií]q|nettogewicht/i.test(header) && !RE_PESO_TOTAL.test(header)) {
     return { unit: unico };
   }
-  if (bruto && /毛重|gross|gw\b|peso\s*bruto/i.test(header) && !RE_PESO_TOTAL.test(header)) {
+  if (bruto && /毛重|gross|gw\b|peso\s*bruto|bruttogewicht/i.test(header) && !RE_PESO_TOTAL.test(header)) {
     return { unit: unico };
   }
   if (RE_PESO_TOTAL.test(header)) return { total: unico };
@@ -367,50 +540,33 @@ function parseRows(
   rows: unknown[][],
   aba: string,
   avisosExtras: string[] = [],
+  ctx: Pick<ParsePlanilhaOpts, "sammelkarton" | "moedaPlanilha"> = {},
+  colunasOverride?: ColunaMapeada[],
 ): ResultadoParse {
   const avisos: string[] = [...avisosExtras];
   const headerRow = encontrarHeader(rows);
   const headerCells = (rows[headerRow] ?? []) as unknown[];
 
-  const colunas: ColunaMapeada[] = headerCells.map((h, indice) => {
-    const header = String(h ?? `Col${indice}`);
-    if (COLUNA_IGNORAR.test(header)) {
-      return { indice, header, tipo: "desconhecido" as ColunaDetectada, confianca: 0 };
-    }
-    const { tipo, confianca } = detectarTipo(header);
-    return { indice, header, tipo, confianca };
-  });
-
-  const iDescPt = colunas.find((c) => /portugues|português/i.test(c.header))?.indice;
-  const iModel = colunas.find((c) => /model|modelo|产品型号/i.test(c.header))?.indice;
-  const iDescEn = colunas.find((c) => /英文|english.*trade|trade name/i.test(c.header) && !/^品名/i.test(c.header))?.indice;
-  const iDesc =
-    colunas.find((c) => /产品配置|product\s*config/i.test(c.header))?.indice ??
-    escolherColuna(colunas, "descricao", {
-      prefer: /portugues|português|model|modelo|英文|english/i,
-      avoid: /^品名|product\s*image|imag/i,
+  let colunas: ColunaMapeada[] =
+    colunasOverride ??
+    headerCells.map((h, indice) => {
+      const header = String(h ?? `Col${indice}`);
+      if (COLUNA_IGNORAR.test(header)) {
+        return { indice, header, tipo: "desconhecido" as ColunaDetectada, confianca: 0 };
+      }
+      const { tipo, confianca } = detectarTipo(header);
+      return { indice, header, tipo, confianca };
     });
-  const iSku = colunas.find((c) => /货号|item\s*number|REF|唛头/i.test(c.header))?.indice;
-  const iQtd = escolherColuna(colunas, "qtd", {
-    prefer: /总数量|qtd\s*tot|quantidade\s*total|total.*qty|total.*quant/i,
-    avoid: /每箱|per\s*case|por\s*caixa|quantity\s*per|装箱量|单箱个数|caixas?|cartons?/i,
-  });
-  const iQtdCaixas = indicePorHeader(colunas, RE_QTD_CAIXAS);
-  const iQtdPorCaixa = indicePorHeader(colunas, RE_QTD_POR_CAIXA);
-  const pesoLiqCols = resolverColunasPeso(colunas, false);
-  const pesoBrutoCols = resolverColunasPeso(colunas, true);
-  const iPreco = escolherColuna(colunas, "preco");
-  const iFob = escolherColuna(colunas, "fob", {
-    prefer: /valor\s*total\s*fob|total.*fob|fob\s*total|amount|总价/i,
-    avoid: /\/\s*kg|fob\s*\/?\s*kg|usd\s*\/?\s*kg/i,
-  });
-  const iFobKg = escolherColuna(colunas, "fob_kg", {
-    prefer: /fob\s*\/?\s*kg|valor\s*fob\s*\/?\s*kg|usd\s*\/?\s*kg/i,
-    avoid: /total/i,
-  });
-  const iNcm = escolherColuna(colunas, "ncm");
-  const iMaterial = indicePorHeader(colunas, RE_MATERIAL);
-  const iUso = indicePorHeader(colunas, RE_USO);
+
+  let usouSinonimos = false;
+  if (indiceDescricao(colunas) === undefined) {
+    const remapeadas = mapearColunasPorSinonimos(headerCells.map((h) => String(h ?? "")));
+    if (indiceDescricao(remapeadas) !== undefined) {
+      colunas = remapeadas;
+      usouSinonimos = true;
+      avisos.push(AVISO_MAPEAMENTO_SINONIMOS);
+    }
+  }
 
   const ehReferenciaComex = colunas.some((c) => /cod subitem ncm/i.test(c.header));
   if (ehReferenciaComex) {
@@ -419,88 +575,32 @@ function parseRows(
     );
   }
 
-  if (iDesc === undefined) {
-    avisos.push("Coluna de descrição não detectada — revise o mapeamento manual.");
+  if (indiceDescricao(colunas) === undefined) {
+    avisos.push(AVISO_MAPEAMENTO_MANUAL_INEXISTENTE);
+  } else if (usouSinonimos) {
+    // aviso já incluído
   }
 
-  const linhas: LinhaFornecedor[] = [];
-  for (let r = headerRow + 1; r < rows.length; r++) {
-    const row = rows[r] as unknown[] | undefined;
-    if (!row) continue;
-
-    const parteModel = iModel !== undefined ? String(row[iModel] ?? "").trim() : "";
-    const partePt = iDescPt !== undefined ? String(row[iDescPt] ?? "").trim() : "";
-    const parteEn = iDescEn !== undefined ? String(row[iDescEn] ?? "").trim() : "";
-    const parteDesc = iDesc !== undefined ? String(row[iDesc] ?? "").trim() : "";
-    const parteSku = iSku !== undefined ? String(row[iSku] ?? "").trim() : "";
-    const descricao =
-      [parteModel, partePt || parteEn || parteDesc, parteSku !== parteModel ? parteSku : ""]
-        .filter(Boolean)
-        .join(" — ") ||
-      parteDesc ||
-      parteSku;
-    if (!descricao || descricao.length < 2) continue;
-    if (/^total$/i.test(descricao.trim())) continue;
-
-    const qtdRaw = iQtd !== undefined ? num(row[iQtd]) : null;
-    const qtdCaixas = iQtdCaixas !== undefined ? num(row[iQtdCaixas]) : null;
-    const qtdPorCaixa = iQtdPorCaixa !== undefined ? num(row[iQtdPorCaixa]) : null;
-    const pesoCalc = calcularPesosTotaisLinha({
-      pesoLiqTotal: pesoLiqCols.total !== undefined ? num(row[pesoLiqCols.total]) : null,
-      pesoBrutoTotal: pesoBrutoCols.total !== undefined ? num(row[pesoBrutoCols.total]) : null,
-      pesoLiqUnit: pesoLiqCols.unit !== undefined ? num(row[pesoLiqCols.unit]) : null,
-      pesoBrutoUnit: pesoBrutoCols.unit !== undefined ? num(row[pesoBrutoCols.unit]) : null,
-      qtd: qtdRaw,
-      qtdCaixas,
-      qtdPorCaixa,
-    });
-    const qtd = pesoCalc.qtd ?? qtdRaw;
-    const pesoLiqKg = pesoCalc.pesoLiqKg;
-    const pesoBrutoKg = pesoCalc.pesoBrutoKg;
-    const precoUnitario = iPreco !== undefined ? num(row[iPreco]) : null;
-    const fobKgRef = iFobKg !== undefined ? num(row[iFobKg]) : null;
-    let fobTotalUS = iFob !== undefined ? num(row[iFob]) : null;
-    if (fobTotalUS === null && precoUnitario !== null && qtd !== null) {
-      fobTotalUS = precoUnitario * qtd;
-    }
-    if (fobTotalUS === null && fobKgRef !== null && pesoLiqKg !== null && pesoLiqKg > 0) {
-      fobTotalUS = fobKgRef * pesoLiqKg;
-    }
-    if (fobTotalUS === null && fobKgRef !== null && pesoBrutoKg !== null && pesoBrutoKg > 0) {
-      fobTotalUS = fobKgRef * pesoBrutoKg;
-    }
-    const ncmRaw = iNcm !== undefined ? String(row[iNcm] ?? "").trim() : "";
-    const ncm = ncmRaw ? ncmRaw.replace(/\D/g, "").padStart(8, "0").slice(0, 8) : null;
-    const material = iMaterial !== undefined ? String(row[iMaterial] ?? "").trim() || null : null;
-    const uso = iUso !== undefined ? String(row[iUso] ?? "").trim() || null : null;
-
-    const raw: Record<string, unknown> = {};
-    colunas.forEach((c) => {
-      raw[c.header] = row[c.indice];
-    });
-
-    linhas.push({
-      linha: r + 1,
-      descricao,
-      qtd,
-      qtdCaixas,
-      qtdPorCaixa,
-      pesoLiqKg,
-      pesoBrutoKg,
-      precoUnitario,
-      fobTotalUS,
-      ncm: ncm && ncm.length === 8 ? ncm : null,
-      material,
-      uso,
-      raw,
-    });
-  }
+  const linhas = extrairLinhasComColunas(rows, headerRow, colunas, ctx.sammelkarton);
 
   if (linhas.length === 0) {
     avisos.push("Nenhuma linha de item encontrada após o cabeçalho.");
   }
 
-  return { aba, headerRow, colunas, linhas, avisos };
+  if (ctx.moedaPlanilha) {
+    const avisoMoeda = avisoMoedaPlanilha(ctx.moedaPlanilha);
+    if (avisoMoeda) avisos.push(avisoMoeda);
+  }
+
+  return {
+    aba,
+    headerRow,
+    colunas,
+    linhas,
+    avisos,
+    moedaPlanilha: ctx.moedaPlanilha,
+    sammelkarton: ctx.sammelkarton,
+  };
 }
 
 /** Expõe parse interno para testes (matriz de linhas, sem imagens). */
@@ -510,11 +610,13 @@ export function parsePlanilhaRows(rows: unknown[][], aba = "Sheet1"): ResultadoP
 
 export async function parsePlanilhaBuffer(
   buffer: ArrayBuffer | Buffer,
-  nomeAba?: string,
+  opts: ParsePlanilhaOpts | string = {},
 ): Promise<ResultadoParse> {
+  const opcoes: ParsePlanilhaOpts = typeof opts === "string" ? { nomeAba: opts } : opts;
   const buf = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
   const wb = XLSX.read(buf, { type: "buffer", cellDates: true });
-  const aba = nomeAba && wb.SheetNames.includes(nomeAba) ? nomeAba : wb.SheetNames[0]!;
+  const meta = extrairMetadadosWorkbook(wb);
+  const aba = escolherAbaItens(wb, opcoes.nomeAba);
   const ws = wb.Sheets[aba]!;
   const rows = XLSX.utils.sheet_to_json(ws, {
     header: 1,
@@ -522,7 +624,47 @@ export async function parsePlanilhaBuffer(
     defval: null,
   }) as unknown[][];
 
-  const parsed = parseRows(rows, aba);
+  const ctx: Pick<ParsePlanilhaOpts, "sammelkarton" | "moedaPlanilha"> = {
+    sammelkarton: opcoes.sammelkarton ?? meta.sammelkarton,
+    moedaPlanilha: opcoes.moedaPlanilha ?? meta.moeda,
+  };
+
+  let parsed = parseRows(rows, aba, [...meta.avisos], ctx);
+  parsed = {
+    ...parsed,
+    linhas: aplicarQtdLinhasFornecedor(parsed.linhas, ctx.sammelkarton),
+  };
+  for (const l of parsed.linhas) {
+    const avisosQtd = l.raw.__avisosQtd;
+    if (Array.isArray(avisosQtd)) {
+      for (const a of avisosQtd) {
+        if (!parsed.avisos.includes(a)) parsed.avisos.push(a);
+      }
+    }
+  }
+
+  if (
+    opcoes.mapearColunasIA &&
+    (parsed.linhas.length === 0 || indiceDescricao(parsed.colunas) === undefined)
+  ) {
+    const headerRow = parsed.headerRow;
+    const headerCells = (rows[headerRow] ?? []) as unknown[];
+    const headers = headerCells.map((h) => String(h ?? ""));
+    const amostras = rows.slice(headerRow + 1, headerRow + 3);
+    const mapa = await opcoes.mapearColunasIA({ headers, amostras });
+    if (mapa && Object.keys(mapa).length > 0) {
+      const colunasIA = aplicarMapeamentoIA(
+        headers.map((header, indice) => ({
+          indice,
+          header,
+          tipo: "desconhecido" as ColunaDetectada,
+          confianca: 0,
+        })),
+        mapa,
+      );
+      parsed = parseRows(rows, aba, [...meta.avisos, AVISO_MAPEAMENTO_IA], ctx, colunasIA);
+    }
+  }
 
   try {
     let fotos = new Map<number, FotoPlanilha>();
@@ -612,22 +754,48 @@ function resultadoParaSupplier(parsed: ResultadoParse): ParsedSupplierFile {
   for (const c of parsed.colunas) {
     if (c.tipo !== "desconhecido") mapeamento[c.tipo] = c.indice;
   }
-  const linhas: LinhaCrua[] = parsed.linhas.map((l) => ({
-    __row: l.linha,
-    descOriginal: l.descricao,
-    ncm: l.ncm,
-    qtd: l.qtd,
-    qtdCaixas: l.qtdCaixas ?? null,
-    qtdPorCaixa: l.qtdPorCaixa ?? null,
-    pesoBrutoKg: l.pesoBrutoKg,
-    pesoLiqKg: l.pesoLiqKg,
-    fobUnitarioUS: l.precoUnitario,
-    fobTotalUS: l.fobTotalUS,
-    dimensoes: null,
-    material: l.material ?? null,
-    uso: l.uso ?? null,
-    ...(l.fotoBase64 ? { fotoBase64: l.fotoBase64, fotoMime: l.fotoMime } : {}),
-  }));
+  const avisos = [...parsed.avisos];
+
+  const comQtd = aplicarQuantidadesLinhas(
+    parsed.linhas.map((l) => ({
+      descOriginal: l.descricao,
+      qtd: l.qtd,
+      qtdCaixas: l.qtdCaixas,
+      qtdPorCaixa: l.qtdPorCaixa,
+      fobUnitarioUS: l.precoUnitario,
+      fobTotalUS: l.fobTotalUS,
+      uso: l.uso,
+      sammelkarton: parsed.sammelkarton,
+    })),
+  );
+
+  const linhas: LinhaCrua[] = parsed.linhas.map((l, i) => {
+    const r = comQtd[i]!;
+    for (const a of r.avisosQtd) {
+      if (!avisos.includes(a)) avisos.push(a);
+    }
+    const qtd = r.qtd;
+    let fobTotalUS = r.fobTotalUS ?? l.fobTotalUS;
+    if ((fobTotalUS == null || fobTotalUS <= 0) && l.precoUnitario != null && qtd != null && qtd > 0) {
+      fobTotalUS = l.precoUnitario * qtd;
+    }
+    return {
+      __row: l.linha,
+      descOriginal: l.descricao,
+      ncm: l.ncm,
+      qtd,
+      qtdCaixas: l.qtdCaixas ?? null,
+      qtdPorCaixa: l.qtdPorCaixa ?? null,
+      pesoBrutoKg: l.pesoBrutoKg,
+      pesoLiqKg: l.pesoLiqKg,
+      fobUnitarioUS: l.precoUnitario,
+      fobTotalUS,
+      dimensoes: null,
+      material: l.material ?? null,
+      uso: l.uso ?? null,
+      ...(l.fotoBase64 ? { fotoBase64: l.fotoBase64, fotoMime: l.fotoMime } : {}),
+    };
+  });
   return {
     abaUsada: parsed.aba,
     headerRowIndex: parsed.headerRow,
@@ -640,7 +808,9 @@ function resultadoParaSupplier(parsed: ResultadoParse): ParsedSupplierFile {
     mapeamento,
     linhas,
     totalLinhas: linhas.length,
-    avisos: parsed.avisos,
+    avisos,
+    moedaPlanilha: parsed.moedaPlanilha,
+    sammelkarton: parsed.sammelkarton,
   };
 }
 
@@ -652,11 +822,18 @@ export interface ParsedSupplierFile {
   linhas: LinhaCrua[];
   totalLinhas: number;
   avisos: string[];
+  moedaPlanilha?: string;
+  sammelkarton?: string;
 }
 
+export interface ParseSupplierFileOpts extends ParsePlanilhaOpts {}
+
 /** Planilha Excel/CSV (buffer do upload). */
-export async function parseSupplierFile(bytes: Uint8Array): Promise<ParsedSupplierFile> {
-  return resultadoParaSupplier(await parsePlanilhaBuffer(Buffer.from(bytes)));
+export async function parseSupplierFile(
+  bytes: Uint8Array,
+  opts?: ParseSupplierFileOpts,
+): Promise<ParsedSupplierFile> {
+  return resultadoParaSupplier(await parsePlanilhaBuffer(Buffer.from(bytes), opts ?? {}));
 }
 
 /** Texto OCR → estrutura de cotação. */

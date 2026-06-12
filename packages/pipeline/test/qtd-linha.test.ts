@@ -45,4 +45,31 @@ describe("qtd-linha — caixa compartilhada", () => {
     ]);
     expect(r!.qtd).toBeNull();
   });
+
+  it("VPE na descrição (DE)", () => {
+    const [r] = resolverQuantidadesPlanilha([
+      {
+        descricao: "DE-AT-6002 — Sechskantschrauben M8x40 verzinkt, VPE 100",
+        uso: "Befestigung",
+        qtdCaixas: 0,
+        fobUnitarioUS: 0.018,
+      },
+    ]);
+    expect(r!.qtd).toBe(100);
+    expect(r!.avisosQtd[0]).toMatch(/VPE 100/);
+  });
+
+  it("Sammelkarton global (DE) — Ersatzteil qtd=1", () => {
+    const [r] = resolverQuantidadesPlanilha([
+      {
+        descricao: "DE-AT-6001 — Stoßdämpfer hinten, Ersatzteil",
+        uso: "Ersatzteil",
+        qtdCaixas: 0,
+        fobUnitarioUS: 0.95,
+        sammelkarton: "999",
+      },
+    ]);
+    expect(r!.qtd).toBe(1);
+    expect(r!.avisosQtd[0]).toMatch(/Sammelkarton 999/);
+  });
 });

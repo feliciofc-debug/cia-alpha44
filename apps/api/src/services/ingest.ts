@@ -10,6 +10,8 @@ import {
   type ParsedSupplierFile,
 } from "@cia/pipeline";
 import type { OcrProvider } from "../ocr/types.js";
+import type { LlmProvider } from "../llm/types.js";
+import { resolverMapearColunasPlanilha } from "../llm/resolver-mapear-colunas.js";
 import { extrairTextoPdf } from "./pdf-text.js";
 
 const EXT_PLANILHA = /\.(xlsx|xls|csv)$/i;
@@ -57,6 +59,7 @@ export async function ingerirArquivo(
   filename: string,
   bytes: Uint8Array,
   ocr: OcrProvider,
+  llm?: LlmProvider,
 ): Promise<IngestResult> {
   const fonte = tipoIngestao(filename);
   if (!fonte) {
@@ -64,7 +67,8 @@ export async function ingerirArquivo(
   }
 
   if (fonte === "planilha") {
-    const parsed = aplicarPrecosCusto(await parseSupplierFile(bytes));
+    const mapearColunasIA = llm ? resolverMapearColunasPlanilha(llm) : undefined;
+    const parsed = aplicarPrecosCusto(await parseSupplierFile(bytes, { mapearColunasIA }));
     return { arquivo: filename, fonte, ...parsed };
   }
 

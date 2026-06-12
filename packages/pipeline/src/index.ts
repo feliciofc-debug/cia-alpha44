@@ -44,6 +44,8 @@ export {
   resolverQuantidadesPlanilha,
   aplicarQuantidadesLinhas,
   extrairCaixaCompartilhadaDesc,
+  extrairVpeQuantidade,
+  ehAcessorioCompartilhado,
   AVISO_QTD_CAIXA_COMPARTILHADA,
 } from "./qtd-linha.js";
 export {
@@ -81,10 +83,24 @@ export {
   textoOcrParaLinhas,
   type ResultadoParse,
   type ParsedSupplierFile,
+  type ParsePlanilhaOpts,
+  type ParseSupplierFileOpts,
+  type MapearColunasIAFn,
   type LinhaFornecedor,
   type ColunaMapeada,
   type ColunaDetectada,
 } from "./parser.js";
+export {
+  detectarTipoMultilingue,
+  mapearColunasPorSinonimos,
+  aplicarMapeamentoIA,
+  AVISO_MAPEAMENTO_IA,
+  AVISO_MAPEAMENTO_SINONIMOS,
+  AVISO_MAPEAMENTO_MANUAL_INEXISTENTE,
+  type EntradaMapeamentoIA,
+  type MapeamentoColunasIA,
+} from "./parser-sinonimos.js";
+export { extrairMetadadosWorkbook, avisoMoedaPlanilha, type MetadadosPlanilha } from "./parser-metadados.js";
 export { loadComexSeed, loadTecCache, loadNcmVigenteCache, defaultSeedPath, tecCachePath, ncmVigenteDataPath } from "./seed.js";
 export {
   fetchComexStatImport,

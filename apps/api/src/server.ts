@@ -256,7 +256,7 @@ export async function buildServer() {
     }
     try {
       const buf = await file.toBuffer();
-      return await ingerirArquivo(file.filename, new Uint8Array(buf), getState().ocr);
+      return await ingerirArquivo(file.filename, new Uint8Array(buf), getState().ocr, getState().provider);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Falha ao processar arquivo.";
       return reply.status(422).send({ erro: msg });
