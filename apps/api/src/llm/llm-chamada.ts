@@ -3,12 +3,13 @@
 import type { LlmCallFn } from "./classificar-ncm-2passes.js";
 
 export function criarChamadaAnthropic(apiKey: string, model: string): LlmCallFn {
+  const key = apiKey.trim();
   return async (system: string, user: string) => {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-api-key": apiKey,
+        "x-api-key": key,
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
@@ -25,12 +26,13 @@ export function criarChamadaAnthropic(apiKey: string, model: string): LlmCallFn 
 }
 
 export function criarChamadaOpenAi(apiKey: string, model: string): LlmCallFn {
+  const key = apiKey.trim();
   return async (system: string, user: string) => {
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        authorization: `Bearer ${apiKey}`,
+        authorization: `Bearer ${key}`,
       },
       body: JSON.stringify({
         model,
