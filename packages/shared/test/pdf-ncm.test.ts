@@ -6,7 +6,7 @@ import {
   metaConfirmacaoNcm,
   validarConfirmacaoNcmItem,
 } from "@cia/shared";
-import { itemBloqueiaPdfNcm, itensBloqueandoPdf } from "@cia/shared";
+import { itemBloqueiaPdfNcm, itensBloqueandoPdf, itemPodeConfirmarNcm } from "@cia/shared";
 
 function item(partial: Partial<Item>): Item {
   return {
@@ -82,5 +82,32 @@ describe("pdf-ncm", () => {
   it("compatível sem flags extras não bloqueia", () => {
     expect(itemBloqueiaPdfNcm(item({ compatibilidadeProduto: "compativel" }))).toBe(false);
     expect(itensBloqueandoPdf([item({ compatibilidadeProduto: "compativel" })])).toHaveLength(0);
+  });
+
+  it("itemPodeConfirmarNcm — revisar, ncmValido false, baixa confiança", () => {
+    expect(itemPodeConfirmarNcm(item({ compatibilidadeProduto: "revisar" }))).toBe(true);
+    expect(itemPodeConfirmarNcm(item({ ncmValido: false }))).toBe(true);
+    expect(itemPodeConfirmarNcm(item({ compatibilidadeProduto: "compativel", ncmConfianca: 0.55 }))).toBe(
+      true,
+    );
+    expect(itemPodeConfirmarNcm(item({ ncmFonte: "pendente" }))).toBe(true);
+    expect(itemPodeConfirmarNcm(item({ compatibilidadeProduto: "incompativel" }))).toBe(false);
+    expect(
+      itemPodeConfirmarNcm({
+        ...item({ compatibilidadeProduto: "revisar" }),
+        ...metaConfirmacaoNcm("87149490"),
+      }),
+    ).toBe(false);
+  });
+
+  it("baixa confiança só exibe botão — compatível conf 0,80 não bloqueia PDF (fix A intacto)", () => {
+    const baixaConf = item({
+      compatibilidadeProduto: "compativel",
+      ncmValido: true,
+      ncmConfianca: 0.8,
+    });
+    expect(itemPodeConfirmarNcm(baixaConf)).toBe(true);
+    expect(itemBloqueiaPdfNcm(baixaConf)).toBe(false);
+    expect(itensBloqueandoPdf([baixaConf])).toHaveLength(0);
   });
 });

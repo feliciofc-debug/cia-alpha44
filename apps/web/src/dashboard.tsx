@@ -19,7 +19,7 @@ import { PainelKpisView } from "./painel-kpis.tsx";
 import { BenchmarkReferenciaView } from "./benchmark-referencia-view.tsx";
 import { PreviewOrcamentoCliente } from "./preview-orcamento-cliente.tsx";
 import { cotacaoParaSalvar, itensParaSalvar } from "./lib/cotacao-payload.ts";
-import { pdfBloqueadoPorNcm, resumoBloqueioNcm, avisoCompatibilidadePdf, itemPodeConfirmarNcm, itemPodeDesfazerNcm, metaConfirmacaoNcm, limparConfirmacaoNcm } from "./lib/ncm.ts";
+import { pdfBloqueadoPorNcm, resumoBloqueioNcm, avisoCompatibilidadePdf, itemPodeConfirmarNcm, itemPodeDesfazerNcm, itensPendentesConfirmacaoNcm, metaConfirmacaoNcm, limparConfirmacaoNcm } from "./lib/ncm.ts";
 import { aplicarOverrideManualAliquota, desfazerOverrideManualAliquota, type ChaveTributoRastro } from "@cia/shared";
 import { DetalheRastroAliquota } from "./lib/aliquota-rastro-ui.tsx";
 import type { ClienteResumo, DashboardKpis, DashboardSeries } from "./lib/types.ts";
@@ -228,9 +228,14 @@ function AnalisePainel({
   confirmandoNcm?: number | null;
   onDesfazerNcm?: (idx: number) => void | Promise<void>;
 }) {
-  const [aba, setAba] = useState<"orcamento" | "tecnica">(
-    salvaId && contarItensComFoto(analise.itens) === 0 ? "tecnica" : "orcamento",
-  );
+  const itens = analise.itens;
+  const qtdPendentesNcm = itensPendentesConfirmacaoNcm(itens).length;
+  const ncmBloqueiaPdfInicial = pdfBloqueadoPorNcm(itens);
+  const [aba, setAba] = useState<"orcamento" | "tecnica">(() => {
+    if (qtdPendentesNcm > 0 || ncmBloqueiaPdfInicial) return "tecnica";
+    if (salvaId && contarItensComFoto(itens) === 0) return "tecnica";
+    return "orcamento";
+  });
   const [exportandoConc, setExportandoConc] = useState<"xlsx" | "csv" | null>(null);
 
   async function exportarConciliacao(fmt: "xlsx" | "csv") {
@@ -263,7 +268,6 @@ function AnalisePainel({
       document.getElementById("preview-orcamento-cliente")?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }, [irParaOrcamento]);
-  const itens = analise.itens;
   const qtdFotos = contarItensComFoto(itens);
   const ncmBloqueiaPdf = pdfBloqueadoPorNcm(itens);
   const motivoBloqueioPdf = resumoBloqueioNcm(itens);
@@ -356,7 +360,7 @@ function AnalisePainel({
                     <div className="truncate font-medium text-white">{it.descPt || it.descOriginal}</div>
                     <div className="truncate text-slate-500">{it.descDuimp.slice(0, 80)}</div>
                   </td>
-                  <td className="p-2 whitespace-nowrap">
+                  <td className="max-w-[11rem] p-2 align-top">
                     <span className={it.ncmValido === false ? "font-semibold text-red-400" : "text-emerald-300"}>
                       {fmtNcm(it.ncm || "00000000")}
                     </span>
@@ -401,10 +405,16 @@ function AnalisePainel({
                         {a.slice(0, 70)}{a.length > 70 ? "…" : ""}
                       </span>
                     ))}
+                    {it.ncmConfianca != null && it.ncmConfianca < 0.85 && it.compatibilidadeProduto !== "revisar" && (
+                      <span className="mt-0.5 block text-[10px] font-medium text-amber-400" title="Confiança NCM abaixo do limiar">
+                        ◐ baixa confiança NCM ({(it.ncmConfianca * 100).toFixed(0)}%)
+                      </span>
+                    )}
+                    <div className="mt-1.5 space-y-1 border-t border-white/10 pt-1">
                     {itemPodeConfirmarNcm(it) && onConfirmarNcm && (
                       <button
                         type="button"
-                        className="mt-1 block rounded bg-emerald-600/80 px-2 py-0.5 text-[10px] font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+                        className="block w-full rounded bg-emerald-600 px-2 py-1 text-[10px] font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
                         disabled={confirmandoNcm === i}
                         onClick={() => void onConfirmarNcm(i)}
                       >
@@ -414,7 +424,7 @@ function AnalisePainel({
                     {itemPodeDesfazerNcm(it) && onDesfazerNcm && (
                       <button
                         type="button"
-                        className="mt-1 block rounded bg-slate-600/80 px-2 py-0.5 text-[10px] font-semibold text-slate-200 hover:bg-slate-500 disabled:opacity-50"
+                        className="block w-full rounded bg-slate-600/80 px-2 py-1 text-[10px] font-semibold text-slate-200 hover:bg-slate-500 disabled:opacity-50"
                         disabled={confirmandoNcm === i}
                         onClick={() => void onDesfazerNcm(i)}
                       >
@@ -423,7 +433,7 @@ function AnalisePainel({
                     )}
                     {itemPodeDesfazerNcm(it) && (
                       <span
-                        className="mt-0.5 block text-[10px] font-medium text-emerald-400"
+                        className="block text-[10px] font-medium text-emerald-400"
                         title={[
                           it.ncmRevisadoEm ? `Confirmado em ${it.ncmRevisadoEm}` : "",
                           it.ncmConfirmado ? `NCM ${fmtNcm(it.ncmConfirmado)}` : "",
@@ -432,9 +442,12 @@ function AnalisePainel({
                           .filter(Boolean)
                           .join(" · ")}
                       >
-                        ✓ NCM confirmado (revisão humana)
+                        ✓ NCM confirmado
+                        {it.ncmConfirmadoPor ? ` · ${it.ncmConfirmadoPor}` : ""}
+                        {it.ncmRevisadoEm ? ` · ${fmtData(it.ncmRevisadoEm)}` : ""}
                       </span>
                     )}
+                    </div>
                   </td>
                   {(["ii", "ipi", "pis", "cofins"] as const).map((campo) => (
                     <td key={campo} className="p-2 align-top">
@@ -591,6 +604,11 @@ function AnalisePainel({
           onClick={() => setAba("tecnica")}
         >
           Detalhamento técnico
+          {qtdPendentesNcm > 0 && (
+            <span className="ml-2 rounded-full bg-amber-500/30 px-2 py-0.5 text-[10px] font-semibold text-amber-200">
+              {qtdPendentesNcm} NCM
+            </span>
+          )}
         </button>
       </div>
 
@@ -599,6 +617,15 @@ function AnalisePainel({
           {ncmBloqueiaPdf && (
             <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
               {motivoBloqueioPdf}
+              {qtdPendentesNcm > 0 && (
+                <button
+                  type="button"
+                  className="mt-2 block rounded bg-emerald-600/90 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500"
+                  onClick={() => setAba("tecnica")}
+                >
+                  Confirmar NCM ({qtdPendentesNcm} item{qtdPendentesNcm === 1 ? "" : "s"}) — abrir Detalhamento técnico
+                </button>
+              )}
             </div>
           )}
           {avisoCompatPdf && (
