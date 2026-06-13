@@ -27,6 +27,11 @@ import {
 import type { Prisma } from "@prisma/client";
 import { extrairResumoFinanceiro } from "../lib/financeiro.js";
 import { calcularCotacao } from "./cotacao.js";
+import {
+  outputConfirmacaoHumana,
+  salvarClassificacaoCacheHumano,
+  versoesClassificacaoCacheAtual,
+} from "./classificacao-cache.js";
 import { excluirFotosCotacao, fotoUrlApi, lerFotoItem, salvarFotoItem } from "./fotos.js";
 import type { AppState } from "../state.js";
 
@@ -681,6 +686,24 @@ export async function confirmarNcmItem(cotacaoId: string, ordem: number, confirm
     where: { id: itemRow.id },
     data: { meta: novoMeta as Prisma.InputJsonValue },
   });
+
+  const versoes = await versoesClassificacaoCacheAtual();
+  await salvarClassificacaoCacheHumano(
+    {
+      descOriginal: itemRow.descOriginal,
+      material: metaAtual.material,
+      uso: metaAtual.uso,
+    },
+    versoes,
+    outputConfirmacaoHumana({
+      descOriginal: itemRow.descOriginal,
+      material: metaAtual.material,
+      uso: metaAtual.uso,
+      ncmConfirmado: itemRow.ncm,
+      descPt: itemRow.descPt,
+      descDuimp: itemRow.descDuimp,
+    }),
+  );
 
   const atualizada = await prisma.cotacao.findUnique({
     where: { id: cotacaoId },

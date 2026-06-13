@@ -277,8 +277,8 @@ export async function buildServer() {
         detalhe: body.error.flatten(),
       });
     }
-    const { itens, provider } = await montarItens(body.data.linhas as unknown as LinhaCrua[], getState());
-    return { itens, provider };
+    const { itens, provider, classificacaoCache } = await montarItens(body.data.linhas as unknown as LinhaCrua[], getState());
+    return { itens, provider, classificacaoCache };
   });
 
   // Cotação completa → engine fiscal + benchmark + calibragem + risco por item.

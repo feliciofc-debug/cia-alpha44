@@ -171,6 +171,13 @@ export {
 export { confiancaNcmFinal } from "./confianca-ncm.js";
 export { extrairItemMeta, mesclarItemMeta, type ItemMetaPersistido } from "./item-meta.js";
 export {
+  catalogVersionKey,
+  chaveClassificacaoCache,
+  normalizarCampoCache,
+  partesChaveClassificacaoCache,
+  type ClassificacaoCacheKeyInput,
+} from "./classificacao-cache-key.js";
+export {
   FONTE_ALIQUOTA_TEC_PADRAO,
   gerarConciliacaoBuffer,
   gerarCsvConciliacao,

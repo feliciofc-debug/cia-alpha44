@@ -7,4 +7,5 @@ export type {
   Despesa,
   CotacaoStatus,
   CanalAduaneiro,
+  ClassificacaoCache,
 } from "@prisma/client";

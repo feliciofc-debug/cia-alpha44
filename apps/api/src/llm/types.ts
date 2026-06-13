@@ -6,6 +6,11 @@ export interface ClassifyItemInput {
   contexto?: string | null;
   material?: string | null;
   uso?: string | null;
+  /** P3b — confirmação humana prevalece sobre cache/LLM. */
+  ncmRevisadoHumano?: boolean;
+  ncmConfirmado?: string | null;
+  descPtConfirmado?: string | null;
+  descDuimpConfirmado?: string | null;
 }
 
 export interface NcmCandidatoLlm {

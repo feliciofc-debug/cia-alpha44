@@ -133,3 +133,20 @@ model Despesa {
 
   @@index([cotacaoId])
 }
+
+/// Cache determinístico de classificação NCM (2 passes + tradução) — P3b.
+model ClassificacaoCache {
+  /// sha256(descOriginal|material|uso|promptVersion|catalogVersion) normalizado
+  chave            String   @id
+  promptVersion    String
+  catalogVersion   String
+  /// Snapshot ClassifyItemOutput (JSON)
+  resultado        Json
+  /// true quando gravado por confirmação humana — LLM não sobrescreve
+  confirmadoHumano Boolean  @default(false)
+  hitCount         Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([promptVersion, catalogVersion])
+}

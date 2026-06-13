@@ -24,6 +24,14 @@ import type { Cotacao, Item } from "@cia/shared";
 import type { AppState } from "../state.js";
 import type { ClassifyItemInput, ClassifyItemOutput } from "../llm/types.js";
 import { mapComConcorrencia } from "../util/map-concorrencia.js";
+import {
+  criarStatsClassificacaoCache,
+  lookupClassificacaoCache,
+  outputConfirmacaoHumana,
+  salvarClassificacaoCacheLlm,
+  versoesClassificacaoCache,
+  type ClassificacaoCacheStats,
+} from "./classificacao-cache.js";
 
 const CLASSIFY_CONCORRENCIA = Math.min(
   6,
@@ -51,50 +59,134 @@ async function classificarItemComFallback(
   );
 }
 
-/** Classifica em paralelo (2 passes por item) — tradução em lote + fallback legado por item. */
+/** Classifica em paralelo (2 passes por item) — cache P3b + tradução em lote + fallback legado. */
 async function classificarEmLotes(
   state: AppState,
   linhas: LinhaCrua[],
-): Promise<ClassifyItemOutput[]> {
+): Promise<{ classificados: ClassifyItemOutput[]; cache: ClassificacaoCacheStats }> {
   const { contextoSiscomexParaItem } = await import("../llm/ncm-contexto-siscomex.js");
   const { classificarItens2Passes, executar2PassesComLlm, traduzirDescricoesClassificacao } =
     await import("../llm/classificar-ncm-2passes.js");
 
-  const inputs: ClassifyItemInput[] = linhas.map((l) => ({
-    descOriginal: l.descOriginal,
-    ncmInformado: l.ncm,
-    material: l.material,
-    uso: l.uso,
-    contexto: contextoSiscomexParaItem(state.ncmCatalog, l.descOriginal, l.ncm),
-  }));
+  const inputs: ClassifyItemInput[] = linhas.map((l) => {
+    const ext = l as LinhaCrua & {
+      ncmRevisadoHumano?: boolean;
+      ncmConfirmado?: string | null;
+      descPt?: string | null;
+      descDuimp?: string | null;
+    };
+    return {
+      descOriginal: l.descOriginal,
+      ncmInformado: l.ncm,
+      material: l.material,
+      uso: l.uso,
+      contexto: contextoSiscomexParaItem(state.ncmCatalog, l.descOriginal, l.ncm),
+      ncmRevisadoHumano: ext.ncmRevisadoHumano,
+      ncmConfirmado: ext.ncmConfirmado,
+      descPtConfirmado: ext.descPt,
+      descDuimpConfirmado: ext.descDuimp,
+    };
+  });
+
+  const versoes = versoesClassificacaoCache(state.ncmCatalog);
+  const stats = criarStatsClassificacaoCache(inputs.length);
+  const resultados: ClassifyItemOutput[] = new Array(inputs.length);
+  const indicesLlm: number[] = [];
+
+  for (let i = 0; i < inputs.length; i++) {
+    const input = inputs[i]!;
+    if (input.ncmRevisadoHumano && input.ncmConfirmado?.trim()) {
+      resultados[i] = outputConfirmacaoHumana({
+        descOriginal: input.descOriginal,
+        material: input.material,
+        uso: input.uso,
+        ncmConfirmado: input.ncmConfirmado,
+        descPt: input.descPtConfirmado ?? undefined,
+        descDuimp: input.descDuimpConfirmado ?? undefined,
+      });
+      stats.humanos += 1;
+      continue;
+    }
+
+    const cached = await lookupClassificacaoCache(
+      { descOriginal: input.descOriginal, material: input.material, uso: input.uso },
+      versoes,
+    );
+    if (cached) {
+      resultados[i] = cached;
+      stats.hits += 1;
+      continue;
+    }
+
+    stats.misses += 1;
+    indicesLlm.push(i);
+  }
+
+  if (indicesLlm.length === 0) {
+    return { classificados: resultados, cache: stats };
+  }
 
   const chamarLlm = state.provider.chamarLlm;
+  const inputsLlm = indicesLlm.map((i) => inputs[i]!);
   const batchTrad =
     chamarLlm && state.provider.disponivel
-      ? await traduzirDescricoesClassificacao(inputs, chamarLlm)
+      ? await traduzirDescricoesClassificacao(inputsLlm, chamarLlm)
       : null;
 
-  return mapComConcorrencia(inputs, CLASSIFY_CONCORRENCIA, async (input, i) => {
+  const llmOut = await mapComConcorrencia(inputsLlm, CLASSIFY_CONCORRENCIA, async (input, j) => {
+    const idxOrig = indicesLlm[j]!;
     try {
       if (chamarLlm && batchTrad) {
         const pre = {
-          descricoes: [batchTrad.descricoes[i]!],
+          descricoes: [batchTrad.descricoes[j]!],
           traducaoIndisponivel: batchTrad.traducaoIndisponivel,
         };
         const [doisPasses] = await executar2PassesComLlm(state.ncmCatalog, [input], chamarLlm, pre);
-        if (doisPasses) return doisPasses;
+        if (doisPasses) {
+          await salvarClassificacaoCacheLlm(
+            { descOriginal: input.descOriginal, material: input.material, uso: input.uso },
+            versoes,
+            doisPasses,
+          );
+          return doisPasses;
+        }
       }
-      return await classificarItemComFallback(state, input, classificarItens2Passes);
+      const fallback = await classificarItemComFallback(state, input, classificarItens2Passes);
+      if (fallback.ncmCandidatos?.length) {
+        await salvarClassificacaoCacheLlm(
+          { descOriginal: input.descOriginal, material: input.material, uso: input.uso },
+          versoes,
+          fallback,
+        );
+      }
+      return fallback;
     } catch {
-      return await classificarItemComFallback(state, input, classificarItens2Passes);
+      const fallback = await classificarItemComFallback(state, input, classificarItens2Passes);
+      if (fallback.ncmCandidatos?.length) {
+        await salvarClassificacaoCacheLlm(
+          { descOriginal: input.descOriginal, material: input.material, uso: input.uso },
+          versoes,
+          fallback,
+        );
+      }
+      return fallback;
     }
   });
+
+  for (let j = 0; j < indicesLlm.length; j++) {
+    resultados[indicesLlm[j]!] = llmOut[j]!;
+  }
+
+  return { classificados: resultados, cache: stats };
 }
 
 /** Converte linhas cruas do parser em itens de domínio (tradução+NCM via IA, alíquotas via TEC). */
-export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise<{ itens: Item[]; provider: string }> {
+export async function montarItens(
+  linhas: LinhaCrua[],
+  state: AppState,
+): Promise<{ itens: Item[]; provider: string; classificacaoCache: ClassificacaoCacheStats }> {
   const { linhas: linhasNorm, metas: metasFob } = preencherFobKgPlanilha(linhas, state.benchmarkIndex);
-  const classificados = await classificarEmLotes(state, linhasNorm);
+  const { classificados, cache: classificacaoCache } = await classificarEmLotes(state, linhasNorm);
 
   const itens: Item[] = [];
   for (let i = 0; i < linhasNorm.length; i++) {
@@ -202,7 +294,7 @@ export async function montarItens(linhas: LinhaCrua[], state: AppState): Promise
     itens[i]!.motivoCompatibilidade = c.motivoCompatibilidade;
   }
 
-  return { itens, provider: state.provider.nome };
+  return { itens, provider: state.provider.nome, classificacaoCache };
 }
 
 export interface ResultadoCompleto {
