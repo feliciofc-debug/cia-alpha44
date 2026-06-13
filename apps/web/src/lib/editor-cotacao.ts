@@ -1,12 +1,15 @@
 import { despesasParaEditor, inferirQtdContainers, outrasDespesasBaseParaContainers, DEFAULT_FRETE_US, DEFAULT_SISCOMEX_BRL } from "./despesas.ts";
-import { icmsSaidaParaDestino } from "./icms-uf.ts";
-import type { Cotacao, Despesa, ParamsSaida } from "./types.ts";
+import type { Cotacao, Despesa, ParamsSaida, RegimeIcmsPersistido } from "./types.ts";
 
 export type BeneficioFiscal = "ALAGOAS" | "NENHUM";
 
 export interface EditorDraft {
   origem: string;
   destino: string;
+  /** UF sede importadora — coluna P2.2 ufEmpresa. */
+  ufEmpresa: string;
+  /** Regime ICMS entrada — coluna P2.2 regimeIcms. */
+  regimeIcms: RegimeIcmsPersistido;
   benefFiscal: BeneficioFiscal;
   empresaTrade: string;
   cliente: string;
@@ -22,15 +25,17 @@ export interface EditorDraft {
     ParamsSaida,
     "pisSaida" | "cofinsSaida" | "icmsSaida" | "csllSobreMarkup" | "irrfAliq" | "irrfBaseNotaPct"
   >;
-  icmsManual: boolean;
+  /** Precedência P2.3 — true ignora resolver na saída. */
+  icmsSaidaManualFlag: boolean;
 }
 
 export function editorFromCotacao(cotacao: Cotacao, clienteOverride?: string): EditorDraft {
   const p = cotacao.params;
-  const icmsAuto = icmsSaidaParaDestino(cotacao.destino, cotacao.benefFiscal);
   return {
     origem: cotacao.origem,
     destino: cotacao.destino,
+    ufEmpresa: cotacao.ufEmpresa ?? "AL",
+    regimeIcms: cotacao.regimeIcms === "NORMAL" ? "NORMAL" : "AL_DIFERIDO",
     benefFiscal: (cotacao.benefFiscal === "NENHUM" ? "NENHUM" : "ALAGOAS") as BeneficioFiscal,
     empresaTrade: cotacao.empresaTrade ?? "",
     cliente: clienteOverride ?? cotacao.cliente,
@@ -50,19 +55,17 @@ export function editorFromCotacao(cotacao: Cotacao, clienteOverride?: string): E
       irrfAliq: p.irrfAliq,
       irrfBaseNotaPct: p.irrfBaseNotaPct,
     },
-    icmsManual: Math.abs(p.icmsSaida - icmsAuto) > 0.0001,
+    icmsSaidaManualFlag: cotacao.icmsSaidaManualFlag ?? false,
   };
 }
 
 export function aplicarEditorNaCotacao(cotacao: Cotacao, draft: EditorDraft): Cotacao {
-  const icmsSaida = draft.icmsManual
-    ? draft.paramsAvancados.icmsSaida
-    : icmsSaidaParaDestino(draft.destino, draft.benefFiscal);
-
   return {
     ...cotacao,
     origem: draft.origem,
     destino: draft.destino,
+    ufEmpresa: draft.ufEmpresa,
+    regimeIcms: draft.regimeIcms,
     benefFiscal: draft.benefFiscal,
     empresaTrade: draft.empresaTrade,
     cliente: draft.cliente,
@@ -73,13 +76,16 @@ export function aplicarEditorNaCotacao(cotacao: Cotacao, draft: EditorDraft): Co
     reducaoBaseUS: draft.reducaoBaseUS,
     qtdContainers: draft.qtdContainers,
     despesas: draft.despesas,
+    icmsSaidaManualFlag: draft.icmsSaidaManualFlag,
     outrasDespesasBaseBRL: outrasDespesasBaseParaContainers(draft.qtdContainers),
     params: {
       ...cotacao.params,
       markupPct: draft.markupPct,
       pisSaida: draft.paramsAvancados.pisSaida,
       cofinsSaida: draft.paramsAvancados.cofinsSaida,
-      icmsSaida,
+      icmsSaida: draft.icmsSaidaManualFlag
+        ? draft.paramsAvancados.icmsSaida
+        : cotacao.params.icmsSaida,
       csllSobreMarkup: draft.paramsAvancados.csllSobreMarkup,
       irrfAliq: draft.paramsAvancados.irrfAliq,
       irrfBaseNotaPct: draft.paramsAvancados.irrfBaseNotaPct,
@@ -91,6 +97,8 @@ export function payloadAtualizar(draft: EditorDraft) {
   return {
     origem: draft.origem,
     destino: draft.destino,
+    ufEmpresa: draft.ufEmpresa,
+    regimeIcms: draft.regimeIcms,
     benefFiscal: draft.benefFiscal,
     empresaTrade: draft.empresaTrade,
     cliente: draft.cliente,
@@ -103,22 +111,14 @@ export function payloadAtualizar(draft: EditorDraft) {
     qtdContainers: draft.qtdContainers,
     despesas: draft.despesas,
     outrasDespesasBaseBRL: outrasDespesasBaseParaContainers(draft.qtdContainers),
-    icmsAuto: !draft.icmsManual,
-    params: draft.icmsManual
-      ? {
-          pisSaida: draft.paramsAvancados.pisSaida,
-          cofinsSaida: draft.paramsAvancados.cofinsSaida,
-          icmsSaida: draft.paramsAvancados.icmsSaida,
-          csllSobreMarkup: draft.paramsAvancados.csllSobreMarkup,
-          irrfAliq: draft.paramsAvancados.irrfAliq,
-          irrfBaseNotaPct: draft.paramsAvancados.irrfBaseNotaPct,
-        }
-      : {
-          pisSaida: draft.paramsAvancados.pisSaida,
-          cofinsSaida: draft.paramsAvancados.cofinsSaida,
-          csllSobreMarkup: draft.paramsAvancados.csllSobreMarkup,
-          irrfAliq: draft.paramsAvancados.irrfAliq,
-          irrfBaseNotaPct: draft.paramsAvancados.irrfBaseNotaPct,
-        },
+    icmsAuto: !draft.icmsSaidaManualFlag,
+    params: {
+      pisSaida: draft.paramsAvancados.pisSaida,
+      cofinsSaida: draft.paramsAvancados.cofinsSaida,
+      csllSobreMarkup: draft.paramsAvancados.csllSobreMarkup,
+      irrfAliq: draft.paramsAvancados.irrfAliq,
+      irrfBaseNotaPct: draft.paramsAvancados.irrfBaseNotaPct,
+      ...(draft.icmsSaidaManualFlag ? { icmsSaida: draft.paramsAvancados.icmsSaida } : {}),
+    },
   };
 }

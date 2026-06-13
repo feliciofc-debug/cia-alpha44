@@ -215,6 +215,8 @@ function AnalisePainel({
   onDesfazerNcm,
   onAlterarNcm,
   alterandoNcm,
+  onConfirmarIcmsSaida,
+  confirmandoIcms,
 }: {
   analise: AnaliseView;
   onSalvar?: () => void;
@@ -239,6 +241,8 @@ function AnalisePainel({
   onDesfazerNcm?: (idx: number) => void | Promise<void>;
   onAlterarNcm: (idx: number, ncm: string) => void | Promise<void>;
   alterandoNcm?: number | null;
+  onConfirmarIcmsSaida?: () => void | Promise<void>;
+  confirmandoIcms?: boolean;
 }) {
   const itens = analise.itens;
   const qtdPendentesNcm = itensPendentesConfirmacaoNcm(itens).length;
@@ -300,6 +304,12 @@ function AnalisePainel({
   const motivoBloqueioPdf = resumoBloqueioNcm(itens);
   const avisoCompatPdf = avisoCompatibilidadePdf(itens);
   const avisoMoedaEur = avisoMoedaEurSeAplicavel(analise.cotacao.moedaPlanilha, analise.cotacao.moeda);
+  const icmsMeta = "icms" in analise ? analise.icms : undefined;
+  const avisosFiscaisIcms =
+    analise.cotacao.avisosFiscais ??
+    ("avisosFiscais" in analise ? analise.avisosFiscais : undefined) ??
+    icmsMeta?.avisosFiscais ??
+    [];
   const provider = (analise as { provider?: string | null }).provider ?? "—";
   const canais = resumoCanais(itens);
   const financeiro =
@@ -598,6 +608,9 @@ function AnalisePainel({
           onAplicar={onAplicarEditor}
           aplicando={aplicandoEditor}
           modo={salvaId ? "salva" : "analise"}
+          avisosFiscais={avisosFiscaisIcms}
+          onConfirmarIcmsSaida={salvaId ? onConfirmarIcmsSaida : undefined}
+          confirmandoIcms={confirmandoIcms}
         />
       )}
 
@@ -610,7 +623,16 @@ function AnalisePainel({
           Provedor: {provider} · {itens.length} itens · {analise.cotacao.empresaTrade || "—"} →{" "}
           {analise.cotacao.cliente} · rota {analise.cotacao.origem} → {analise.cotacao.destino} · ICMS{" "}
           {pct(analise.cotacao.params.icmsSaida)}
+          {analise.cotacao.icmsSaidaManualFlag && (
+            <span className="ml-2 text-xs font-semibold text-amber-300">(override manual em vigor)</span>
+          )}
         </p>
+        {icmsMeta?.fundamentoSaida && (
+          <p className="mt-1 text-xs text-slate-400">Fundamento ICMS saída: {icmsMeta.fundamentoSaida}</p>
+        )}
+        {icmsMeta?.avisoRegimeIcms && (
+          <p className="mt-2 text-sm font-medium text-orange-300">{icmsMeta.avisoRegimeIcms}</p>
+        )}
         {analise.avisoFiscal && <p className="mt-2 text-sm text-amber-300">{analise.avisoFiscal}</p>}
       </div>
 
@@ -828,6 +850,7 @@ export function Dashboard() {
     null,
   );
   const [confirmandoNcm, setConfirmandoNcm] = useState<number | null>(null);
+  const [confirmandoIcms, setConfirmandoIcms] = useState(false);
   const [alterandoNcm, setAlterandoNcm] = useState<number | null>(null);
   const [irParaOrcamento, setIrParaOrcamento] = useState(0);
   const [solicitarResolucaoNcm, setSolicitarResolucaoNcm] = useState(0);
@@ -970,13 +993,51 @@ export function Dashboard() {
     setErro("");
     try {
       const cotacao = { ...aplicarEditorNaCotacao(analise.cotacao, editorDraft), itens: analise.itens };
-      const { resultado, itens } = await api.calcular(cotacao);
-      setAnalise({ ...analise, cotacao, resultado, itens });
+      const calc = await api.calcular(cotacao);
+      setAnalise({
+        ...analise,
+        cotacao: {
+          ...cotacao,
+          params: calc.params,
+          avisosFiscais: calc.avisosFiscais,
+          icmsSaidaManualFlag: calc.icms.icmsSaidaManualFlag,
+        },
+        icms: calc.icms,
+        avisosFiscais: calc.avisosFiscais,
+        resultado: calc.resultado,
+        itens: calc.itens,
+      });
       setCliente(editorDraft.cliente);
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Falha ao recalcular.");
     } finally {
       setAplicandoEditor(false);
+    }
+  }
+
+  async function confirmarIcmsSaida() {
+    const id = detalhe?.id ?? salvaId;
+    if (!id) return;
+    setConfirmandoIcms(true);
+    setErro("");
+    try {
+      const atualizada = await api.atualizarCotacao(id, { confirmarIcmsSaida: true });
+      setDetalhe(atualizada);
+      setEditorDraft(editorFromCotacao(atualizada.cotacao));
+      if (analise && salvaId === id) {
+        setAnalise({
+          ...analise,
+          cotacao: atualizada.cotacao,
+          icms: atualizada.icms,
+          avisosFiscais: atualizada.avisosFiscais,
+          resultado: atualizada.resultado,
+          itens: atualizada.itens,
+        });
+      }
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao confirmar ICMS.");
+    } finally {
+      setConfirmandoIcms(false);
     }
   }
 
@@ -1015,8 +1076,22 @@ export function Dashboard() {
         setEditorDraft(editorFromCotacao(atualizada.cotacao));
         return;
       }
-      const { resultado, itens: itensNovos } = await api.calcular(cotacao);
-      if (analise) setAnalise({ ...analise, cotacao, resultado, itens: itensNovos });
+      const calc = await api.calcular(cotacao);
+      if (analise) {
+        setAnalise({
+          ...analise,
+          cotacao: {
+            ...cotacao,
+            params: calc.params,
+            avisosFiscais: calc.avisosFiscais,
+            icmsSaidaManualFlag: calc.icms.icmsSaidaManualFlag,
+          },
+          icms: calc.icms,
+          avisosFiscais: calc.avisosFiscais,
+          resultado: calc.resultado,
+          itens: calc.itens,
+        });
+      }
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Falha ao recalcular alíquotas.");
     } finally {
@@ -1046,8 +1121,22 @@ export function Dashboard() {
       const itens = base.itens.map((it, i) => (i === idx ? itEditado : it));
       const draft = editorDraft ?? editorFromCotacao(base.cotacao, "cliente" in base ? base.cotacao.cliente : cliente);
       const cotacao = { ...aplicarEditorNaCotacao(base.cotacao, draft), itens };
-      const { resultado, itens: itensNovos } = await api.calcular(cotacao);
-      if (analise) setAnalise({ ...analise, cotacao, resultado, itens: itensNovos });
+      const calc = await api.calcular(cotacao);
+      if (analise) {
+        setAnalise({
+          ...analise,
+          cotacao: {
+            ...cotacao,
+            params: calc.params,
+            avisosFiscais: calc.avisosFiscais,
+            icmsSaidaManualFlag: calc.icms.icmsSaidaManualFlag,
+          },
+          icms: calc.icms,
+          avisosFiscais: calc.avisosFiscais,
+          resultado: calc.resultado,
+          itens: calc.itens,
+        });
+      }
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Falha ao desfazer alíquota.");
     } finally {
@@ -1546,6 +1635,8 @@ export function Dashboard() {
                 onDesfazerNcm={desfazerNcmItem}
                 onAlterarNcm={alterarNcmItem}
                 alterandoNcm={alterandoNcm}
+                onConfirmarIcmsSaida={() => void confirmarIcmsSaida()}
+                confirmandoIcms={confirmandoIcms}
               />
             </div>
           </div>
@@ -1643,6 +1734,8 @@ export function Dashboard() {
                   onDesfazerNcm={desfazerNcmItem}
                   onAlterarNcm={alterarNcmItem}
                   alterandoNcm={alterandoNcm}
+                  onConfirmarIcmsSaida={() => void confirmarIcmsSaida()}
+                  confirmandoIcms={confirmandoIcms}
                 />
                 {salvaId && (
                   <button type="button" className="btn-ghost mt-4 w-full" onClick={() => void abrirCotacao(salvaId)}>

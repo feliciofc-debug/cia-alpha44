@@ -13,6 +13,7 @@ import type {
   Item,
   ParsedSheet,
   ResultadoCotacao,
+  IcmsCotacaoMeta,
 } from "./types";
 
 export interface AnaliseCompleta {
@@ -21,6 +22,8 @@ export interface AnaliseCompleta {
   resultado: ResultadoCotacao | null;
   avisoFiscal: string | null;
   cotacao: Cotacao;
+  icms?: IcmsCotacaoMeta;
+  avisosFiscais?: string[];
 }
 
 export { PdfDownloadError } from "./pdf-erro.ts";
@@ -128,6 +131,9 @@ export const api = {
       benefFiscal,
       moeda: "US$",
       moedaPlanilha: opts?.moedaPlanilha ?? null,
+      ufEmpresa: "AL",
+      regimeIcms: "AL_DIFERIDO" as const,
+      icmsSaidaManualFlag: false,
       cambio: cambio.cotacaoVenda ?? 5.2,
       freteTotalUS: DEFAULT_FRETE_US,
       adicionaisVaUS: 0,
@@ -153,7 +159,7 @@ export const api = {
         icmsEntrada: 0,
       },
     });
-    const { resultado, itens: itensCalc } = await fetchComTimeout(
+    const calc = await fetchComTimeout(
       `${BASE}/api/calcular`,
       {
         method: "POST",
@@ -161,19 +167,36 @@ export const api = {
         body: JSON.stringify(cotacao),
       },
       CLASSIFY_TIMEOUT_MS,
-    ).then(handle<{ resultado: ResultadoCotacao; itens: Item[] }>);
+    ).then(
+      handle<{
+        resultado: ResultadoCotacao;
+        itens: Item[];
+        icms: IcmsCotacaoMeta;
+        avisosFiscais: string[];
+        params: Cotacao["params"];
+      }>,
+    );
+    const { resultado, itens: itensCalc, icms, avisosFiscais, params } = calc;
     const fobEngine = resultado.entrada.fobTotalUS;
     const temResultado = fobEngine > 0 && resultado.totalBRL > 0;
     return {
       itens: itensCalc,
       provider,
+      icms,
+      avisosFiscais,
       resultado: temResultado ? resultado : null,
       avisoFiscal: temResultado
         ? !comFobPlanilha
           ? "FOB estimado via benchmark ComexStat onde a planilha não tinha preço."
           : null
         : "Informe FOB na planilha ou confira peso/NCM para estimativa ComexStat.",
-      cotacao: { ...cotacao, itens: itensCalc },
+      cotacao: {
+        ...cotacao,
+        params,
+        avisosFiscais,
+        icmsSaidaManualFlag: icms.icmsSaidaManualFlag,
+        itens: itensCalc,
+      },
     };
   },
 
@@ -242,7 +265,15 @@ export const api = {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(cotacao),
-    }).then(handle<{ resultado: ResultadoCotacao; itens: Item[] }>),
+    }).then(
+      handle<{
+        resultado: ResultadoCotacao;
+        itens: Item[];
+        icms: IcmsCotacaoMeta;
+        avisosFiscais: string[];
+        params: Cotacao["params"];
+      }>,
+    ),
 
   atualizarCotacao: (id: string, opts: Record<string, unknown>) =>
     fetch(`${BASE}/api/cotacoes/${id}`, {

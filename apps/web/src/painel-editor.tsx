@@ -1,12 +1,41 @@
-import { icmsSaidaParaDestino, UFS_BRASIL, UF_NOMES, type UfBrasil } from "./lib/icms-uf.ts";
+import { aplicarIcmsCotacao } from "@cia/shared";
+import { UFS_BRASIL, UF_NOMES, type UfBrasil } from "./lib/icms-uf.ts";
 import { despesasParaContainers, totalDespesas } from "./lib/despesas.ts";
 import type { EditorDraft } from "./lib/editor-cotacao.ts";
 import { pct } from "./lib/format.ts";
+import type { IcmsCotacaoMeta } from "./lib/types.ts";
 
 const BENEFICIOS: { id: EditorDraft["benefFiscal"]; label: string }[] = [
   { id: "ALAGOAS", label: "Alagoas — ICMS 4% quando destino = AL" },
   { id: "NENHUM", label: "Sem benefício fiscal" },
 ];
+
+const REGIMES: { id: EditorDraft["regimeIcms"]; label: string }[] = [
+  { id: "AL_DIFERIDO", label: "AL diferido — ICMS entrada 0% (padrão)" },
+  { id: "NORMAL", label: "Normal — aviso obrigatório v1" },
+];
+
+function previewIcmsMeta(draft: EditorDraft, avisosFiscais: string[] = []): IcmsCotacaoMeta {
+  const { meta } = aplicarIcmsCotacao({
+    ufEmpresa: draft.ufEmpresa,
+    destino: draft.destino,
+    regimeIcms: draft.regimeIcms,
+    icmsSaidaManualFlag: draft.icmsSaidaManualFlag,
+    params: {
+      markupPct: draft.markupPct,
+      pisSaida: draft.paramsAvancados.pisSaida,
+      cofinsSaida: draft.paramsAvancados.cofinsSaida,
+      icmsSaida: draft.paramsAvancados.icmsSaida,
+      csllSobreMarkup: draft.paramsAvancados.csllSobreMarkup,
+      irrfAliq: draft.paramsAvancados.irrfAliq,
+      irrfBaseNotaPct: draft.paramsAvancados.irrfBaseNotaPct,
+      ipiTetoAliqMedia: 0.15,
+      icmsEntrada: 0,
+    },
+    avisosFiscais,
+  });
+  return meta;
+}
 
 export function PainelEditorCotacao({
   draft,
@@ -14,12 +43,19 @@ export function PainelEditorCotacao({
   onAplicar,
   aplicando,
   modo,
+  avisosFiscais = [],
+  onConfirmarIcmsSaida,
+  confirmandoIcms,
 }: {
   draft: EditorDraft;
   onChange: (d: EditorDraft) => void;
   onAplicar: () => void;
   aplicando?: boolean;
   modo: "analise" | "salva";
+  /** Avisos persistidos (backfill legado) — exibidos no bloco ICMS. */
+  avisosFiscais?: string[];
+  onConfirmarIcmsSaida?: () => void;
+  confirmandoIcms?: boolean;
 }) {
   const ufOpts = (UFS_BRASIL as readonly UfBrasil[]).map((sigla) => (
     <option key={sigla} value={sigla}>
@@ -27,19 +63,13 @@ export function PainelEditorCotacao({
     </option>
   ));
 
-  const icmsEfetivo = draft.icmsManual
-    ? draft.paramsAvancados.icmsSaida
-    : icmsSaidaParaDestino(draft.destino, draft.benefFiscal);
+  const icmsMeta = previewIcmsMeta(draft, avisosFiscais);
+  const icmsLegadoPendente = avisosFiscais.some(
+    (a) => a.includes("legado") && a.includes("revisar e confirmar"),
+  );
 
   function patch(p: Partial<EditorDraft>) {
-    const next = { ...draft, ...p };
-    if (!next.icmsManual && (p.destino != null || p.benefFiscal != null)) {
-      next.paramsAvancados = {
-        ...next.paramsAvancados,
-        icmsSaida: icmsSaidaParaDestino(next.destino, next.benefFiscal),
-      };
-    }
-    onChange(next);
+    onChange({ ...draft, ...p });
   }
 
   return (
@@ -148,10 +178,116 @@ export function PainelEditorCotacao({
             ))}
           </select>
         </div>
-        <div>
-          <label className="label">ICMS saída efetivo</label>
-          <p className="input flex items-center bg-ink-900/60 text-brand-200">{pct(icmsEfetivo)}</p>
+      </div>
+
+      <div className="space-y-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+        <p className="text-sm font-semibold text-amber-100">ICMS — empresa e regime (P2.3)</p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <label className="label">UF sede importadora</label>
+            <select
+              className="input"
+              value={draft.ufEmpresa}
+              onChange={(e) => patch({ ufEmpresa: e.target.value })}
+            >
+              {ufOpts}
+            </select>
+          </div>
+          <div>
+            <label className="label">Regime ICMS entrada</label>
+            <select
+              className="input"
+              value={draft.regimeIcms}
+              onChange={(e) => patch({ regimeIcms: e.target.value as EditorDraft["regimeIcms"] })}
+            >
+              {REGIMES.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label">ICMS saída efetivo</label>
+            <div className="input flex flex-wrap items-center gap-2 bg-ink-900/60 text-brand-200">
+              <span className="font-semibold">{pct(icmsMeta.icmsSaidaEfetivo)}</span>
+              {draft.icmsSaidaManualFlag && (
+                <span className="rounded bg-amber-600/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-200">
+                  Override manual em vigor
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-[11px] text-slate-500" title={icmsMeta.fundamentoSaida}>
+              {icmsMeta.fundamentoSaida}
+            </p>
+            {draft.icmsSaidaManualFlag && (
+              <p className="mt-1 text-[11px] text-amber-300/90">
+                Alterar UF/regime não muda o % até desmarcar o override manual.
+              </p>
+            )}
+          </div>
         </div>
+
+        {icmsMeta.avisoRegimeIcms && (
+          <div className="rounded-lg border border-orange-500/50 bg-orange-500/10 px-3 py-2 text-xs font-medium text-orange-100">
+            {icmsMeta.avisoRegimeIcms}
+          </div>
+        )}
+
+        {avisosFiscais.length > 0 && (
+          <div className="space-y-2">
+            {avisosFiscais.map((a) => (
+              <div
+                key={a}
+                className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-100"
+              >
+                {a}
+              </div>
+            ))}
+            {icmsLegadoPendente && onConfirmarIcmsSaida && (
+              <button
+                type="button"
+                className="btn-ghost text-xs text-emerald-300 hover:text-emerald-200"
+                disabled={confirmandoIcms}
+                onClick={onConfirmarIcmsSaida}
+              >
+                {confirmandoIcms ? "Confirmando…" : "Confirmar ICMS calculado (aceitar alíquota do resolver)"}
+              </button>
+            )}
+          </div>
+        )}
+
+        <details className="rounded border border-white/10 bg-ink-900/40 px-2 py-1">
+          <summary className="cursor-pointer text-xs text-slate-400">Override manual de ICMS saída</summary>
+          <div className="mt-2 space-y-2 pb-2">
+            <label className="flex items-center gap-2 text-xs text-slate-300">
+              <input
+                type="checkbox"
+                checked={draft.icmsSaidaManualFlag}
+                onChange={(e) => patch({ icmsSaidaManualFlag: e.target.checked })}
+              />
+              Forçar ICMS saída manual (icmsSaidaManualFlag)
+            </label>
+            {draft.icmsSaidaManualFlag && (
+              <input
+                type="number"
+                min={0}
+                max={1}
+                step={0.001}
+                className="input py-1 text-sm"
+                value={draft.paramsAvancados.icmsSaida}
+                onChange={(e) =>
+                  patch({
+                    paramsAvancados: {
+                      ...draft.paramsAvancados,
+                      icmsSaida: Number(e.target.value) || 0,
+                    },
+                  })
+                }
+              />
+            )}
+          </div>
+        </details>
       </div>
 
       <div>
@@ -252,47 +388,8 @@ export function PainelEditorCotacao({
               />
             </div>
           ))}
-          <div className="sm:col-span-2">
-            <label className="flex items-center gap-2 text-xs text-slate-400">
-              <input
-                type="checkbox"
-                checked={draft.icmsManual}
-                onChange={(e) => {
-                  const icmsManual = e.target.checked;
-                  patch({
-                    icmsManual,
-                    paramsAvancados: {
-                      ...draft.paramsAvancados,
-                      icmsSaida: icmsManual
-                        ? draft.paramsAvancados.icmsSaida
-                        : icmsSaidaParaDestino(draft.destino, draft.benefFiscal),
-                    },
-                  });
-                }}
-              />
-              ICMS saída manual (override da tabela UF)
-            </label>
-            {draft.icmsManual && (
-              <input
-                type="number"
-                min={0}
-                max={1}
-                step={0.001}
-                className="input mt-2 py-1"
-                value={draft.paramsAvancados.icmsSaida}
-                onChange={(e) =>
-                  patch({
-                    paramsAvancados: {
-                      ...draft.paramsAvancados,
-                      icmsSaida: Number(e.target.value) || 0,
-                    },
-                  })
-                }
-              />
-            )}
-          </div>
         </div>
-        <p className="mt-2 text-xs text-slate-500">Defaults da planilha 66 — altere só se souber o regime do cliente.</p>
+        <p className="mt-2 text-xs text-slate-500">Defaults da planilha 66 — ICMS saída no bloco acima.</p>
       </details>
 
       <button type="button" className="btn-primary w-full sm:w-auto" disabled={aplicando} onClick={onAplicar}>

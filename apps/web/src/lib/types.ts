@@ -111,6 +111,18 @@ export interface ParamsSaida {
 
 export type BeneficioFiscal = "ALAGOAS" | "NENHUM";
 
+export type RegimeIcmsPersistido = "AL_DIFERIDO" | "NORMAL";
+
+export interface IcmsCotacaoMeta {
+  icmsSaidaEfetivo: number;
+  icmsEntradaEfetivo: number;
+  fundamentoSaida: string;
+  avisoRegimeIcms?: string;
+  operacaoInterestadual: boolean;
+  icmsSaidaManualFlag: boolean;
+  avisosFiscais: string[];
+}
+
 export interface Cotacao {
   id?: string;
   empresaTrade?: string;
@@ -135,7 +147,7 @@ export interface Cotacao {
   params: ParamsSaida;
   avisosFiscais?: string[];
   ufEmpresa?: string;
-  regimeIcms?: "NORMAL" | "AL_DIFERIDO";
+  regimeIcms?: RegimeIcmsPersistido;
   icmsSaidaManualFlag?: boolean;
 }
 
@@ -341,6 +353,8 @@ export interface CotacaoSalva {
   itens: Item[];
   resultado: ResultadoCotacao | null;
   avisoFiscal: string | null;
+  icms?: IcmsCotacaoMeta;
+  avisosFiscais?: string[];
 }
 
 export interface LinhaCrua {

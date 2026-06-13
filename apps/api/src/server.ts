@@ -577,6 +577,8 @@ export async function buildServer() {
     origem: z.string().optional(),
     destino: z.string().optional(),
     benefFiscal: z.enum(["ALAGOAS", "NENHUM"]).optional(),
+    ufEmpresa: z.string().optional(),
+    regimeIcms: z.enum(["AL_DIFERIDO", "NORMAL"]).optional(),
     empresaTrade: z.string().optional(),
     cliente: z.string().optional(),
     cambio: z.number().positive().optional(),

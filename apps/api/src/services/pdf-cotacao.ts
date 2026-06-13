@@ -3,7 +3,7 @@
 import PDFDocument from "pdfkit";
 import type { ResultadoCotacao } from "@cia/fiscal-engine";
 import type { Cotacao, Item } from "@cia/shared";
-import { avisoMoedaEurSeAplicavel, formatNcm } from "@cia/shared";
+import { avisoMoedaEurSeAplicavel, aplicarIcmsCotacao, formatNcm } from "@cia/shared";
 import { extrairResumoFinanceiro } from "../lib/financeiro.js";
 import type { NcmCatalog } from "@cia/pipeline";
 import { auditarNcmsParaPdf } from "./validar-ncm-pdf.js";
@@ -103,6 +103,21 @@ function gerarPdfTrade(payload: PayloadPdf): Promise<Buffer> {
   linha(doc, "Markup", pct(cotacao.params.markupPct));
   linha(doc, "ICMS saída", pct(cotacao.params.icmsSaida));
   linha(doc, "Data", fmtData(criadoEm));
+  const { meta: icmsMeta } = aplicarIcmsCotacao(cotacao);
+  if (icmsMeta.avisoRegimeIcms) {
+    doc.moveDown(0.4);
+    doc.fillColor("#c2410c").font("Helvetica-Bold").fontSize(9).text(icmsMeta.avisoRegimeIcms);
+    doc.fillColor("#000000").font("Helvetica");
+  }
+  if (icmsMeta.fundamentoSaida) {
+    doc.fontSize(8).fillColor("#444444").text(`Fundamento ICMS saída: ${icmsMeta.fundamentoSaida}`);
+    doc.fillColor("#000000").fontSize(10);
+  }
+  for (const aviso of icmsMeta.avisosFiscais ?? []) {
+    doc.moveDown(0.3);
+    doc.fillColor("#a16207").font("Helvetica-Bold").fontSize(9).text(aviso);
+    doc.fillColor("#000000").font("Helvetica");
+  }
   const avisoMoeda = avisoMoedaEurSeAplicavel(cotacao.moedaPlanilha, cotacao.moeda);
   if (avisoMoeda) {
     doc.moveDown(0.6);

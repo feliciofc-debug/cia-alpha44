@@ -445,6 +445,8 @@ export interface AtualizarCotacaoInput {
   origem?: string;
   destino?: string;
   benefFiscal?: Cotacao["benefFiscal"];
+  ufEmpresa?: string;
+  regimeIcms?: Cotacao["regimeIcms"];
   empresaTrade?: string;
   cliente?: string;
   cambio?: number;
@@ -489,9 +491,12 @@ function mergeIcmsAtualizacao(
   }
 
   const applied = aplicarIcmsCotacao({
-    ufEmpresa: cotacao.ufEmpresa,
+    ufEmpresa:
+      opts.ufEmpresa != null
+        ? (normalizarUf(opts.ufEmpresa) ?? cotacao.ufEmpresa ?? "AL")
+        : (cotacao.ufEmpresa ?? "AL"),
     destino: opts.destino ? (normalizarUf(opts.destino) ?? cotacao.destino) : cotacao.destino,
-    regimeIcms: cotacao.regimeIcms,
+    regimeIcms: opts.regimeIcms ?? cotacao.regimeIcms ?? "AL_DIFERIDO",
     icmsSaidaManualFlag: manualFlag,
     params,
     avisosFiscais: avisos,
@@ -529,17 +534,27 @@ export async function atualizarCotacao(id: string, state: AppState, opts: Atuali
 
   const origem = opts.origem ? (normalizarUf(opts.origem) ?? cotacao.origem) : cotacao.origem;
   const destino = opts.destino ? (normalizarUf(opts.destino) ?? cotacao.destino) : cotacao.destino;
+  const ufEmpresa =
+    opts.ufEmpresa != null
+      ? (normalizarUf(opts.ufEmpresa) ?? cotacao.ufEmpresa ?? "AL")
+      : (cotacao.ufEmpresa ?? "AL");
+  const regimeIcms = opts.regimeIcms ?? cotacao.regimeIcms ?? "AL_DIFERIDO";
   const benefFiscal = opts.benefFiscal ?? cotacao.benefFiscal;
   const empresaTrade = opts.empresaTrade !== undefined ? opts.empresaTrade.trim() : cotacao.empresaTrade;
   const cliente = opts.cliente !== undefined ? opts.cliente.trim() || "Sem cliente" : cotacao.cliente;
   const despesas = opts.despesas ?? cotacao.despesas;
   const outrasDespesasBaseBRL = opts.outrasDespesasBaseBRL ?? cotacao.outrasDespesasBaseBRL;
-  const icmsMerged = mergeIcmsAtualizacao(cotacao, opts);
+  const icmsMerged = mergeIcmsAtualizacao(
+    { ...cotacao, ufEmpresa, destino, regimeIcms },
+    opts,
+  );
 
   const atualizada: Cotacao = {
     ...cotacao,
     origem,
     destino,
+    ufEmpresa,
+    regimeIcms,
     benefFiscal,
     empresaTrade,
     cliente,
