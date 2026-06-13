@@ -45,6 +45,10 @@ model Cotacao {
   moeda                 String  @default("US$")
   /// Moeda detectada na planilha do fornecedor (P2c — ex.: EUR)
   moedaPlanilha         String?
+  /// Taxa EUR→US$ (PTAX cross venda, P2c v1.1)
+  cambioEurUsd          Decimal? @db.Decimal(12, 6)
+  cambioEurUsdData      String?
+  cambioEurUsdFonte     String?
   cambio                Decimal @db.Decimal(12, 6)
   freteTotalUS          Decimal @db.Decimal(14, 4)
   adicionaisVaUS        Decimal @default(0) @db.Decimal(14, 4)

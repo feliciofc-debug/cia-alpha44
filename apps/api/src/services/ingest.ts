@@ -12,6 +12,7 @@ import {
 import type { OcrProvider } from "../ocr/types.js";
 import type { LlmProvider } from "../llm/types.js";
 import { resolverMapearColunasPlanilha } from "../llm/resolver-mapear-colunas.js";
+import { converterLinhasEurParaUsd } from "./conversao-moeda-ingest.js";
 import { extrairTextoPdf } from "./pdf-text.js";
 
 const EXT_PLANILHA = /\.(xlsx|xls|csv)$/i;
@@ -69,7 +70,8 @@ export async function ingerirArquivo(
   if (fonte === "planilha") {
     const mapearColunasIA = llm ? resolverMapearColunasPlanilha(llm) : undefined;
     const parsed = aplicarPrecosCusto(await parseSupplierFile(bytes, { mapearColunasIA }));
-    return { arquivo: filename, fonte, ...parsed };
+    const convertido = await converterLinhasEurParaUsd(parsed);
+    return { ...convertido, arquivo: filename, fonte };
   }
 
   const avisosIngest: string[] = [];
@@ -80,11 +82,12 @@ export async function ingerirArquivo(
       const parsedNativo = parseSupplierOcrText(nativo, filename);
       if (parsedNativo.totalLinhas > 0) {
         const parsedNativoCusto = aplicarPrecosCusto(parsedNativo);
+        const convertido = await converterLinhasEurParaUsd(parsedNativoCusto);
         return {
+          ...convertido,
           arquivo: filename,
           fonte,
-          ...parsedNativoCusto,
-          avisos: ["Texto extraído do PDF (sem OCR externo).", ...parsedNativoCusto.avisos],
+          avisos: ["Texto extraído do PDF (sem OCR externo).", ...convertido.avisos],
         };
       }
       avisosIngest.push("PDF com texto nativo, mas parser não encontrou itens — tentando OCR.");
@@ -97,11 +100,12 @@ export async function ingerirArquivo(
 
   const ocrOut = await ocr.extrair(bytes, filename);
   const parsed = aplicarPrecosCusto(parseSupplierOcrText(ocrOut.texto, filename));
+  const convertido = await converterLinhasEurParaUsd(parsed);
   return {
+    ...convertido,
     arquivo: filename,
     fonte,
     ocrPaginas: ocrOut.paginas,
-    ...parsed,
-    avisos: [...avisosIngest, ...ocrOut.avisos, ...parsed.avisos],
+    avisos: [...avisosIngest, ...ocrOut.avisos, ...convertido.avisos],
   };
 }

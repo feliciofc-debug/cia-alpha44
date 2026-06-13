@@ -8,7 +8,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ResultadoCotacao } from "@cia/fiscal-engine";
 import type { Cotacao, Despesa, Item } from "@cia/shared";
-import { avisoMoedaEurSeAplicavel, aplicarIcmsCotacao, formatNcm } from "@cia/shared";
+import { avisoMoedaCotacao, aplicarIcmsCotacao, formatNcm } from "@cia/shared";
 import { totaisPesoExibicao, AVISO_PDF_BASE_DESPACHANTE_BRUTA } from "@cia/pipeline";
 import { fotosParaPdf, primeiraFotoParaPdf } from "./pdf-fotos.js";
 import { registrarFontesPdf, textoPdf, tituloFatura } from "./pdf-fonts.js";
@@ -210,7 +210,7 @@ export async function gerarPdfOrcamentoClienteModelo(payload: PayloadOrcamentoCl
     y += rh + 3;
   }
 
-  const avisoMoeda = avisoMoedaEurSeAplicavel(cotacao.moedaPlanilha, cotacao.moeda);
+  const avisoMoeda = avisoMoedaCotacao(cotacao);
   if (avisoMoeda) {
     const ah = 24;
     doc.rect(m, y, contentW, ah).fillAndStroke("#fff7ed", "#ea580c");

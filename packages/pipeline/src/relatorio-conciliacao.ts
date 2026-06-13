@@ -5,7 +5,7 @@
 import ExcelJS from "exceljs";
 import type { Cotacao, Item } from "@cia/shared";
 import {
-  avisoMoedaEurSeAplicavel,
+  avisoMoedaCotacao,
   colunasConsultadoEmExport,
   fonteExibicaoTributo,
   rastrosEfetivosItem,
@@ -341,7 +341,7 @@ export function gerarCsvConciliacao(input: RelatorioConciliacaoInput): Buffer {
 }
 
 export function metaConciliacao(input: RelatorioConciliacaoInput): [string, string | number][] {
-  const avisoMoeda = avisoMoedaEurSeAplicavel(input.cotacao.moedaPlanilha, input.cotacao.moeda);
+  const avisoMoeda = avisoMoedaCotacao(input.cotacao);
   const rows: [string, string | number][] = [
     ["Cliente", input.cotacao.cliente],
     ["Empresa trade", input.cotacao.empresaTrade ?? ""],
@@ -357,8 +357,15 @@ export function metaConciliacao(input: RelatorioConciliacaoInput): [string, stri
   if (input.cotacao.moedaPlanilha) {
     rows.splice(4, 0, ["Moeda planilha", input.cotacao.moedaPlanilha]);
   }
-  if (avisoMoeda) {
+  if (input.cotacao.cambioEurUsd != null && input.cotacao.cambioEurUsd > 0) {
     const idx = input.cotacao.moedaPlanilha ? 5 : 4;
+    rows.splice(idx, 0, ["Taxa EUR→US$", input.cotacao.cambioEurUsd]);
+    rows.splice(idx + 1, 0, ["Data PTAX EUR→US$", input.cotacao.cambioEurUsdData ?? "—"]);
+  }
+  if (avisoMoeda) {
+    let idx = 4;
+    if (input.cotacao.moedaPlanilha) idx += 1;
+    if (input.cotacao.cambioEurUsd != null && input.cotacao.cambioEurUsd > 0) idx += 2;
     rows.splice(idx, 0, ["Aviso moeda", avisoMoeda]);
   }
   return rows;

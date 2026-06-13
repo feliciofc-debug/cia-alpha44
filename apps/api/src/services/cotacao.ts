@@ -32,6 +32,8 @@ import {
   versoesClassificacaoCache,
   type ClassificacaoCacheStats,
 } from "./classificacao-cache.js";
+import { converterLinhasEurParaUsd } from "./conversao-moeda-ingest.js";
+import { normalizarMoedaCodigo } from "@cia/shared";
 
 const CLASSIFY_CONCORRENCIA = Math.min(
   6,
@@ -180,12 +182,72 @@ async function classificarEmLotes(
   return { classificados: resultados, cache: stats };
 }
 
+export interface MontarItensOpts {
+  moedaPlanilha?: string | null;
+  cambioEurUsd?: number | null;
+  cambioEurUsdData?: string | null;
+  cambioEurUsdFonte?: string | null;
+}
+
+export interface MontarItensMetaCambio {
+  cambioEurUsd?: number | null;
+  cambioEurUsdData?: string | null;
+  cambioEurUsdFonte?: string | null;
+}
+
+/** Converte linhas EUR→US$ antes do benchmark quando ainda não convertidas na ingestão. */
+async function prepararLinhasMoeda(
+  linhas: LinhaCrua[],
+  opts?: MontarItensOpts,
+): Promise<{ linhas: LinhaCrua[]; meta: MontarItensMetaCambio }> {
+  const meta: MontarItensMetaCambio = {
+    cambioEurUsd: opts?.cambioEurUsd ?? null,
+    cambioEurUsdData: opts?.cambioEurUsdData ?? null,
+    cambioEurUsdFonte: opts?.cambioEurUsdFonte ?? null,
+  };
+
+  if (normalizarMoedaCodigo(opts?.moedaPlanilha) !== "EUR") {
+    return { linhas, meta };
+  }
+
+  if (meta.cambioEurUsd != null && meta.cambioEurUsd > 0) {
+    return { linhas, meta };
+  }
+
+  const convertido = await converterLinhasEurParaUsd({
+    linhas,
+    avisos: [] as string[],
+    moedaPlanilha: opts?.moedaPlanilha ?? undefined,
+    cambioEurUsd: opts?.cambioEurUsd ?? null,
+    cambioEurUsdData: opts?.cambioEurUsdData ?? null,
+    cambioEurUsdFonte: opts?.cambioEurUsdFonte ?? null,
+  });
+
+  return {
+    linhas: convertido.linhas,
+    meta: {
+      cambioEurUsd: convertido.cambioEurUsd ?? null,
+      cambioEurUsdData: convertido.cambioEurUsdData ?? null,
+      cambioEurUsdFonte: convertido.cambioEurUsdFonte ?? null,
+    },
+  };
+}
+
 /** Converte linhas cruas do parser em itens de domínio (tradução+NCM via IA, alíquotas via TEC). */
 export async function montarItens(
   linhas: LinhaCrua[],
   state: AppState,
-): Promise<{ itens: Item[]; provider: string; classificacaoCache: ClassificacaoCacheStats }> {
-  const { linhas: linhasNorm, metas: metasFob } = preencherFobKgPlanilha(linhas, state.benchmarkIndex);
+  opts?: MontarItensOpts,
+): Promise<{
+  itens: Item[];
+  provider: string;
+  classificacaoCache: ClassificacaoCacheStats;
+  cambioEurUsd?: number | null;
+  cambioEurUsdData?: string | null;
+  cambioEurUsdFonte?: string | null;
+}> {
+  const { linhas: linhasMoeda, meta: metaCambio } = await prepararLinhasMoeda(linhas, opts);
+  const { linhas: linhasNorm, metas: metasFob } = preencherFobKgPlanilha(linhasMoeda, state.benchmarkIndex);
   const { classificados, cache: classificacaoCache } = await classificarEmLotes(state, linhasNorm);
 
   const itens: Item[] = [];
@@ -294,7 +356,14 @@ export async function montarItens(
     itens[i]!.motivoCompatibilidade = c.motivoCompatibilidade;
   }
 
-  return { itens, provider: state.provider.nome, classificacaoCache };
+  return {
+    itens,
+    provider: state.provider.nome,
+    classificacaoCache,
+    cambioEurUsd: metaCambio.cambioEurUsd,
+    cambioEurUsdData: metaCambio.cambioEurUsdData,
+    cambioEurUsdFonte: metaCambio.cambioEurUsdFonte,
+  };
 }
 
 export interface ResultadoCompleto {

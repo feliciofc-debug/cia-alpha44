@@ -232,6 +232,10 @@ export const cotacaoSchema = z.object({
   moeda: z.string().default("US$"),
   /** Moeda detectada na planilha do fornecedor (ex.: EUR). */
   moedaPlanilha: z.string().nullable().optional(),
+  /** Taxa EUR→US$ PTAX cross (P2c v1.1). */
+  cambioEurUsd: z.number().positive().nullable().optional(),
+  cambioEurUsdData: z.string().nullable().optional(),
+  cambioEurUsdFonte: z.string().nullable().optional(),
   cambio: z.number().positive(),
   freteTotalUS: z.number().nonnegative(),
   adicionaisVaUS: z.number().nonnegative().default(0),

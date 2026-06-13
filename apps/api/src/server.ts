@@ -269,7 +269,13 @@ export async function buildServer() {
       descOriginal: z.string().min(1, "descOriginal obrigatório"),
     }).passthrough();
     const body = z
-      .object({ linhas: z.array(linhaSchema).min(1, "Informe ao menos uma linha") })
+      .object({
+        linhas: z.array(linhaSchema).min(1, "Informe ao menos uma linha"),
+        moedaPlanilha: z.string().nullable().optional(),
+        cambioEurUsd: z.number().positive().nullable().optional(),
+        cambioEurUsdData: z.string().nullable().optional(),
+        cambioEurUsdFonte: z.string().nullable().optional(),
+      })
       .safeParse(req.body);
     if (!body.success) {
       return reply.status(400).send({
@@ -277,8 +283,14 @@ export async function buildServer() {
         detalhe: body.error.flatten(),
       });
     }
-    const { itens, provider, classificacaoCache } = await montarItens(body.data.linhas as unknown as LinhaCrua[], getState());
-    return { itens, provider, classificacaoCache };
+    const { itens, provider, classificacaoCache, cambioEurUsd, cambioEurUsdData, cambioEurUsdFonte } =
+      await montarItens(body.data.linhas as unknown as LinhaCrua[], getState(), {
+        moedaPlanilha: body.data.moedaPlanilha,
+        cambioEurUsd: body.data.cambioEurUsd,
+        cambioEurUsdData: body.data.cambioEurUsdData,
+        cambioEurUsdFonte: body.data.cambioEurUsdFonte,
+      });
+    return { itens, provider, classificacaoCache, cambioEurUsd, cambioEurUsdData, cambioEurUsdFonte };
   });
 
   // Cotação completa → engine fiscal + benchmark + calibragem + risco por item.

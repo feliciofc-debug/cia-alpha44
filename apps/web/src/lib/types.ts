@@ -131,6 +131,10 @@ export interface Cotacao {
   moeda: string;
   /** Moeda detectada na planilha do fornecedor (P2c — ex.: EUR). */
   moedaPlanilha?: string | null;
+  /** Taxa EUR→US$ PTAX cross (P2c v1.1). */
+  cambioEurUsd?: number | null;
+  cambioEurUsdData?: string | null;
+  cambioEurUsdFonte?: string | null;
   cambio: number;
   freteTotalUS: number;
   adicionaisVaUS: number;
@@ -214,6 +218,9 @@ export interface ParsedSheet {
   totalLinhas: number;
   avisos: string[];
   moedaPlanilha?: string;
+  cambioEurUsd?: number | null;
+  cambioEurUsdData?: string | null;
+  cambioEurUsdFonte?: string | null;
 }
 
 export type CotacaoStatus = "RASCUNHO" | "CALCULADA" | "ARQUIVADA";

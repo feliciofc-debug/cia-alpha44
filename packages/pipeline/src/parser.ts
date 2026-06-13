@@ -823,6 +823,10 @@ export interface ParsedSupplierFile {
   totalLinhas: number;
   avisos: string[];
   moedaPlanilha?: string;
+  /** P2c v1.1 — taxa EUR→US$ aplicada na ingestão (null se não convertido). */
+  cambioEurUsd?: number | null;
+  cambioEurUsdData?: string | null;
+  cambioEurUsdFonte?: string | null;
   sammelkarton?: string;
 }
 

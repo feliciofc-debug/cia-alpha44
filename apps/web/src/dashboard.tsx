@@ -20,7 +20,7 @@ import { BenchmarkReferenciaView } from "./benchmark-referencia-view.tsx";
 import { PreviewOrcamentoCliente } from "./preview-orcamento-cliente.tsx";
 import { cotacaoParaSalvar, itensParaSalvar } from "./lib/cotacao-payload.ts";
 import { pdfBloqueadoPorNcm, resumoBloqueioNcm, avisoCompatibilidadePdf, itemPodeConfirmarNcm, itemPodeDesfazerNcm, itensPendentesConfirmacaoNcm, itensResolucaoNcm, metaConfirmacaoNcm, limparConfirmacaoNcm } from "./lib/ncm.ts";
-import { avisoMoedaEurSeAplicavel } from "@cia/shared";
+import { avisoMoedaCotacao } from "@cia/shared";
 import { PdfDownloadBar } from "./pdf-download-bar.tsx";
 import { BarraResolucaoNcm } from "./barra-resolucao-ncm.tsx";
 import { aplicarOverrideManualAliquota, desfazerOverrideManualAliquota, type ChaveTributoRastro } from "@cia/shared";
@@ -303,7 +303,7 @@ function AnalisePainel({
   const ncmBloqueiaPdf = pdfBloqueadoPorNcm(itens);
   const motivoBloqueioPdf = resumoBloqueioNcm(itens);
   const avisoCompatPdf = avisoCompatibilidadePdf(itens);
-  const avisoMoedaEur = avisoMoedaEurSeAplicavel(analise.cotacao.moedaPlanilha, analise.cotacao.moeda);
+  const avisoMoedaEur = avisoMoedaCotacao(analise.cotacao);
   const icmsMeta = "icms" in analise ? analise.icms : undefined;
   const avisosFiscaisIcms =
     analise.cotacao.avisosFiscais ??
@@ -1291,7 +1291,12 @@ export function Dashboard() {
     setAnalise(null);
     setSalvaId(null);
     try {
-      const res = await api.analisar(parsed.linhas, { moedaPlanilha: parsed.moedaPlanilha });
+      const res = await api.analisar(parsed.linhas, {
+        moedaPlanilha: parsed.moedaPlanilha,
+        cambioEurUsd: parsed.cambioEurUsd,
+        cambioEurUsdData: parsed.cambioEurUsdData,
+        cambioEurUsdFonte: parsed.cambioEurUsdFonte,
+      });
       setAnalise(res);
       setEditorDraft(editorFromCotacao(res.cotacao, cliente));
     } catch (e) {

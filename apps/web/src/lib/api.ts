@@ -94,30 +94,72 @@ export const api = {
     );
   },
 
-  classificar: (linhas: ParsedSheet["linhas"]) =>
+  classificar: (
+    linhas: ParsedSheet["linhas"],
+    opts?: {
+      moedaPlanilha?: string | null;
+      cambioEurUsd?: number | null;
+      cambioEurUsdData?: string | null;
+      cambioEurUsdFonte?: string | null;
+    },
+  ) =>
     fetchComTimeout(
       `${BASE}/api/classificar`,
       {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ linhas }),
+        body: JSON.stringify({
+          linhas,
+          moedaPlanilha: opts?.moedaPlanilha ?? null,
+          cambioEurUsd: opts?.cambioEurUsd ?? null,
+          cambioEurUsdData: opts?.cambioEurUsdData ?? null,
+          cambioEurUsdFonte: opts?.cambioEurUsdFonte ?? null,
+        }),
       },
       CLASSIFY_TIMEOUT_MS,
-    ).then(handle<{ itens: Item[]; provider: string }>),
+    ).then(
+      handle<{
+        itens: Item[];
+        provider: string;
+        cambioEurUsd?: number | null;
+        cambioEurUsdData?: string | null;
+        cambioEurUsdFonte?: string | null;
+      }>,
+    ),
 
   analisar: async (
     linhas: ParsedSheet["linhas"],
-    opts?: { moedaPlanilha?: string },
+    opts?: {
+      moedaPlanilha?: string;
+      cambioEurUsd?: number | null;
+      cambioEurUsdData?: string | null;
+      cambioEurUsdFonte?: string | null;
+    },
   ): Promise<AnaliseCompleta> => {
-    const { itens, provider } = await fetchComTimeout(
+    const classificado = await fetchComTimeout(
       `${BASE}/api/classificar`,
       {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ linhas }),
+        body: JSON.stringify({
+          linhas,
+          moedaPlanilha: opts?.moedaPlanilha ?? null,
+          cambioEurUsd: opts?.cambioEurUsd ?? null,
+          cambioEurUsdData: opts?.cambioEurUsdData ?? null,
+          cambioEurUsdFonte: opts?.cambioEurUsdFonte ?? null,
+        }),
       },
       CLASSIFY_TIMEOUT_MS,
-    ).then(handle<{ itens: Item[]; provider: string }>);
+    ).then(
+      handle<{
+        itens: Item[];
+        provider: string;
+        cambioEurUsd?: number | null;
+        cambioEurUsdData?: string | null;
+        cambioEurUsdFonte?: string | null;
+      }>,
+    );
+    const { itens, provider } = classificado;
 
     const comFobPlanilha = itens.some((it) => it.fobTotalUS > 0);
     const cambio = await fetch(`${BASE}/api/cambio?moeda=USD`).then(handle<Cambio>);
@@ -131,6 +173,9 @@ export const api = {
       benefFiscal,
       moeda: "US$",
       moedaPlanilha: opts?.moedaPlanilha ?? null,
+      cambioEurUsd: classificado.cambioEurUsd ?? opts?.cambioEurUsd ?? null,
+      cambioEurUsdData: classificado.cambioEurUsdData ?? opts?.cambioEurUsdData ?? null,
+      cambioEurUsdFonte: classificado.cambioEurUsdFonte ?? opts?.cambioEurUsdFonte ?? null,
       ufEmpresa: "AL",
       regimeIcms: "AL_DIFERIDO" as const,
       icmsSaidaManualFlag: false,
