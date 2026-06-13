@@ -126,6 +126,17 @@ def cotacao_base(itens: list, moeda_planilha: str) -> dict:
     }
 
 
+def pdf_contains_aviso(buf: bytes) -> bool:
+    try:
+        from pypdf import PdfReader  # type: ignore
+
+        text = "".join((p.extract_text() or "") for p in PdfReader(io.BytesIO(buf)).pages)
+        return AVISO in text or "EUR tratados como US" in text
+    except ImportError:
+        raw = buf.decode("latin-1", errors="replace")
+        return AVISO in raw or "EUR tratados como US" in raw
+
+
 def main() -> int:
     if not os.path.isfile(XLSX):
         print(f"ERRO: fixture nao encontrada: {XLSX}")
@@ -195,10 +206,10 @@ def main() -> int:
     )
     print(f"Cabecalho XLSX: {'OK' if ok_meta else 'FALHA'} ({len(xlsx)} bytes)")
 
-    print("\n=== 4/4 PDF trade — faixa aviso EUR ===")
+    print("\n=== 4/4 PDF cliente — faixa aviso EUR ===")
     try:
         pdf = post_binary(
-            f"{base}/api/cotacoes/preview-pdf?tipo=trade",
+            f"{base}/api/cotacoes/preview-pdf?tipo=cliente",
             {
                 "cotacao": cotacao,
                 "itens": itens_calc,
@@ -211,9 +222,8 @@ def main() -> int:
         print(f"HTTP {e.code}: {e.read().decode('utf-8', errors='replace')[:800]}")
         return 1
 
-    pdf_txt = pdf.decode("latin-1", errors="replace")
-    ok_pdf = AVISO in pdf_txt or "EUR tratados como US" in pdf_txt
-    print(f"PDF trade aviso: {'OK' if ok_pdf else 'FALHA'} ({len(pdf)} bytes)")
+    ok_pdf = pdf_contains_aviso(pdf)
+    print(f"PDF cliente aviso: {'OK' if ok_pdf else 'FALHA'} ({len(pdf)} bytes)")
 
     print("\n=== RESULTADO P2c SMOKE ===")
     checks = {
