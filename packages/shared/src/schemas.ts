@@ -230,6 +230,8 @@ export const cotacaoSchema = z.object({
   cliente: z.string().default(""),
   benefFiscal: z.string().default("ALAGOAS"),
   moeda: z.string().default("US$"),
+  /** Moeda detectada na planilha do fornecedor (ex.: EUR). */
+  moedaPlanilha: z.string().nullable().optional(),
   cambio: z.number().positive(),
   freteTotalUS: z.number().nonnegative(),
   adicionaisVaUS: z.number().nonnegative().default(0),

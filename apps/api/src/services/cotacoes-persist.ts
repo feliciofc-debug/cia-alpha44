@@ -9,6 +9,7 @@ import {
   validarConfirmacaoNcmItem,
   validarConfirmacaoNcmItens,
   ncm8Limpo,
+  mesclarAvisoMoedaCotacao,
 } from "@cia/shared";
 import {
   aplicarIcmsCotacao,
@@ -182,12 +183,13 @@ export function mapRowParaDominio(row: CotacaoComRelacoes): {
 
   const params = row.params as Cotacao["params"];
 
-  const cotacao: Cotacao = {
+  const cotacao: Cotacao = mesclarAvisoMoedaCotacao({
     id: row.id,
     empresaTrade: row.empresaTrade ?? "",
     cliente: row.cliente,
     benefFiscal: row.benefFiscal as Cotacao["benefFiscal"],
     moeda: row.moeda,
+    moedaPlanilha: row.moedaPlanilha ?? undefined,
     cambio: num(row.cambio),
     freteTotalUS: num(row.freteTotalUS),
     adicionaisVaUS: num(row.adicionaisVaUS),
@@ -207,7 +209,7 @@ export function mapRowParaDominio(row: CotacaoComRelacoes): {
     outrasDespesasBaseBRL: numOrNull(row.outrasDespesasBaseBRL) ?? undefined,
     params,
     criadoEm: row.criadoEm.toISOString(),
-  };
+  });
 
   return {
     cotacao,
@@ -226,7 +228,8 @@ export interface SalvarCotacaoInput {
 export async function salvarCotacao(input: SalvarCotacaoInput) {
   if (!dbAtivo()) throw new PersistenciaIndisponivelError();
 
-  const { cotacao, itens, resultado } = input;
+  const cotacao = mesclarAvisoMoedaCotacao(input.cotacao);
+  const { itens, resultado } = input;
   const tid = await tenantId();
   const canal = canalPredominante(itens);
 
@@ -237,6 +240,7 @@ export async function salvarCotacao(input: SalvarCotacaoInput) {
       cliente: cotacao.cliente?.trim() || "Sem cliente",
       benefFiscal: cotacao.benefFiscal,
       moeda: cotacao.moeda,
+      moedaPlanilha: cotacao.moedaPlanilha ?? null,
       cambio: cotacao.cambio,
       freteTotalUS: cotacao.freteTotalUS,
       adicionaisVaUS: cotacao.adicionaisVaUS,

@@ -1,6 +1,7 @@
 import { despesasParaContainers, outrasDespesasBaseParaContainers, DEFAULT_FRETE_US, DEFAULT_SISCOMEX_BRL } from "./despesas.ts";
 import { icmsSaidaParaDestino } from "./icms-uf.ts";
 import { PdfDownloadError, type ItemInvalidoPdf } from "./pdf-erro.ts";
+import { mesclarAvisoMoedaCotacao } from "@cia/shared";
 import type {
   Cotacao,
   CotacaoLista,
@@ -101,7 +102,10 @@ export const api = {
       CLASSIFY_TIMEOUT_MS,
     ).then(handle<{ itens: Item[]; provider: string }>),
 
-  analisar: async (linhas: ParsedSheet["linhas"]): Promise<AnaliseCompleta> => {
+  analisar: async (
+    linhas: ParsedSheet["linhas"],
+    opts?: { moedaPlanilha?: string },
+  ): Promise<AnaliseCompleta> => {
     const { itens, provider } = await fetchComTimeout(
       `${BASE}/api/classificar`,
       {
@@ -118,11 +122,12 @@ export const api = {
     const origem = "RJ";
     const destino = "SP";
     const qtdContainers = 1;
-    const cotacao: Cotacao = {
+    const cotacao = mesclarAvisoMoedaCotacao({
       empresaTrade: "Alpha 44",
       cliente: "Análise importação",
       benefFiscal,
       moeda: "US$",
+      moedaPlanilha: opts?.moedaPlanilha ?? null,
       cambio: cambio.cotacaoVenda ?? 5.2,
       freteTotalUS: DEFAULT_FRETE_US,
       adicionaisVaUS: 0,
@@ -147,7 +152,7 @@ export const api = {
         ipiTetoAliqMedia: 0.15,
         icmsEntrada: 0,
       },
-    };
+    });
     const { resultado, itens: itensCalc } = await fetchComTimeout(
       `${BASE}/api/calcular`,
       {

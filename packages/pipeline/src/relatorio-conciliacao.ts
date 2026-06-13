@@ -5,6 +5,7 @@
 import ExcelJS from "exceljs";
 import type { Cotacao, Item } from "@cia/shared";
 import {
+  avisoMoedaEurSeAplicavel,
   colunasConsultadoEmExport,
   fonteExibicaoTributo,
   rastrosEfetivosItem,
@@ -339,16 +340,13 @@ export function gerarCsvConciliacao(input: RelatorioConciliacaoInput): Buffer {
   return Buffer.from("\uFEFF" + body, "utf8");
 }
 
-export async function gerarXlsxConciliacao(input: RelatorioConciliacaoInput): Promise<Buffer> {
-  const wb = new ExcelJS.Workbook();
-  wb.creator = "CIA Alpha 44";
-  wb.created = input.geradoEm ?? new Date();
-
-  const shMeta = wb.addWorksheet("Cabecalho");
-  const metaRows: [string, string | number][] = [
+export function metaConciliacao(input: RelatorioConciliacaoInput): [string, string | number][] {
+  const avisoMoeda = avisoMoedaEurSeAplicavel(input.cotacao.moedaPlanilha, input.cotacao.moeda);
+  const rows: [string, string | number][] = [
     ["Cliente", input.cotacao.cliente],
     ["Empresa trade", input.cotacao.empresaTrade ?? ""],
     ["Provider", input.provider ?? "—"],
+    ["Moeda cotação", input.cotacao.moeda],
     ["Câmbio", input.cotacao.cambio],
     ["Frete US$", input.cotacao.freteTotalUS],
     ["Incoterm", input.cotacao.incoterm],
@@ -356,6 +354,23 @@ export async function gerarXlsxConciliacao(input: RelatorioConciliacaoInput): Pr
     ["Rota", `${input.cotacao.origem} → ${input.cotacao.destino}`],
     ["Itens", input.itens.length],
   ];
+  if (input.cotacao.moedaPlanilha) {
+    rows.splice(4, 0, ["Moeda planilha", input.cotacao.moedaPlanilha]);
+  }
+  if (avisoMoeda) {
+    const idx = input.cotacao.moedaPlanilha ? 5 : 4;
+    rows.splice(idx, 0, ["Aviso moeda", avisoMoeda]);
+  }
+  return rows;
+}
+
+export async function gerarXlsxConciliacao(input: RelatorioConciliacaoInput): Promise<Buffer> {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "CIA Alpha 44";
+  wb.created = input.geradoEm ?? new Date();
+
+  const shMeta = wb.addWorksheet("Cabecalho");
+  const metaRows = metaConciliacao(input);
   shMeta.addRows([["Campo", "Valor"], ...metaRows]);
 
   const colunas = colunasConciliacao(input.itens);

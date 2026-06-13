@@ -8,7 +8,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ResultadoCotacao } from "@cia/fiscal-engine";
 import type { Cotacao, Despesa, Item } from "@cia/shared";
-import { formatNcm } from "@cia/shared";
+import { avisoMoedaEurSeAplicavel, formatNcm } from "@cia/shared";
 import { totaisPesoExibicao, AVISO_PDF_BASE_DESPACHANTE_BRUTA } from "@cia/pipeline";
 import { fotosParaPdf, primeiraFotoParaPdf } from "./pdf-fotos.js";
 import { registrarFontesPdf, textoPdf, tituloFatura } from "./pdf-fonts.js";
@@ -198,6 +198,17 @@ export async function gerarPdfOrcamentoClienteModelo(payload: PayloadOrcamentoCl
   headerCell(doc, porto, m + contentW * 0.28, y + 5, contentW * 0.4, { color: "#1d4ed8", align: "center" });
   headerCell(doc, "ESTIMATIVA", m + contentW * 0.68, y + 5, contentW * 0.28, { color: "#dc2626", align: "right" });
   y += barH + 6;
+
+  const avisoMoeda = avisoMoedaEurSeAplicavel(cotacao.moedaPlanilha, cotacao.moeda);
+  if (avisoMoeda) {
+    const ah = 24;
+    doc.rect(m, y, contentW, ah).fillAndStroke("#fff7ed", "#ea580c");
+    doc.fillColor("#9a3412").fontSize(7.5).font("Helvetica-Bold").text(avisoMoeda, m + 6, y + 8, {
+      width: contentW - 12,
+    });
+    doc.fillColor("#000000");
+    y += ah + 4;
+  }
 
   const b1h = 58;
   strokeBox(doc, m, y, contentW, b1h);

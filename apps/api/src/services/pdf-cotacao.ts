@@ -3,7 +3,7 @@
 import PDFDocument from "pdfkit";
 import type { ResultadoCotacao } from "@cia/fiscal-engine";
 import type { Cotacao, Item } from "@cia/shared";
-import { formatNcm } from "@cia/shared";
+import { avisoMoedaEurSeAplicavel, formatNcm } from "@cia/shared";
 import { extrairResumoFinanceiro } from "../lib/financeiro.js";
 import type { NcmCatalog } from "@cia/pipeline";
 import { auditarNcmsParaPdf } from "./validar-ncm-pdf.js";
@@ -103,6 +103,12 @@ function gerarPdfTrade(payload: PayloadPdf): Promise<Buffer> {
   linha(doc, "Markup", pct(cotacao.params.markupPct));
   linha(doc, "ICMS saída", pct(cotacao.params.icmsSaida));
   linha(doc, "Data", fmtData(criadoEm));
+  const avisoMoeda = avisoMoedaEurSeAplicavel(cotacao.moedaPlanilha, cotacao.moeda);
+  if (avisoMoeda) {
+    doc.moveDown(0.6);
+    doc.fillColor("#c2410c").font("Helvetica-Bold").fontSize(10).text(avisoMoeda);
+    doc.fillColor("#000000").font("Helvetica");
+  }
   doc.moveDown(1);
 
   if (f) {

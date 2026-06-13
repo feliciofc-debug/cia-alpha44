@@ -1,9 +1,11 @@
 import { describe, it, expect } from "vitest";
+import { AVISO_MOEDA_EUR_V1 } from "@cia/shared";
 import { confiancaNcmFinal } from "../src/confianca-ncm.js";
 import {
   FONTE_ALIQUOTA_TEC_PADRAO,
   fonteAliquotaItem,
   gerarCsvConciliacao,
+  metaConciliacao,
   montarLinhasConciliacao,
   nomeArquivoConciliacao,
   totaisConciliacao,
@@ -52,6 +54,44 @@ describe("confiancaNcmFinal", () => {
 });
 
 describe("relatorio-conciliacao", () => {
+  it("meta conciliação — moeda planilha EUR + aviso v1", () => {
+    const meta = metaConciliacao({
+      cotacao: {
+        cliente: "DE Packliste",
+        empresaTrade: "Alpha 44",
+        benefFiscal: "ALAGOAS",
+        moeda: "US$",
+        moedaPlanilha: "EUR",
+        cambio: 5.2,
+        freteTotalUS: 0,
+        adicionaisVaUS: 0,
+        reducaoBaseUS: 0,
+        siscomex: 0,
+        antidumpingBRL: 0,
+        incoterm: "CFR",
+        origem: "RJ",
+        destino: "SP",
+        itens: [],
+        despesas: [],
+        params: {
+          markupPct: 0.06,
+          pisSaida: 0.0165,
+          cofinsSaida: 0.076,
+          icmsSaida: 0.04,
+          csllSobreMarkup: 0.09,
+          irrfAliq: 0.25,
+          irrfBaseNotaPct: 0.027,
+          ipiTetoAliqMedia: 0.15,
+          icmsEntrada: 0,
+        },
+      },
+      itens: [],
+      provider: "anthropic",
+    });
+    expect(meta.find(([k]) => k === "Moeda planilha")?.[1]).toBe("EUR");
+    expect(meta.find(([k]) => k === "Aviso moeda")?.[1]).toBe(AVISO_MOEDA_EUR_V1);
+  });
+
   it("exporta ncmConfianca do item, não candidatos[0]", () => {
     const itens = [
       itemBase({

@@ -3,6 +3,7 @@
  */
 
 import * as XLSX from "xlsx";
+import { avisoMoedaEurSeAplicavel } from "@cia/shared";
 
 export interface MetadadosPlanilha {
   moeda?: string;
@@ -51,7 +52,5 @@ export function extrairMetadadosWorkbook(wb: XLSX.WorkBook): MetadadosPlanilha {
 }
 
 export function avisoMoedaPlanilha(moedaPlanilha: string, moedaCotacao = "US$"): string | null {
-  const norm = (m: string) => m.replace(/\s/g, "").toUpperCase();
-  if (norm(moedaPlanilha) === norm(moedaCotacao)) return null;
-  return `Moeda da planilha (${moedaPlanilha}) difere da moeda da cotação (${moedaCotacao}) — valores importados não foram convertidos; ajuste manualmente ou altere a moeda da cotação.`;
+  return avisoMoedaEurSeAplicavel(moedaPlanilha, moedaCotacao);
 }

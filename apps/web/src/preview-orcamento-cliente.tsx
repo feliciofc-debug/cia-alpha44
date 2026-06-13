@@ -128,6 +128,7 @@ export function PreviewOrcamentoCliente({
   pdfBloqueado = false,
   motivoBloqueioPdf,
   avisoCompatibilidade,
+  avisoMoeda,
   qtdPendenciasNcm = 0,
   onIrParaResolucaoNcm,
 }: {
@@ -144,6 +145,8 @@ export function PreviewOrcamentoCliente({
   motivoBloqueioPdf?: string;
   /** Aviso não bloqueante — incompatibilidade semântica produto × NCM. */
   avisoCompatibilidade?: string | null;
+  /** P2c — planilha EUR tratada como US$ sem conversão. */
+  avisoMoeda?: string | null;
   qtdPendenciasNcm?: number;
   onIrParaResolucaoNcm?: () => void;
 }) {
@@ -181,6 +184,11 @@ export function PreviewOrcamentoCliente({
       {avisoCompatibilidade && (
         <div className="border-b border-orange-400 bg-orange-50 px-4 py-2 text-[11px] font-semibold text-orange-900">
           {avisoCompatibilidade}
+        </div>
+      )}
+      {avisoMoeda && (
+        <div className="border-b-2 border-orange-500 bg-orange-100 px-4 py-2.5 text-[11px] font-bold text-orange-950">
+          {avisoMoeda}
         </div>
       )}
       <div className="p-4 sm:p-5">

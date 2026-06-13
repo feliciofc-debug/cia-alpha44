@@ -20,6 +20,7 @@ import { BenchmarkReferenciaView } from "./benchmark-referencia-view.tsx";
 import { PreviewOrcamentoCliente } from "./preview-orcamento-cliente.tsx";
 import { cotacaoParaSalvar, itensParaSalvar } from "./lib/cotacao-payload.ts";
 import { pdfBloqueadoPorNcm, resumoBloqueioNcm, avisoCompatibilidadePdf, itemPodeConfirmarNcm, itemPodeDesfazerNcm, itensPendentesConfirmacaoNcm, itensResolucaoNcm, metaConfirmacaoNcm, limparConfirmacaoNcm } from "./lib/ncm.ts";
+import { avisoMoedaEurSeAplicavel } from "@cia/shared";
 import { PdfDownloadBar } from "./pdf-download-bar.tsx";
 import { BarraResolucaoNcm } from "./barra-resolucao-ncm.tsx";
 import { aplicarOverrideManualAliquota, desfazerOverrideManualAliquota, type ChaveTributoRastro } from "@cia/shared";
@@ -298,6 +299,7 @@ function AnalisePainel({
   const ncmBloqueiaPdf = pdfBloqueadoPorNcm(itens);
   const motivoBloqueioPdf = resumoBloqueioNcm(itens);
   const avisoCompatPdf = avisoCompatibilidadePdf(itens);
+  const avisoMoedaEur = avisoMoedaEurSeAplicavel(analise.cotacao.moedaPlanilha, analise.cotacao.moeda);
   const provider = (analise as { provider?: string | null }).provider ?? "—";
   const canais = resumoCanais(itens);
   const financeiro =
@@ -612,6 +614,15 @@ function AnalisePainel({
         {analise.avisoFiscal && <p className="mt-2 text-sm text-amber-300">{analise.avisoFiscal}</p>}
       </div>
 
+      {avisoMoedaEur && (
+        <div
+          role="alert"
+          className="rounded-xl border-2 border-orange-500/60 bg-orange-500/15 px-4 py-3 text-sm font-semibold text-orange-100"
+        >
+          {avisoMoedaEur}
+        </div>
+      )}
+
       {(ncmBloqueiaPdf || avisoCompatPdf || qtdResolucao > 0) && (
         <div className="space-y-2">
           {ncmBloqueiaPdf && (
@@ -712,6 +723,7 @@ function AnalisePainel({
             pdfBloqueado={ncmBloqueiaPdf}
             motivoBloqueioPdf={motivoBloqueioPdf}
             avisoCompatibilidade={avisoCompatPdf}
+            avisoMoeda={avisoMoedaEur}
             qtdPendenciasNcm={qtdResolucao}
             onIrParaResolucaoNcm={onIrParaResolucaoNcm ?? irParaResolucaoNcm}
           />
@@ -1190,7 +1202,7 @@ export function Dashboard() {
     setAnalise(null);
     setSalvaId(null);
     try {
-      const res = await api.analisar(parsed.linhas);
+      const res = await api.analisar(parsed.linhas, { moedaPlanilha: parsed.moedaPlanilha });
       setAnalise(res);
       setEditorDraft(editorFromCotacao(res.cotacao, cliente));
     } catch (e) {

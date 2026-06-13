@@ -4,7 +4,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import { z } from "zod";
-import { cotacaoSchema, listarUfsFiscais } from "@cia/shared";
+import { cotacaoSchema, listarUfsFiscais, mesclarAvisoMoedaCotacao } from "@cia/shared";
 import type { LinhaCrua } from "@cia/pipeline";
 import { getState, recarregarNcmCatalog, recarregarComexBenchmark } from "./state.js";
 import { buscarCambioPtax } from "./services/cambio.js";
@@ -285,9 +285,10 @@ export async function buildServer() {
   app.post("/api/calcular", async (req, reply) => {
     const parsed = cotacaoSchema.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ erro: "Cotação inválida", detalhe: parsed.error.flatten() });
-    const { resultado, itens, icms, params } = calcularCotacao(parsed.data, getState());
-    const avisosFiscais = parsed.data.avisosFiscais ?? icms.avisosFiscais ?? [];
-    return { resultado, itens, icms, avisosFiscais, params };
+    const cotacao = mesclarAvisoMoedaCotacao(parsed.data);
+    const { resultado, itens, icms, params } = calcularCotacao(cotacao, getState());
+    const avisosFiscais = cotacao.avisosFiscais ?? icms.avisosFiscais ?? [];
+    return { resultado, itens, icms, avisosFiscais, params, moedaPlanilha: cotacao.moedaPlanilha ?? null };
   });
 
   const salvarBody = z.object({

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { AVISO_MOEDA_EUR_V1 } from "@cia/shared";
 import { parsePlanilhaBuffer, parseSupplierFile } from "../src/parser.js";
 
 const fixture = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "packliste-DE-2026-0815.xlsx");
@@ -15,7 +16,7 @@ describe("packliste DE 2026-0815", () => {
     expect(parsed.linhas).toHaveLength(14);
     expect(parsed.moedaPlanilha).toBe("EUR");
     expect(parsed.sammelkarton).toBe("999");
-    expect(parsed.avisos.some((a) => a.includes("EUR") && a.includes("US$"))).toBe(true);
+    expect(parsed.avisos).toContain(AVISO_MOEDA_EUR_V1);
 
     const descCol = parsed.colunas.find((c) => c.tipo === "descricao");
     expect(descCol?.header).toMatch(/Warenbezeichnung/i);

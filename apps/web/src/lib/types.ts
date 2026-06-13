@@ -117,6 +117,8 @@ export interface Cotacao {
   cliente: string;
   benefFiscal: BeneficioFiscal | string;
   moeda: string;
+  /** Moeda detectada na planilha do fornecedor (P2c — ex.: EUR). */
+  moedaPlanilha?: string | null;
   cambio: number;
   freteTotalUS: number;
   adicionaisVaUS: number;
@@ -131,6 +133,10 @@ export interface Cotacao {
   qtdContainers?: number;
   outrasDespesasBaseBRL?: number;
   params: ParamsSaida;
+  avisosFiscais?: string[];
+  ufEmpresa?: string;
+  regimeIcms?: "NORMAL" | "AL_DIFERIDO";
+  icmsSaidaManualFlag?: boolean;
 }
 
 export interface ItemResult {
@@ -195,6 +201,7 @@ export interface ParsedSheet {
   linhas: LinhaCrua[];
   totalLinhas: number;
   avisos: string[];
+  moedaPlanilha?: string;
 }
 
 export type CotacaoStatus = "RASCUNHO" | "CALCULADA" | "ARQUIVADA";
