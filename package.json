@@ -15,7 +15,7 @@
     "test": "npm run test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "build:api": "npm run build -w @cia/shared -w @cia/fiscal-engine -w @cia/pipeline -w @cia/db -w @cia/api",
-    "build:web": "npm run build -w @cia/web",
+    "build:web": "npm run build -w @cia/shared && npm run build -w @cia/web",
     "start:api": "npm run start -w @cia/api",
     "engine:test": "npm run test -w @cia/fiscal-engine",
     "db:generate": "npm run db:generate -w @cia/db",
