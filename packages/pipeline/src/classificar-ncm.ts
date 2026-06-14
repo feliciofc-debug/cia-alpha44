@@ -25,6 +25,7 @@ export {
   detectarFamilia,
   detectarFamilias,
   avisoConflitoFamilias,
+  textoDeteccaoFamilia,
   ncmCoerenteComFamilia,
   ncmCoerenteComPrefixo,
   prefixosDasFamilias,

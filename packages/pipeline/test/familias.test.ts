@@ -13,6 +13,7 @@ import {
   ncmCoerenteComPrefixo,
   prefixosDasFamilias,
   resolveNcm,
+  textoDeteccaoFamilia,
 } from "../src/index.js";
 
 const catalog = criarNcmCatalog(loadNcmVigente());
@@ -203,5 +204,19 @@ describe("familias — guard-rail não decide NCM-8", () => {
     const cands = montarCandidatosPasse1(catalog, "Garrafa térmica inox 500ml");
     expect(cands.some((c) => c.posicao4 === "9617")).toBe(true);
     expect(cands.length).toBeGreaterThan(1);
+  });
+
+  it("textoDeteccaoFamilia: 滑板车 + Scooter PT sem elétrico → candidatos 8711", () => {
+    const descOriginal = "ES-T19A-10BLK — 滑板车T1 MAX 10寸500W款（黑色）";
+    const descPt = "ES-T19A-10BLK — Scooter T1 MAX 10 polegadas 500W (Preto)";
+    const detTexto = textoDeteccaoFamilia(descOriginal, descPt);
+    const det = detectarFamilias({ descOriginal: detTexto, uso: "骑行" });
+    expect(det.familias.some((f) => f.familia.id === "veiculo_leve_eletrico")).toBe(true);
+    const cands = montarCandidatosPasse1(catalog, descPt, null, 25, {
+      descOriginal: detTexto,
+      uso: "骑行",
+    });
+    expect(cands.length).toBeGreaterThan(0);
+    expect(cands.some((c) => c.posicao4.startsWith("8711"))).toBe(true);
   });
 });

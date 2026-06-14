@@ -259,9 +259,11 @@ export async function montarItens(
       ncmPlanilha: l.ncm,
       candidatosIa: candidatosBrutos,
       descOriginal: l.descOriginal,
+      descPt: c?.descPt,
       uso: l.uso,
       descricao: textoClassificacaoIa({
-        descOriginal: c?.descPt || l.descOriginal,
+        descOriginal: l.descOriginal,
+        descPt: c?.descPt,
         material: l.material,
         uso: l.uso,
       }),

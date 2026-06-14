@@ -25,6 +25,14 @@ function normalizarInput(input: string | DetectarFamiliasInput): DetectarFamilia
   return input;
 }
 
+/** descOriginal (fonte) + descPt (reforço) — família não depende só da tradução instável. */
+export function textoDeteccaoFamilia(descOriginal: string, descPt?: string | null): string {
+  const orig = descOriginal.trim();
+  const pt = descPt?.trim();
+  if (!pt || pt === orig) return orig;
+  return `${orig} ${pt}`;
+}
+
 function matchFamilia(descricao: string, familia: FamiliaProduto): string | null {
   const m = descricao.match(familia.re);
   if (!m) return null;

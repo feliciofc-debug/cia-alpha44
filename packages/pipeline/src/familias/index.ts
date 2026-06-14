@@ -4,6 +4,7 @@ export {
   detectarFamilia,
   detectarFamilias,
   avisoConflitoFamilias,
+  textoDeteccaoFamilia,
   type DetectarFamiliasInput,
 } from "./detectar.js";
 export {

@@ -48,6 +48,21 @@ describe("resolveNcm — partes genéricas (item 3a)", () => {
     expect(r.fonte).toBe("ia");
     expect(r.ncm).toBe("90319090");
   });
+
+  it("fallback Siscomex usa descOriginal (滑板车) quando textoClassificacaoIa não encontra", () => {
+    const descOriginal = "ES-T19A-10BLK — 滑板车T1 MAX 10寸500W款（黑色）";
+    const descPt = "Scooter T1 MAX 10 polegadas 500W";
+    const descricao = `${descOriginal} · Tradução PT: ${descPt} · Material: 铁 · Uso: 骑行`;
+    const r = resolveNcm(catalog, {
+      descOriginal,
+      descPt,
+      uso: "骑行",
+      descricao,
+      candidatosIa: [],
+    });
+    expect(r.ncm).toBe("87116000");
+    expect(r.fonte).toBe("siscomex");
+  });
 });
 
 describe("família pecas_veiculo_leve (item 3c)", () => {

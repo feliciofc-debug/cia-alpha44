@@ -12,6 +12,7 @@ import {
   MIN_SCORE_BUSCA_NCM,
   ncmCoerenteComFamilia,
   prefixoBuscaPrincipal,
+  textoDeteccaoFamilia,
   type FamiliaProduto,
 } from "./classificar-ncm.js";
 import type { NcmCatalog } from "./ncm-catalog.js";
@@ -25,8 +26,10 @@ export interface ResolveNcmInput {
   candidatosIa?: NcmCandidato[];
   /** Texto enriquecido para busca Siscomex (pode incluir material/uso). */
   descricao?: string | null;
-  /** Descrição da planilha — única base para detecção de família (sem material). */
+  /** Descrição da planilha — fonte de verdade para família e fallback Siscomex. */
   descOriginal?: string | null;
+  /** Tradução PT (reforço na busca; não substitui descOriginal). */
+  descPt?: string | null;
   uso?: string | null;
 }
 
@@ -72,6 +75,13 @@ function iaIncoerenteAceitavel(ncm: string, familia: FamiliaProduto): boolean {
 
 const CONFIANCA_IA_MINIMA = 0.6;
 const AVISO_CLASSIFICACAO_PENDENTE = "Classificação pendente — revisar";
+
+/** Busca Siscomex: descOriginal (fonte) + descPt (reforço), não só textoClassificacaoIa. */
+function textoBuscaSiscomexFallback(input: ResolveNcmInput): string {
+  const orig = (input.descOriginal ?? "").trim();
+  if (orig) return textoDeteccaoFamilia(orig, input.descPt);
+  return (input.descricao ?? "").trim();
+}
 
 function candidatosDeBusca(
   catalog: NcmCatalog,
@@ -155,9 +165,10 @@ function escolherSubstituto(
     return { ncm: escolhaIa.ncm, fonte: "ia", candidatos: validosRaw };
   }
 
-  const desc = enriquecerTextoClassificacao(input.descricao ?? "", familia);
+  const textoBusca = textoBuscaSiscomexFallback(input);
+  const desc = enriquecerTextoClassificacao(textoBusca, familia);
   const siscomex = familia
-    ? candidatosSiscomexPorDescricao(catalog, input.descricao ?? "", familia)
+    ? candidatosSiscomexPorDescricao(catalog, textoBusca, familia)
     : candidatosDeBusca(catalog, desc, cap);
 
   if (siscomex[0]) return { ncm: siscomex[0].ncm, fonte: "siscomex", candidatos: siscomex };
@@ -169,7 +180,7 @@ function escolherSubstituto(
 export function resolveNcm(catalog: NcmCatalog, input: ResolveNcmInput): ResolveNcmResult {
   const avisos: string[] = [];
   const deteccao = detectarFamilias({
-    descOriginal: input.descOriginal ?? input.descricao ?? "",
+    descOriginal: textoDeteccaoFamilia(input.descOriginal ?? "", input.descPt),
     uso: input.uso,
   });
   const familia = deteccao.conflito ? null : (deteccao.familias[0]?.familia ?? null);
@@ -221,7 +232,7 @@ export function resolveNcm(catalog: NcmCatalog, input: ResolveNcmInput): Resolve
       avisos,
       ncmCandidatos: candidatosValidos.length
         ? candidatosValidos
-        : candidatosSiscomexPorDescricao(catalog, input.descricao ?? "", familia),
+        : candidatosSiscomexPorDescricao(catalog, textoBuscaSiscomexFallback(input), familia),
     };
   }
 

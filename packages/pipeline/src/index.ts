@@ -144,6 +144,7 @@ export {
   detectarFamilia,
   detectarFamilias,
   avisoConflitoFamilias,
+  textoDeteccaoFamilia,
   candidatosSiscomexPorDescricao,
   validarNcmItem,
   ncmCoerenteComFamilia,
