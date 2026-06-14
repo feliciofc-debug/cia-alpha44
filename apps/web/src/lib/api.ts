@@ -1,6 +1,7 @@
 import { despesasParaContainers, outrasDespesasBaseParaContainers, DEFAULT_FRETE_US, DEFAULT_SISCOMEX_BRL } from "./despesas.ts";
 import { icmsSaidaParaDestino } from "./icms-uf.ts";
 import { PdfDownloadError, type ItemInvalidoPdf } from "./pdf-erro.ts";
+import { withAuthHeaders } from "./auth-fetch.ts";
 import { mesclarAvisoMoedaCotacao } from "@cia/shared";
 import type {
   Cotacao,
@@ -40,7 +41,9 @@ const SALVAR_TIMEOUT_MS = 180_000;
 function fetchComTimeout(url: string, init: RequestInit, ms: number) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), ms);
-  return fetch(url, { ...init, signal: ctrl.signal }).finally(() => clearTimeout(timer));
+  return withAuthHeaders(init)
+    .then((merged) => fetch(url, { ...merged, signal: ctrl.signal }))
+    .finally(() => clearTimeout(timer));
 }
 
 async function handle<T>(res: Response): Promise<T> {
@@ -162,7 +165,9 @@ export const api = {
     const { itens, provider } = classificado;
 
     const comFobPlanilha = itens.some((it) => it.fobTotalUS > 0);
-    const cambio = await fetch(`${BASE}/api/cambio?moeda=USD`).then(handle<Cambio>);
+    const cambio = await withAuthHeaders({}).then((h) =>
+      fetch(`${BASE}/api/cambio?moeda=USD`, h).then(handle<Cambio>),
+    );
     const benefFiscal = "ALAGOAS";
     const origem = "RJ";
     const destino = "SP";
@@ -260,13 +265,17 @@ export const api = {
   relatorioFaturamento: (ano: number, mes?: number) => {
     const params = new URLSearchParams({ ano: String(ano) });
     if (mes != null) params.set("mes", String(mes));
-    return fetch(`${BASE}/api/dashboard/relatorio?${params}`).then(handle<RelatorioFaturamento>);
+    return withAuthHeaders({}).then((h) =>
+      fetch(`${BASE}/api/dashboard/relatorio?${params}`, h).then(handle<RelatorioFaturamento>),
+    );
   },
 
   baixarRelatorioFaturamentoPdf: async (ano: number, mes?: number) => {
     const params = new URLSearchParams({ ano: String(ano) });
     if (mes != null) params.set("mes", String(mes));
-    const res = await fetch(`${BASE}/api/dashboard/relatorio/pdf?${params}`);
+    const res = await withAuthHeaders({}).then((h) =>
+      fetch(`${BASE}/api/dashboard/relatorio/pdf?${params}`, h),
+    );
     const slug = mes != null ? `${ano}-${String(mes).padStart(2, "0")}` : String(ano);
     return api.baixarPdfBlob(res, `cia-faturamento-${slug}.pdf`);
   },
@@ -296,63 +305,71 @@ export const api = {
     ).then(handle<CotacaoSalva>),
 
   duplicarCotacao: (id: string, opts?: { markupPct?: number; cliente?: string }) =>
-    fetch(`${BASE}/api/cotacoes/${id}/duplicar`, {
+    withAuthHeaders({
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(opts ?? {}),
-    }).then(handle<CotacaoSalva>),
+    }).then((h) => fetch(`${BASE}/api/cotacoes/${id}/duplicar`, h).then(handle<CotacaoSalva>)),
 
   excluirCotacao: (id: string) =>
-    fetch(`${BASE}/api/cotacoes/${id}`, { method: "DELETE" }).then(handle<{ ok: true }>),
+    withAuthHeaders({ method: "DELETE" }).then((h) =>
+      fetch(`${BASE}/api/cotacoes/${id}`, h).then(handle<{ ok: true }>),
+    ),
 
   calcular: (cotacao: Cotacao) =>
-    fetch(`${BASE}/api/calcular`, {
+    withAuthHeaders({
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(cotacao),
-    }).then(
-      handle<{
-        resultado: ResultadoCotacao;
-        itens: Item[];
-        icms: IcmsCotacaoMeta;
-        avisosFiscais: string[];
-        params: Cotacao["params"];
-      }>,
+    }).then((h) =>
+      fetch(`${BASE}/api/calcular`, h).then(
+        handle<{
+          resultado: ResultadoCotacao;
+          itens: Item[];
+          icms: IcmsCotacaoMeta;
+          avisosFiscais: string[];
+          params: Cotacao["params"];
+        }>,
+      ),
     ),
 
   atualizarCotacao: (id: string, opts: Record<string, unknown>) =>
-    fetch(`${BASE}/api/cotacoes/${id}`, {
+    withAuthHeaders({
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(opts),
-    }).then(handle<CotacaoSalva>),
+    }).then((h) => fetch(`${BASE}/api/cotacoes/${id}`, h).then(handle<CotacaoSalva>)),
 
   confirmarNcmItem: (cotacaoId: string, ordem: number, confirmadoPor?: string) =>
-    fetch(`${BASE}/api/cotacoes/${cotacaoId}/itens/${ordem}/confirmar-ncm`, {
+    withAuthHeaders({
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(confirmadoPor ? { confirmadoPor } : {}),
-    }).then(handle<CotacaoSalva>),
+    }).then((h) =>
+      fetch(`${BASE}/api/cotacoes/${cotacaoId}/itens/${ordem}/confirmar-ncm`, h).then(handle<CotacaoSalva>),
+    ),
 
   desfazerNcmItem: (cotacaoId: string, ordem: number) =>
-    fetch(`${BASE}/api/cotacoes/${cotacaoId}/itens/${ordem}/desfazer-ncm`, {
-      method: "POST",
-    }).then(handle<CotacaoSalva>),
+    withAuthHeaders({ method: "POST" }).then((h) =>
+      fetch(`${BASE}/api/cotacoes/${cotacaoId}/itens/${ordem}/desfazer-ncm`, h).then(handle<CotacaoSalva>),
+    ),
 
   alterarNcmItem: (cotacaoId: string, ordem: number, ncm: string) =>
-    fetch(`${BASE}/api/cotacoes/${cotacaoId}/itens/${ordem}/ncm`, {
+    withAuthHeaders({
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ ncm }),
-    }).then(handle<CotacaoSalva>),
+    }).then((h) =>
+      fetch(`${BASE}/api/cotacoes/${cotacaoId}/itens/${ordem}/ncm`, h).then(handle<CotacaoSalva>),
+    ),
 
   /** @deprecated use atualizarCotacao */
   atualizarFiscal: (id: string, opts: Record<string, unknown>) =>
-    fetch(`${BASE}/api/cotacoes/${id}/fiscal`, {
+    withAuthHeaders({
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(opts),
-    }).then(handle<CotacaoSalva>),
+    }).then((h) => fetch(`${BASE}/api/cotacoes/${id}/fiscal`, h).then(handle<CotacaoSalva>)),
 
   baixarPdfBlob: async (res: Response, fallback: string) => {
     if (!res.ok) {
@@ -480,9 +497,11 @@ export const api = {
   },
 
   listarUfs: (benefFiscal = "ALAGOAS") =>
-    fetch(`${BASE}/api/fiscal/ufs?benefFiscal=${encodeURIComponent(benefFiscal)}`).then(
-      handle<{
-        ufs: { sigla: string; nome: string; icmsInterno: number; icmsEfetivoSaida: number }[];
-      }>,
+    withAuthHeaders({}).then((h) =>
+      fetch(`${BASE}/api/fiscal/ufs?benefFiscal=${encodeURIComponent(benefFiscal)}`, h).then(
+        handle<{
+          ufs: { sigla: string; nome: string; icmsInterno: number; icmsEfetivoSaida: number }[];
+        }>,
+      ),
     ),
 };

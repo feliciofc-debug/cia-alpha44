@@ -5,8 +5,7 @@ import type { ResultadoCotacao } from "@cia/fiscal-engine";
 import type { Cotacao } from "@cia/shared";
 import { extrairResumoFinanceiro } from "../lib/financeiro.js";
 import { PersistenciaIndisponivelError } from "./cotacoes-persist.js";
-
-const TENANT_SLUG = "default";
+import { ensureTenant } from "../auth/tenant.js";
 
 function dbAtivo(): boolean {
   return Boolean(process.env.DATABASE_URL?.trim());
@@ -35,14 +34,11 @@ function numOrNull(v: unknown): number | null {
   return typeof v === "number" ? v : Number(v);
 }
 
-export async function obterDashboardKpis() {
+export async function obterDashboardKpis(tenantSlug: string) {
   if (!dbAtivo()) throw new PersistenciaIndisponivelError();
 
-  const tenant = await prisma.tenant.findUnique({ where: { slug: TENANT_SLUG } });
-  if (!tenant) throw new Error('Tenant "default" não encontrado');
-
+  const tid = await ensureTenant(tenantSlug);
   const agora = new Date();
-  const tid = tenant.id;
   const baseWhere = { tenantId: tid };
 
   const [rows, totalCotacoes, cotacoesHoje, cotacoesSemana, cotacoesMes] = await Promise.all([

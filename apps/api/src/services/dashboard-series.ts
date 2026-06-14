@@ -5,8 +5,7 @@ import type { ResultadoCotacao } from "@cia/fiscal-engine";
 import type { Cotacao } from "@cia/shared";
 import { extrairResumoFinanceiro } from "../lib/financeiro.js";
 import { PersistenciaIndisponivelError } from "./cotacoes-persist.js";
-
-const TENANT_SLUG = "default";
+import { ensureTenant } from "../auth/tenant.js";
 
 function dbAtivo(): boolean {
   return Boolean(process.env.DATABASE_URL?.trim());
@@ -38,11 +37,10 @@ function ultimosMeses(n: number): string[] {
   return out;
 }
 
-export async function obterSeriesMensais(meses = 12) {
+export async function obterSeriesMensais(tenantSlug: string, meses = 12) {
   if (!dbAtivo()) throw new PersistenciaIndisponivelError();
 
-  const tenant = await prisma.tenant.findUnique({ where: { slug: TENANT_SLUG } });
-  if (!tenant) throw new Error('Tenant "default" não encontrado');
+  const tid = await ensureTenant(tenantSlug);
 
   const desde = new Date();
   desde.setMonth(desde.getMonth() - (meses - 1));
@@ -50,7 +48,7 @@ export async function obterSeriesMensais(meses = 12) {
   desde.setHours(0, 0, 0, 0);
 
   const rows = await prisma.cotacao.findMany({
-    where: { tenantId: tenant.id, criadoEm: { gte: desde } },
+    where: { tenantId: tid, criadoEm: { gte: desde } },
     orderBy: { criadoEm: "asc" },
   });
 

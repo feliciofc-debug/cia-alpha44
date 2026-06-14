@@ -12,4 +12,6 @@ export interface AuthContextValue {
   login: (email: string, senha: string) => Promise<void>;
   signup: (nome: string, email: string, senha: string) => Promise<void>;
   logout: () => void;
+  /** JWT Clerk para Authorization Bearer; null em demo ou deslogado. */
+  getToken?: () => Promise<string | null>;
 }

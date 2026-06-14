@@ -33,6 +33,14 @@ import { NcmInvalidoPdfError } from "./services/validar-ncm-pdf.js";
 import { conferirNcmItens } from "./services/ncm-conferencia.js";
 import { exportarConciliacao, exportarConciliacaoSalva } from "./services/conciliacao-export.js";
 import { lerFotoItem } from "./services/fotos.js";
+import { registrarAuth } from "./auth/middleware.js";
+import {
+  registrarRateLimit,
+  rateLimitClassificar,
+  rateLimitParse,
+  rateLimitNcmConferir,
+} from "./auth/rate-limit.js";
+import type { FastifyRequest } from "fastify";
 
 const PDF_GERACAO_TIMEOUT_MS = 45_000;
 
@@ -49,16 +57,25 @@ const PORT = Number(process.env.PORT ?? 3333);
 const HOST = process.env.HOST ?? "0.0.0.0";
 
 /** Produção (Render): WEB_ORIGIN=https://app.seudominio.com.br — aceita várias origens separadas por vírgula. */
-function corsOrigins(): boolean | string[] {
+function corsOrigins(): string[] {
   const raw = process.env.WEB_ORIGIN?.trim();
-  if (!raw) return true;
+  if (process.env.NODE_ENV === "production" && !raw) {
+    throw new Error("PROD sem WEB_ORIGIN — defina origens CORS explícitas (ex.: URL Vercel).");
+  }
+  if (!raw) return ["http://localhost:5173"];
   return raw.split(",").map((o) => o.trim()).filter(Boolean);
+}
+
+function tenantSlug(req: FastifyRequest): string {
+  return req.auth!.tenantSlug;
 }
 
 export async function buildServer() {
   const app = Fastify({ logger: true, bodyLimit: 35 * 1024 * 1024 });
   await app.register(cors, { origin: corsOrigins() });
   await app.register(multipart, { limits: { fileSize: 25 * 1024 * 1024 } });
+  await registrarAuth(app);
+  await registrarRateLimit(app);
 
   app.get("/api/health", async () => ({ ok: true, ts: new Date().toISOString() }));
 
@@ -230,13 +247,17 @@ export async function buildServer() {
   });
 
   /** Conferência NCM isolada — não altera /api/classificar nem /api/calcular. */
-  app.post("/api/ncm/conferir", async (req, reply) => {
+  app.post(
+    "/api/ncm/conferir",
+    { config: { rateLimit: rateLimitNcmConferir() } },
+    async (req, reply) => {
     const parsed = conferirNcmBody.safeParse(req.body ?? {});
     if (!parsed.success) {
       return reply.status(400).send({ erro: "Body inválido", detalhe: parsed.error.flatten() });
     }
     return conferirNcmItens(getState().siscomex, getState().ncmCatalog, parsed.data.itens);
-  });
+  },
+  );
 
   app.get("/api/cambio", async (req) => {
     const moeda = (req.query as { moeda?: string }).moeda ?? "USD";
@@ -249,7 +270,10 @@ export async function buildServer() {
   });
 
   // Upload: planilha (.xlsx/.csv) ou PDF/imagem (OCR) → linhas para cotação.
-  app.post("/api/parse", async (req, reply) => {
+  app.post(
+    "/api/parse",
+    { config: { rateLimit: rateLimitParse() } },
+    async (req, reply) => {
     const file = await req.file();
     if (!file) {
       return reply.status(400).send({ erro: "Envie um arquivo no campo 'file' (.xlsx, .csv, .pdf ou imagem)." });
@@ -261,10 +285,14 @@ export async function buildServer() {
       const msg = e instanceof Error ? e.message : "Falha ao processar arquivo.";
       return reply.status(422).send({ erro: msg });
     }
-  });
+  },
+  );
 
   // Linhas cruas → itens de domínio (tradução + NCM + DUIMP via IA, alíquotas via TEC).
-  app.post("/api/classificar", async (req, reply) => {
+  app.post(
+    "/api/classificar",
+    { config: { rateLimit: rateLimitClassificar() } },
+    async (req, reply) => {
     const linhaSchema = z.object({
       descOriginal: z.string().min(1, "descOriginal obrigatório"),
     }).passthrough();
@@ -291,7 +319,8 @@ export async function buildServer() {
         cambioEurUsdFonte: body.data.cambioEurUsdFonte,
       });
     return { itens, provider, classificacaoCache, cambioEurUsd, cambioEurUsdData, cambioEurUsdFonte };
-  });
+  },
+  );
 
   // Cotação completa → engine fiscal + benchmark + calibragem + risco por item.
   app.post("/api/calcular", async (req, reply) => {
@@ -310,9 +339,9 @@ export async function buildServer() {
     provider: z.string().optional(),
   });
 
-  app.get("/api/dashboard/kpis", async (_req, reply) => {
+  app.get("/api/dashboard/kpis", async (req, reply) => {
     try {
-      return await obterDashboardKpis();
+      return await obterDashboardKpis(tenantSlug(req));
     } catch (e) {
       return persistenciaErro(reply, e);
     }
@@ -321,7 +350,7 @@ export async function buildServer() {
   app.get("/api/dashboard/series", async (req, reply) => {
     try {
       const meses = Number((req.query as { meses?: string }).meses) || 12;
-      return await obterSeriesMensais(Math.min(24, Math.max(3, meses)));
+      return await obterSeriesMensais(tenantSlug(req), Math.min(24, Math.max(3, meses)));
     } catch (e) {
       return persistenciaErro(reply, e);
     }
@@ -330,7 +359,7 @@ export async function buildServer() {
   app.get("/api/dashboard/clientes", async (req, reply) => {
     try {
       const q = (req.query as { q?: string }).q;
-      return await listarClientesDashboard(q);
+      return await listarClientesDashboard(tenantSlug(req), q);
     } catch (e) {
       return persistenciaErro(reply, e);
     }
@@ -341,7 +370,7 @@ export async function buildServer() {
       const q = req.query as { ano?: string; mes?: string };
       const ano = Number(q.ano) || new Date().getFullYear();
       const mes = q.mes != null && q.mes !== "" ? Number(q.mes) : undefined;
-      return await obterRelatorioFaturamento({ ano, mes });
+      return await obterRelatorioFaturamento(tenantSlug(req), { ano, mes });
     } catch (e) {
       if (e instanceof Error && (e.message === "Ano inválido." || e.message === "Mês inválido.")) {
         return reply.status(400).send({ erro: e.message });
@@ -355,7 +384,7 @@ export async function buildServer() {
       const q = req.query as { ano?: string; mes?: string };
       const ano = Number(q.ano) || new Date().getFullYear();
       const mes = q.mes != null && q.mes !== "" ? Number(q.mes) : undefined;
-      const rel = await obterRelatorioFaturamento({ ano, mes });
+      const rel = await obterRelatorioFaturamento(tenantSlug(req), { ano, mes });
       const buf = await gerarPdfRelatorioFaturamento(rel);
       const slug = mes != null ? `${ano}-${String(mes).padStart(2, "0")}` : String(ano);
       return reply
@@ -374,7 +403,7 @@ export async function buildServer() {
   app.get("/api/cotacoes", async (req, reply) => {
     try {
       const q = req.query as { cliente?: string; limite?: string };
-      return await listarCotacoes({
+      return await listarCotacoes(tenantSlug(req), {
         cliente: q.cliente,
         limite: q.limite ? Number(q.limite) : undefined,
       });
@@ -387,7 +416,7 @@ export async function buildServer() {
     try {
       const { id } = req.params as { id: string };
       const tipo = (req.query as { tipo?: string }).tipo === "trade" ? "trade" : "cliente";
-      const row = await buscarCotacao(id);
+      const row = await buscarCotacao(id, tenantSlug(req));
       if (!row) return reply.status(404).send({ erro: "Cotação não encontrada." });
       const buf = await comTimeout(
         gerarPdfCotacao(row, tipo, getState().ncmCatalog),
@@ -411,7 +440,7 @@ export async function buildServer() {
   app.get("/api/cotacoes/:id", async (req, reply) => {
     try {
       const { id } = req.params as { id: string };
-      const row = await buscarCotacao(id);
+      const row = await buscarCotacao(id, tenantSlug(req));
       if (!row) return reply.status(404).send({ erro: "Cotação não encontrada." });
       return row;
     } catch (e) {
@@ -425,7 +454,7 @@ export async function buildServer() {
       const { id } = req.params as { id: string };
       const q = req.query as { formato?: string };
       const formato = q.formato === "csv" ? "csv" : "xlsx";
-      const out = await exportarConciliacaoSalva(id, formato, getState());
+      const out = await exportarConciliacaoSalva(id, tenantSlug(req), formato, getState());
       if (!out) return reply.status(404).send({ erro: "Cotação não encontrada." });
       return reply
         .header("Content-Type", out.contentType)
@@ -473,7 +502,7 @@ export async function buildServer() {
         return reply.status(400).send({ erro: "Índice de item inválido." });
       }
       const body = z.object({ confirmadoPor: z.string().optional() }).safeParse(req.body ?? {});
-      const atualizada = await confirmarNcmItem(id, idx, body.success ? body.data.confirmadoPor : undefined);
+      const atualizada = await confirmarNcmItem(id, tenantSlug(req), idx, body.success ? body.data.confirmadoPor : undefined);
       if (!atualizada) return reply.status(404).send({ erro: "Cotação ou item não encontrado." });
       return atualizada;
     } catch (e) {
@@ -488,7 +517,7 @@ export async function buildServer() {
       if (!Number.isFinite(idx) || idx < 0) {
         return reply.status(400).send({ erro: "Índice de item inválido." });
       }
-      const atualizada = await desfazerConfirmacaoNcmItem(id, idx);
+      const atualizada = await desfazerConfirmacaoNcmItem(id, tenantSlug(req), idx);
       if (!atualizada) return reply.status(404).send({ erro: "Cotação ou item não encontrado." });
       return atualizada;
     } catch (e) {
@@ -505,7 +534,7 @@ export async function buildServer() {
       }
       const body = z.object({ ncm: z.string().min(1) }).safeParse(req.body ?? {});
       if (!body.success) return reply.status(400).send({ erro: "NCM obrigatório." });
-      const atualizada = await alterarNcmItem(id, idx, body.data.ncm, getState());
+      const atualizada = await alterarNcmItem(id, tenantSlug(req), idx, body.data.ncm, getState());
       if (!atualizada) return reply.status(404).send({ erro: "Cotação ou item não encontrado." });
       return atualizada;
     } catch (e) {
@@ -518,7 +547,7 @@ export async function buildServer() {
   app.get("/api/cotacoes/:id/foto/:ordem", async (req, reply) => {
     try {
       const { id, ordem } = req.params as { id: string; ordem: string };
-      const row = await buscarCotacao(id);
+      const row = await buscarCotacao(id, tenantSlug(req));
       if (!row) return reply.status(404).send({ erro: "Cotação não encontrada." });
       const idx = Number(ordem);
       const item = row.itens[idx];
@@ -568,6 +597,7 @@ export async function buildServer() {
     if (!parsed.success) return reply.status(400).send({ erro: "Body inválido", detalhe: parsed.error.flatten() });
     try {
       return await salvarCotacao({
+        tenantSlug: tenantSlug(req),
         cotacao: parsed.data.cotacao,
         itens: parsed.data.itens as import("@cia/shared").Item[],
         resultado: parsed.data.resultado ?? null,
@@ -634,9 +664,14 @@ export async function buildServer() {
       .optional(),
   });
 
-  async function handleAtualizarCotacao(id: string, body: z.infer<typeof atualizarCotacaoBody>, reply: import("fastify").FastifyReply) {
+  async function handleAtualizarCotacao(
+    id: string,
+    body: z.infer<typeof atualizarCotacaoBody>,
+    req: FastifyRequest,
+    reply: import("fastify").FastifyReply,
+  ) {
     try {
-      const atualizada = await atualizarCotacao(id, getState(), body);
+      const atualizada = await atualizarCotacao(id, tenantSlug(req), getState(), body);
       if (!atualizada) return reply.status(404).send({ erro: "Cotação não encontrada." });
       return atualizada;
     } catch (e) {
@@ -648,14 +683,14 @@ export async function buildServer() {
     const parsed = atualizarCotacaoBody.safeParse(req.body ?? {});
     if (!parsed.success) return reply.status(400).send({ erro: "Body inválido", detalhe: parsed.error.flatten() });
     const { id } = req.params as { id: string };
-    return handleAtualizarCotacao(id, parsed.data, reply);
+    return handleAtualizarCotacao(id, parsed.data, req, reply);
   });
 
   app.patch("/api/cotacoes/:id/fiscal", async (req, reply) => {
     const parsed = atualizarCotacaoBody.safeParse(req.body ?? {});
     if (!parsed.success) return reply.status(400).send({ erro: "Body inválido", detalhe: parsed.error.flatten() });
     const { id } = req.params as { id: string };
-    return handleAtualizarCotacao(id, parsed.data, reply);
+    return handleAtualizarCotacao(id, parsed.data, req, reply);
   });
 
   app.post("/api/cotacoes/:id/duplicar", async (req, reply) => {
@@ -665,7 +700,7 @@ export async function buildServer() {
     if (!body.success) return reply.status(400).send({ erro: "Body inválido", detalhe: body.error.flatten() });
     try {
       const { id } = req.params as { id: string };
-      const dup = await duplicarCotacao(id, getState(), body.data);
+      const dup = await duplicarCotacao(id, tenantSlug(req), getState(), body.data);
       if (!dup) return reply.status(404).send({ erro: "Cotação não encontrada." });
       return dup;
     } catch (e) {
@@ -676,7 +711,7 @@ export async function buildServer() {
   app.delete("/api/cotacoes/:id", async (req, reply) => {
     try {
       const { id } = req.params as { id: string };
-      const ok = await excluirCotacao(id);
+      const ok = await excluirCotacao(id, tenantSlug(req));
       if (!ok) return reply.status(404).send({ erro: "Cotação não encontrada." });
       return { ok: true };
     } catch (e) {

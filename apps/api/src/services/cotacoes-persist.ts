@@ -34,8 +34,7 @@ import {
 } from "./classificacao-cache.js";
 import { excluirFotosCotacao, fotoUrlApi, lerFotoItem, salvarFotoItem } from "./fotos.js";
 import type { AppState } from "../state.js";
-
-const TENANT_SLUG = "default";
+import { ensureTenant } from "../auth/tenant.js";
 
 export class PersistenciaIndisponivelError extends Error {
   constructor() {
@@ -48,10 +47,16 @@ function dbAtivo(): boolean {
   return Boolean(process.env.DATABASE_URL?.trim());
 }
 
-async function tenantId(): Promise<string> {
-  const t = await prisma.tenant.findUnique({ where: { slug: TENANT_SLUG } });
-  if (!t) throw new Error('Tenant "default" não encontrado — rode: npm run db:seed -w @cia/db');
-  return t.id;
+async function tidFromSlug(tenantSlug: string): Promise<string> {
+  return ensureTenant(tenantSlug);
+}
+
+async function buscarCotacaoRow(id: string, tenantSlug: string) {
+  const tid = await tidFromSlug(tenantSlug);
+  return prisma.cotacao.findFirst({
+    where: { id, tenantId: tid },
+    include: { itens: true, despesas: true },
+  });
 }
 
 function canalPredominante(itens: Item[]): CanalAduaneiro | null {
@@ -227,6 +232,7 @@ export function mapRowParaDominio(row: CotacaoComRelacoes): {
 }
 
 export interface SalvarCotacaoInput {
+  tenantSlug: string;
   cotacao: Cotacao;
   itens: Item[];
   resultado: ResultadoCotacao | null;
@@ -238,7 +244,7 @@ export async function salvarCotacao(input: SalvarCotacaoInput) {
 
   const cotacao = mesclarAvisoMoedaCotacao(input.cotacao);
   const { itens, resultado } = input;
-  const tid = await tenantId();
+  const tid = await tidFromSlug(input.tenantSlug);
   const canal = canalPredominante(itens);
 
   const row = await prisma.cotacao.create({
@@ -356,10 +362,10 @@ function formatCotacaoSalva(row: CotacaoComRelacoes, provider?: string) {
   };
 }
 
-export async function listarCotacoes(opts?: { cliente?: string; limite?: number }) {
+export async function listarCotacoes(tenantSlug: string, opts?: { cliente?: string; limite?: number }) {
   if (!dbAtivo()) throw new PersistenciaIndisponivelError();
 
-  const tid = await tenantId();
+  const tid = await tidFromSlug(tenantSlug);
   const limite = opts?.limite ?? 100;
   const where: Prisma.CotacaoWhereInput = { tenantId: tid };
   if (opts?.cliente?.trim()) {
@@ -407,28 +413,23 @@ export async function listarCotacoes(opts?: { cliente?: string; limite?: number 
   };
 }
 
-export async function buscarCotacao(id: string) {
+export async function buscarCotacao(id: string, tenantSlug: string) {
   if (!dbAtivo()) throw new PersistenciaIndisponivelError();
 
-  const row = await prisma.cotacao.findUnique({
-    where: { id },
-    include: { itens: true, despesas: true },
-  });
+  const row = await buscarCotacaoRow(id, tenantSlug);
   if (!row) return null;
   return formatCotacaoSalva(row as CotacaoComRelacoes);
 }
 
 export async function duplicarCotacao(
   id: string,
+  tenantSlug: string,
   state: AppState,
   opts?: { markupPct?: number; cliente?: string },
 ) {
   if (!dbAtivo()) throw new PersistenciaIndisponivelError();
 
-  const orig = await prisma.cotacao.findUnique({
-    where: { id },
-    include: { itens: true, despesas: true },
-  });
+  const orig = await buscarCotacaoRow(id, tenantSlug);
   if (!orig) return null;
 
   const { cotacao } = mapRowParaDominio(orig);
@@ -449,7 +450,7 @@ export async function duplicarCotacao(
 
   const { resultado, itens, params: paramsCalc } = calcularCotacao(nova, state);
   nova.params = paramsCalc;
-  return salvarCotacao({ cotacao: nova, itens, resultado, provider: undefined });
+  return salvarCotacao({ tenantSlug, cotacao: nova, itens, resultado, provider: undefined });
 }
 
 export interface AtualizarCotacaoInput {
@@ -520,13 +521,10 @@ function mergeIcmsAtualizacao(
   };
 }
 
-export async function atualizarCotacao(id: string, state: AppState, opts: AtualizarCotacaoInput) {
+export async function atualizarCotacao(id: string, tenantSlug: string, state: AppState, opts: AtualizarCotacaoInput) {
   if (!dbAtivo()) throw new PersistenciaIndisponivelError();
 
-  const row = await prisma.cotacao.findUnique({
-    where: { id },
-    include: { itens: true, despesas: true },
-  });
+  const row = await buscarCotacaoRow(id, tenantSlug);
   if (!row) return null;
 
   const { cotacao, itens: itensAtuais } = mapRowParaDominio(row);
@@ -654,18 +652,21 @@ export async function atualizarCotacao(id: string, state: AppState, opts: Atuali
 }
 
 /** @deprecated use atualizarCotacao */
-export async function atualizarFiscalCotacao(id: string, state: AppState, opts: AtualizarCotacaoInput) {
-  return atualizarCotacao(id, state, opts);
+export async function atualizarFiscalCotacao(id: string, tenantSlug: string, state: AppState, opts: AtualizarCotacaoInput) {
+  return atualizarCotacao(id, tenantSlug, state, opts);
 }
 
 /** Marca item com revisão humana do NCM (persiste em Item.meta). */
-export async function confirmarNcmItem(cotacaoId: string, ordem: number, confirmadoPor?: string, provider?: string) {
+export async function confirmarNcmItem(
+  cotacaoId: string,
+  tenantSlug: string,
+  ordem: number,
+  confirmadoPor?: string,
+  provider?: string,
+) {
   if (!dbAtivo()) throw new PersistenciaIndisponivelError();
 
-  const row = await prisma.cotacao.findUnique({
-    where: { id: cotacaoId },
-    include: { itens: true, despesas: true },
-  });
+  const row = await buscarCotacaoRow(cotacaoId, tenantSlug);
   if (!row) return null;
 
   const itemRow = row.itens.find((i) => i.ordem === ordem);
@@ -711,22 +712,21 @@ export async function confirmarNcmItem(cotacaoId: string, ordem: number, confirm
     }),
   );
 
-  const atualizada = await prisma.cotacao.findUnique({
-    where: { id: cotacaoId },
-    include: { itens: true, despesas: true },
-  });
+  const atualizada = await buscarCotacaoRow(cotacaoId, tenantSlug);
   if (!atualizada) return null;
   return formatCotacaoSalva(atualizada as CotacaoComRelacoes, provider);
 }
 
 /** Remove revisão humana do NCM (item volta a bloquear PDF). */
-export async function desfazerConfirmacaoNcmItem(cotacaoId: string, ordem: number, provider?: string) {
+export async function desfazerConfirmacaoNcmItem(
+  cotacaoId: string,
+  tenantSlug: string,
+  ordem: number,
+  provider?: string,
+) {
   if (!dbAtivo()) throw new PersistenciaIndisponivelError();
 
-  const row = await prisma.cotacao.findUnique({
-    where: { id: cotacaoId },
-    include: { itens: true, despesas: true },
-  });
+  const row = await buscarCotacaoRow(cotacaoId, tenantSlug);
   if (!row) return null;
 
   const itemRow = row.itens.find((i) => i.ordem === ordem);
@@ -751,25 +751,19 @@ export async function desfazerConfirmacaoNcmItem(cotacaoId: string, ordem: numbe
     data: { meta: novoMeta as Prisma.InputJsonValue },
   });
 
-  const atualizada = await prisma.cotacao.findUnique({
-    where: { id: cotacaoId },
-    include: { itens: true, despesas: true },
-  });
+  const atualizada = await buscarCotacaoRow(cotacaoId, tenantSlug);
   if (!atualizada) return null;
   return formatCotacaoSalva(atualizada as CotacaoComRelacoes, provider);
 }
 
 /** Altera NCM do item salvo, limpa confirmação humana e recalcula a cotação. */
-export async function alterarNcmItem(cotacaoId: string, ordem: number, ncmNovo: string, state: AppState) {
+export async function alterarNcmItem(cotacaoId: string, tenantSlug: string, ordem: number, ncmNovo: string, state: AppState) {
   if (!dbAtivo()) throw new PersistenciaIndisponivelError();
 
   const ncm = ncm8Limpo(ncmNovo);
   if (!ncm || ncm === "00000000") throw new Error("NCM inválido (8 dígitos).");
 
-  const row = await prisma.cotacao.findUnique({
-    where: { id: cotacaoId },
-    include: { itens: true, despesas: true },
-  });
+  const row = await buscarCotacaoRow(cotacaoId, tenantSlug);
   if (!row) return null;
 
   const itemRow = row.itens.find((i) => i.ordem === ordem);
@@ -794,10 +788,7 @@ export async function alterarNcmItem(cotacaoId: string, ordem: number, ncmNovo: 
     data: { ncm, meta: novoMeta as Prisma.InputJsonValue },
   });
 
-  const refreshed = await prisma.cotacao.findUnique({
-    where: { id: cotacaoId },
-    include: { itens: true, despesas: true },
-  });
+  const refreshed = await buscarCotacaoRow(cotacaoId, tenantSlug);
   if (!refreshed) return null;
 
   const { cotacao } = mapRowParaDominio(refreshed);
@@ -827,13 +818,13 @@ export async function alterarNcmItem(cotacaoId: string, ordem: number, ncmNovo: 
   };
 }
 
-export async function excluirCotacao(id: string): Promise<boolean> {
+export async function excluirCotacao(id: string, tenantSlug: string): Promise<boolean> {
   if (!dbAtivo()) throw new PersistenciaIndisponivelError();
 
-  const row = await prisma.cotacao.findUnique({ where: { id }, select: { id: true } });
+  const row = await buscarCotacaoRow(id, tenantSlug);
   if (!row) return false;
 
-  await prisma.cotacao.delete({ where: { id } });
+  await prisma.cotacao.delete({ where: { id: row.id } });
   await excluirFotosCotacao(id);
   return true;
 }

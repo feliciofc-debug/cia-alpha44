@@ -1,13 +1,13 @@
 import { ClerkProvider, useAuth as useClerkAuth, useUser } from "@clerk/clerk-react";
 import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { ApiAuthSync } from "./api-auth-sync.tsx";
 import type { AuthContextValue, User } from "./types.ts";
 
 const Ctx = createContext<AuthContextValue | null>(null);
 
 function ClerkAuthBridge({ children }: { children: ReactNode }) {
-  const { isLoaded, isSignedIn } = useClerkAuth();
+  const { isLoaded, isSignedIn, getToken, signOut } = useClerkAuth();
   const { user: clerkUser } = useUser();
-  const { signOut } = useClerkAuth();
 
   const user: User | null =
     isSignedIn && clerkUser
@@ -22,6 +22,7 @@ function ClerkAuthBridge({ children }: { children: ReactNode }) {
       mode: "clerk",
       isLoaded,
       user,
+      getToken: () => getToken(),
       async login() {
         throw new Error("Use a tela de login Clerk");
       },
@@ -32,10 +33,15 @@ function ClerkAuthBridge({ children }: { children: ReactNode }) {
         void signOut();
       },
     }),
-    [isLoaded, user, signOut],
+    [isLoaded, user, signOut, getToken],
   );
 
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={value}>
+      <ApiAuthSync />
+      {children}
+    </Ctx.Provider>
+  );
 }
 
 export function ClerkAuthProvider({ children, publishableKey }: { children: ReactNode; publishableKey: string }) {

@@ -67,10 +67,11 @@ export async function exportarConciliacao(
 
 export async function exportarConciliacaoSalva(
   id: string,
+  tenantSlug: string,
   formato: "xlsx" | "csv",
   state: AppState,
 ) {
-  const row = await buscarCotacao(id);
+  const row = await buscarCotacao(id, tenantSlug);
   if (!row) return null;
   return exportarConciliacao(
     {

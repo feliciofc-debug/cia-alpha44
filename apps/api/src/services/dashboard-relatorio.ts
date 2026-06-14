@@ -5,8 +5,7 @@ import type { ResultadoCotacao } from "@cia/fiscal-engine";
 import type { Cotacao } from "@cia/shared";
 import { extrairResumoFinanceiro } from "../lib/financeiro.js";
 import { PersistenciaIndisponivelError } from "./cotacoes-persist.js";
-
-const TENANT_SLUG = "default";
+import { ensureTenant } from "../auth/tenant.js";
 
 const MESES_CURTO = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 const MESES_LONGO = [
@@ -128,7 +127,7 @@ function agregarRow(
   });
 }
 
-export async function obterRelatorioFaturamento(opts: { ano: number; mes?: number }): Promise<RelatorioFaturamento> {
+export async function obterRelatorioFaturamento(tenantSlug: string, opts: { ano: number; mes?: number }): Promise<RelatorioFaturamento> {
   if (!dbAtivo()) throw new PersistenciaIndisponivelError();
 
   const ano = opts.ano;
@@ -138,14 +137,14 @@ export async function obterRelatorioFaturamento(opts: { ano: number; mes?: numbe
   if (ano < 2020 || ano > 2100) throw new Error("Ano inválido.");
   if (mes != null && (mes < 1 || mes > 12)) throw new Error("Mês inválido.");
 
-  const tenant = await prisma.tenant.findUnique({ where: { slug: TENANT_SLUG } });
-  if (!tenant) throw new Error('Tenant "default" não encontrado');
+  const tid = await ensureTenant(tenantSlug);
+  const tenantRow = await prisma.tenant.findUnique({ where: { id: tid } });
 
   const desde = mes != null ? inicioMes(ano, mes) : inicioMes(ano, 1);
   const ate = mes != null ? fimMes(ano, mes) : fimMes(ano, 12);
 
   const rows = await prisma.cotacao.findMany({
-    where: { tenantId: tenant.id, criadoEm: { gte: desde, lte: ate } },
+    where: { tenantId: tid, criadoEm: { gte: desde, lte: ate } },
     orderBy: { criadoEm: "asc" },
     select: {
       id: true,
@@ -212,7 +211,7 @@ export async function obterRelatorioFaturamento(opts: { ano: number; mes?: numbe
     ano,
     mes,
     periodoLabel: mes != null ? labelMesLongo(mes, ano) : `Exercício ${ano}`,
-    empresa: tenant.nome,
+    empresa: tenantRow?.nome ?? tenantSlug,
     geradoEm: new Date().toISOString(),
     meses,
     totais,

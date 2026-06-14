@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { DemoApiAuthSync } from "./demo-api-auth-sync.tsx";
 import type { AuthContextValue, User } from "./types.ts";
 
 const DEMO_EMAIL = (import.meta.env.VITE_DEMO_EMAIL as string) || "demo@cia-alpha44.com.br";
@@ -50,11 +51,17 @@ export function DemoAuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem(KEY);
         setUser(null);
       },
+      getToken: async () => null,
     }),
     [user, isLoaded],
   );
 
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={value}>
+      <DemoApiAuthSync />
+      {children}
+    </Ctx.Provider>
+  );
 }
 
 export function useDemoAuth() {

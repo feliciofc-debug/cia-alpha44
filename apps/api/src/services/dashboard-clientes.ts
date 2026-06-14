@@ -5,8 +5,7 @@ import type { ResultadoCotacao } from "@cia/fiscal-engine";
 import type { Cotacao } from "@cia/shared";
 import { extrairResumoFinanceiro } from "../lib/financeiro.js";
 import { PersistenciaIndisponivelError } from "./cotacoes-persist.js";
-
-const TENANT_SLUG = "default";
+import { ensureTenant } from "../auth/tenant.js";
 
 function dbAtivo(): boolean {
   return Boolean(process.env.DATABASE_URL?.trim());
@@ -17,14 +16,13 @@ function numOrNull(v: unknown): number | null {
   return typeof v === "number" ? v : Number(v);
 }
 
-export async function listarClientesDashboard(q?: string) {
+export async function listarClientesDashboard(tenantSlug: string, q?: string) {
   if (!dbAtivo()) throw new PersistenciaIndisponivelError();
 
-  const tenant = await prisma.tenant.findUnique({ where: { slug: TENANT_SLUG } });
-  if (!tenant) throw new Error('Tenant "default" não encontrado');
+  const tid = await ensureTenant(tenantSlug);
 
   const where: { tenantId: string; cliente?: { contains: string; mode: "insensitive" } } = {
-    tenantId: tenant.id,
+    tenantId: tid,
   };
   if (q?.trim()) {
     where.cliente = { contains: q.trim(), mode: "insensitive" };
