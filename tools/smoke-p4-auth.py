@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Smoke P4 Auth — JWT + tenant isolation + rotas públicas (dev: x-demo-auth)."""
+"""Smoke P4 Auth — JWT + tenant isolation + rotas públicas.
+
+Uso:
+  python tools/smoke-p4-auth.py <API>                    # dev: x-demo-auth no check 5
+  python tools/smoke-p4-auth.py <API> <BEARER_TOKEN>     # prod: JWT Clerk real
+"""
 import json
 import sys
 import urllib.error
@@ -9,7 +14,14 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 API = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:3333"
+BEARER = sys.argv[2].strip() if len(sys.argv) > 2 and sys.argv[2].strip() else None
 DEMO_HDR = {"x-demo-auth": "1"}
+
+
+def auth_headers() -> dict[str, str]:
+    if BEARER:
+        return {"Authorization": f"Bearer {BEARER}"}
+    return DEMO_HDR.copy()
 
 
 def get(path: str, headers: dict | None = None, timeout: int = 30) -> tuple[int, dict | str]:
@@ -29,31 +41,10 @@ def get(path: str, headers: dict | None = None, timeout: int = 30) -> tuple[int,
             return e.code, raw
 
 
-def post_json(path: str, payload: dict, headers: dict | None = None, timeout: int = 30) -> tuple[int, dict | str]:
-    h = {"content-type": "application/json", **(headers or {})}
-    req = urllib.request.Request(
-        f"{API.rstrip('/')}{path}",
-        data=json.dumps(payload).encode("utf-8"),
-        headers=h,
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            body = r.read().decode("utf-8", errors="replace")
-            try:
-                return r.status, json.loads(body)
-            except json.JSONDecodeError:
-                return r.status, body
-    except urllib.error.HTTPError as e:
-        raw = e.read().decode("utf-8", errors="replace")
-        try:
-            return e.code, json.loads(raw)
-        except json.JSONDecodeError:
-            return e.code, raw
-
-
 def main() -> int:
-    print(f"API: {API}\n")
+    mode = "Bearer JWT" if BEARER else "x-demo-auth (dev)"
+    print(f"API: {API}")
+    print(f"Auth check 5: {mode}\n")
     checks: dict[str, bool] = {}
 
     print("=== 1/6 GET /api/health (pública) ===")
@@ -68,8 +59,8 @@ def main() -> int:
     checks["meta_publica"] = ok
     print(f"status={st} | {'OK' if ok else 'FALHA'}")
 
-    print("\n=== 3/6 GET /api/cambio (pública) ===")
-    st, body = get("/api/cambio?moeda=USD")
+    print("\n=== 3/6 GET /api/cambio (pública" + (", com Bearer" if BEARER else "") + ") ===")
+    st, body = get("/api/cambio?moeda=USD", auth_headers() if BEARER else None)
     ok = st == 200 and isinstance(body, dict)
     checks["cambio_publica"] = ok
     print(f"status={st} | {'OK' if ok else 'FALHA'}")
@@ -80,14 +71,17 @@ def main() -> int:
     checks["cotacoes_sem_auth_401"] = ok
     print(f"status={st} | {'OK' if ok else 'FALHA'}")
 
-    print("\n=== 5/6 GET /api/cotacoes com x-demo-auth (dev) ===")
-    st, body = get("/api/cotacoes", DEMO_HDR)
-    ok = st in (200, 503)
-    if st == 503:
-        ok = isinstance(body, dict) and "indisponível" in str(body.get("erro", "")).lower()
-    elif st == 200:
-        ok = isinstance(body, dict) and "cotacoes" in body
-    checks["cotacoes_demo_auth"] = ok
+    print(f"\n=== 5/6 GET /api/cotacoes com {mode} ===")
+    st, body = get("/api/cotacoes", auth_headers())
+    if BEARER:
+        ok = st == 200 and isinstance(body, dict) and "cotacoes" in body
+    else:
+        ok = st in (200, 503)
+        if st == 503:
+            ok = isinstance(body, dict) and "indisponível" in str(body.get("erro", "")).lower()
+        elif st == 200:
+            ok = isinstance(body, dict) and "cotacoes" in body
+    checks["cotacoes_auth_ok"] = ok
     print(f"status={st} | {'OK' if ok else 'FALHA'}")
 
     print("\n=== 6/6 Bearer inválido → 401 ===")
