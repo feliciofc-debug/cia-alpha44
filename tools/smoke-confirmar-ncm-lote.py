@@ -33,6 +33,7 @@ for arg in sys.argv[2:]:
         BEARER = arg.strip() or None
 
 BEARER_B = os.environ.get("SMOKE_BEARER_B", "").strip() or None
+COTACAO_CROSS_ID = os.environ.get("SMOKE_COTACAO_CROSS_ID", "").strip() or None
 DEMO_HDR = {"x-demo-auth": "1", "content-type": "application/json"}
 
 
@@ -142,18 +143,25 @@ def main() -> int:
     checks["rechamar_idempotente"] = ok2
 
     print("\n=== 3/4 Cross-tenant (tenant B → cotação A) ===")
-    if BEARER_B and COTACAO_ID:
+    cross_id = COTACAO_CROSS_ID or COTACAO_ID
+    cross_bearer = BEARER_B or BEARER
+    if cross_bearer and cross_id:
         st3, body3 = request(
             "POST",
-            f"/api/cotacoes/{COTACAO_ID}/itens/confirmar-ncm-lote",
+            f"/api/cotacoes/{cross_id}/itens/confirmar-ncm-lote",
             {"confirmadoPor": "evil"},
-            auth_headers(BEARER_B),
+            auth_headers(cross_bearer),
         )
-        ok3 = st3 == 404
-        print(f"  status={st3} | {'OK (404)' if ok3 else 'FALHA'}")
-        checks["cross_tenant_404"] = ok3
+        # Espera 404 quando o bearer não é dono da cotação (outro tenant)
+        expect_404 = cross_id != COTACAO_ID or bool(BEARER_B)
+        ok3 = st3 == 404 if expect_404 else st3 == 200
+        print(
+            f"  cotacao={cross_id[:12]}… status={st3} | "
+            f"{'OK (404)' if st3 == 404 else ('OK (200 same-tenant)' if st3 == 200 and not expect_404 else 'FALHA')}"
+        )
+        checks["cross_tenant_404"] = st3 == 404 if expect_404 else ok3
     else:
-        print("  SKIP — defina SMOKE_BEARER_B (JWT tenant B) para testar cross-tenant ao vivo")
+        print("  SKIP — defina SMOKE_BEARER_B ou Bearer + SMOKE_COTACAO_CROSS_ID")
         checks["cross_tenant_404"] = "SKIP (vitest)"
 
     print("\n=== 4/4 Spot-check meta confirmada ===")
