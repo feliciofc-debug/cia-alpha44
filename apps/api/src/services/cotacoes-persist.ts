@@ -4,6 +4,9 @@ import { prisma, type CanalAduaneiro, type Cotacao as CotacaoRow } from "@cia/db
 import type { ResultadoCotacao } from "@cia/fiscal-engine";
 import { extrairItemMeta, mesclarItemMeta } from "@cia/pipeline";
 import {
+  confirmacaoNcmVigente,
+  itemPodeConfirmarNcm,
+  itensResolucaoNcm,
   limparConfirmacaoNcm,
   metaConfirmacaoNcm,
   validarConfirmacaoNcmItem,
@@ -656,22 +659,33 @@ export async function atualizarFiscalCotacao(id: string, tenantSlug: string, sta
   return atualizarCotacao(id, tenantSlug, state, opts);
 }
 
-/** Marca item com revisão humana do NCM (persiste em Item.meta). */
-export async function confirmarNcmItem(
-  cotacaoId: string,
-  tenantSlug: string,
-  ordem: number,
-  confirmadoPor?: string,
-  provider?: string,
-) {
-  if (!dbAtivo()) throw new PersistenciaIndisponivelError();
+type ItemRowPersist = CotacaoComRelacoes["itens"][number];
 
-  const row = await buscarCotacaoRow(cotacaoId, tenantSlug);
-  if (!row) return null;
+function itemDominioFromRow(itemRow: ItemRowPersist): Item {
+  const metaAtual = (itemRow.meta as import("@cia/pipeline").ItemMetaPersistido | null) ?? {};
+  return validarConfirmacaoNcmItem(
+    mesclarItemMeta(
+      {
+        descOriginal: itemRow.descOriginal,
+        descPt: itemRow.descPt,
+        descDuimp: itemRow.descDuimp,
+        ncm: itemRow.ncm,
+        pesoLiqKg: num(itemRow.pesoLiqKg),
+        fobTotalUS: num(itemRow.fobTotalUS),
+      } as Item,
+      metaAtual,
+    ),
+  );
+}
 
-  const itemRow = row.itens.find((i) => i.ordem === ordem);
-  if (!itemRow) return null;
-
+/** Meta + cache humano — compartilhado pela rota individual e pelo lote. */
+export async function confirmarNcmItemInterno(
+  itemRow: ItemRowPersist,
+  confirmadoPor: string | undefined,
+  versoes: Awaited<ReturnType<typeof versoesClassificacaoCacheAtual>>,
+  opts?: { tx?: Prisma.TransactionClient; cacheStrict?: boolean },
+): Promise<void> {
+  const db = opts?.tx ?? prisma;
   const metaAtual = (itemRow.meta as import("@cia/pipeline").ItemMetaPersistido | null) ?? {};
   const base = mesclarItemMeta(
     {
@@ -689,12 +703,11 @@ export async function confirmarNcmItem(
     ...metaConfirmacaoNcm(itemRow.ncm, confirmadoPor),
   });
 
-  await prisma.item.update({
+  await db.item.update({
     where: { id: itemRow.id },
     data: { meta: novoMeta as Prisma.InputJsonValue },
   });
 
-  const versoes = await versoesClassificacaoCacheAtual();
   await salvarClassificacaoCacheHumano(
     {
       descOriginal: itemRow.descOriginal,
@@ -710,11 +723,131 @@ export async function confirmarNcmItem(
       descPt: itemRow.descPt,
       descDuimp: itemRow.descDuimp,
     }),
+    { strict: opts?.cacheStrict, tx: opts?.tx },
   );
+}
+
+export type ConfirmarNcmLoteResult = ReturnType<typeof formatCotacaoSalva> extends infer T
+  ? T extends object
+    ? T & { aprovados: number; pulados: number; pendentes: number }
+    : never
+  : never;
+
+async function recalcularCotacaoPersistida(
+  cotacaoId: string,
+  tenantSlug: string,
+  state: AppState,
+  rowAntes: CotacaoComRelacoes,
+) {
+  const refreshed = await buscarCotacaoRow(cotacaoId, tenantSlug);
+  if (!refreshed) return null;
+
+  const { cotacao } = mapRowParaDominio(refreshed);
+  const { resultado, itens } = calcularCotacao(cotacao, state);
+  const itensValidados = validarConfirmacaoNcmItens(itens);
+  const canal = canalPredominante(itensValidados);
+
+  await prisma.cotacao.update({
+    where: { id: cotacaoId },
+    data: {
+      status: resultado ? "CALCULADA" : rowAntes.status,
+      totalBRL: resultado?.totalBRL ?? null,
+      totalUS: resultado?.totalUS ?? null,
+      canalPredominante: canal,
+      resultadoCalculo: (resultado ?? undefined) as unknown as Prisma.InputJsonValue | undefined,
+      calculadoEm: resultado ? new Date() : rowAntes.calculadoEm,
+    },
+  });
+
+  const salva = formatCotacaoSalva(refreshed as CotacaoComRelacoes);
+  return {
+    ...salva,
+    id: cotacaoId,
+    itens: itensValidados,
+    resultado,
+    criadoEm: refreshed.criadoEm.toISOString(),
+    calculadoEm: resultado ? new Date().toISOString() : salva.calculadoEm,
+  };
+}
+
+/** Marca item com revisão humana do NCM (persiste em Item.meta). */
+export async function confirmarNcmItem(
+  cotacaoId: string,
+  tenantSlug: string,
+  ordem: number,
+  confirmadoPor?: string,
+  provider?: string,
+) {
+  if (!dbAtivo()) throw new PersistenciaIndisponivelError();
+
+  const row = await buscarCotacaoRow(cotacaoId, tenantSlug);
+  if (!row) return null;
+
+  const itemRow = row.itens.find((i) => i.ordem === ordem);
+  if (!itemRow) return null;
+
+  const it = itemDominioFromRow(itemRow);
+  if (!itemPodeConfirmarNcm(it)) return null;
+
+  const versoes = await versoesClassificacaoCacheAtual();
+  await confirmarNcmItemInterno(itemRow, confirmadoPor, versoes, { cacheStrict: false });
 
   const atualizada = await buscarCotacaoRow(cotacaoId, tenantSlug);
   if (!atualizada) return null;
   return formatCotacaoSalva(atualizada as CotacaoComRelacoes, provider);
+}
+
+/** Confirma em lote todos os itens elegíveis (itemPodeConfirmarNcm), recalcula no fim. */
+export async function confirmarNcmItensLote(
+  cotacaoId: string,
+  tenantSlug: string,
+  confirmadoPor: string | undefined,
+  state: AppState,
+  provider?: string,
+): Promise<ConfirmarNcmLoteResult | null> {
+  if (!dbAtivo()) throw new PersistenciaIndisponivelError();
+
+  const row = await buscarCotacaoRow(cotacaoId, tenantSlug);
+  if (!row) return null;
+
+  const versoes = await versoesClassificacaoCacheAtual();
+  const sortedRows = [...row.itens].sort((a, b) => a.ordem - b.ordem);
+
+  let pulados = 0;
+  const elegiveis: ItemRowPersist[] = [];
+
+  for (const itemRow of sortedRows) {
+    const it = itemDominioFromRow(itemRow);
+    if (confirmacaoNcmVigente(it)) {
+      pulados++;
+      continue;
+    }
+    if (!itemPodeConfirmarNcm(it)) continue;
+    elegiveis.push(itemRow);
+  }
+
+  let aprovados = 0;
+  if (elegiveis.length > 0) {
+    await prisma.$transaction(async (tx) => {
+      for (const itemRow of elegiveis) {
+        await confirmarNcmItemInterno(itemRow, confirmadoPor, versoes, { tx, cacheStrict: true });
+        aprovados++;
+      }
+    });
+  }
+
+  const recalculada = await recalcularCotacaoPersistida(cotacaoId, tenantSlug, state, row);
+  if (!recalculada) return null;
+
+  const pendentes = itensResolucaoNcm(recalculada.itens).length;
+
+  return {
+    ...recalculada,
+    provider: provider ?? recalculada.provider,
+    aprovados,
+    pulados,
+    pendentes,
+  };
 }
 
 /** Remove revisão humana do NCM (item volta a bloquear PDF). */

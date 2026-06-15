@@ -14,6 +14,7 @@ import {
   alterarNcmItem,
   buscarCotacao,
   confirmarNcmItem,
+  confirmarNcmItensLote,
   desfazerConfirmacaoNcmItem,
   duplicarCotacao,
   excluirCotacao,
@@ -504,6 +505,23 @@ export async function buildServer() {
       const body = z.object({ confirmadoPor: z.string().optional() }).safeParse(req.body ?? {});
       const atualizada = await confirmarNcmItem(id, tenantSlug(req), idx, body.success ? body.data.confirmadoPor : undefined);
       if (!atualizada) return reply.status(404).send({ erro: "Cotação ou item não encontrado." });
+      return atualizada;
+    } catch (e) {
+      return persistenciaErro(reply, e);
+    }
+  });
+
+  app.post("/api/cotacoes/:id/itens/confirmar-ncm-lote", async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string };
+      const body = z.object({ confirmadoPor: z.string().optional() }).safeParse(req.body ?? {});
+      const atualizada = await confirmarNcmItensLote(
+        id,
+        tenantSlug(req),
+        body.success ? body.data.confirmadoPor : undefined,
+        getState(),
+      );
+      if (!atualizada) return reply.status(404).send({ erro: "Cotação não encontrada." });
       return atualizada;
     } catch (e) {
       return persistenciaErro(reply, e);

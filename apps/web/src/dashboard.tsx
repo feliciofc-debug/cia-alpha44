@@ -212,6 +212,9 @@ function AnalisePainel({
   desfazendoAliquota,
   onConfirmarNcm,
   confirmandoNcm,
+  onConfirmarTodosNcm,
+  confirmandoTodosNcm,
+  resumoNcmLote,
   onDesfazerNcm,
   onAlterarNcm,
   alterandoNcm,
@@ -238,6 +241,9 @@ function AnalisePainel({
   desfazendoAliquota?: { idx: number; campo: ChaveTributoRastro } | null;
   onConfirmarNcm: (idx: number) => void | Promise<void>;
   confirmandoNcm?: number | null;
+  onConfirmarTodosNcm?: () => void | Promise<void>;
+  confirmandoTodosNcm?: boolean;
+  resumoNcmLote?: { aprovados: number; pendentes: number } | null;
   onDesfazerNcm?: (idx: number) => void | Promise<void>;
   onAlterarNcm: (idx: number, ncm: string) => void | Promise<void>;
   alterandoNcm?: number | null;
@@ -678,6 +684,9 @@ function AnalisePainel({
             aberta={resolucaoAberta}
             onToggle={() => setResolucaoAberta((v) => !v)}
             onConfirmarNcm={onConfirmarNcm}
+            onConfirmarTodosNcm={onConfirmarTodosNcm}
+            confirmandoTodosNcm={confirmandoTodosNcm}
+            resumoNcmLote={resumoNcmLote}
             onDesfazerNcm={onDesfazerNcm}
             onAlterarNcm={onAlterarNcm}
             confirmandoNcm={confirmandoNcm}
@@ -850,6 +859,8 @@ export function Dashboard() {
     null,
   );
   const [confirmandoNcm, setConfirmandoNcm] = useState<number | null>(null);
+  const [confirmandoTodosNcm, setConfirmandoTodosNcm] = useState(false);
+  const [resumoNcmLote, setResumoNcmLote] = useState<{ aprovados: number; pendentes: number } | null>(null);
   const [confirmandoIcms, setConfirmandoIcms] = useState(false);
   const [alterandoNcm, setAlterandoNcm] = useState<number | null>(null);
   const [irParaOrcamento, setIrParaOrcamento] = useState(0);
@@ -1144,6 +1155,24 @@ export function Dashboard() {
     }
   }
 
+  function sincronizarCotacaoSalva(atualizada: CotacaoSalva) {
+    if (detalhe?.id === atualizada.id) {
+      setDetalhe(atualizada);
+    }
+    if (salvaId === atualizada.id && analise) {
+      setAnalise({
+        ...analise,
+        cotacao: atualizada.cotacao,
+        itens: atualizada.itens,
+        resultado: atualizada.resultado,
+        icms: atualizada.icms,
+        avisosFiscais: atualizada.avisosFiscais ?? atualizada.cotacao.avisosFiscais,
+        avisoFiscal: atualizada.avisoFiscal,
+        provider: atualizada.provider ?? analise.provider,
+      });
+    }
+  }
+
   async function confirmarNcmItem(idx: number) {
     const base = analise ?? detalhe;
     if (!base) return;
@@ -1154,11 +1183,7 @@ export function Dashboard() {
       const idSalvo = detalhe?.id ?? salvaId;
       if (idSalvo) {
         const atualizada = await api.confirmarNcmItem(idSalvo, idx, confirmadoPor);
-        if (detalhe?.id) {
-          setDetalhe(atualizada);
-        } else if (analise) {
-          setAnalise({ ...analise, itens: atualizada.itens });
-        }
+        sincronizarCotacaoSalva(atualizada);
         return;
       }
       const itens = base.itens.map((it, i) =>
@@ -1169,6 +1194,32 @@ export function Dashboard() {
       setErro(e instanceof Error ? e.message : "Falha ao confirmar NCM.");
     } finally {
       setConfirmandoNcm(null);
+    }
+  }
+
+  async function confirmarTodosNcm() {
+    const base = analise ?? detalhe;
+    if (!base) return;
+    const idSalvo = detalhe?.id ?? salvaId;
+    if (!idSalvo) return;
+    const n = itensPendentesConfirmacaoNcm(base.itens).length;
+    if (n === 0) return;
+    const msg = `Você revisou os ${n} itens? Esta ação confirma todos os NCMs válidos.`;
+    if (!window.confirm(msg)) return;
+
+    setConfirmandoTodosNcm(true);
+    setErro("");
+    setResumoNcmLote(null);
+    const confirmadoPor = user?.email ?? user?.nome;
+    try {
+      const atualizada = await api.confirmarNcmLote(idSalvo, confirmadoPor);
+      sincronizarCotacaoSalva(atualizada);
+      setResumoNcmLote({ aprovados: atualizada.aprovados, pendentes: atualizada.pendentes });
+      setSolicitarResolucaoNcm((n) => n + 1);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao aprovar NCMs em lote.");
+    } finally {
+      setConfirmandoTodosNcm(false);
     }
   }
 
@@ -1250,14 +1301,37 @@ export function Dashboard() {
     await api.previewPdf({ cotacao, itens: analise.itens, resultado: analise.resultado }, "cliente");
   }
 
-  async function aplicarEditorDetalhe() {
-    if (!detalhe || !editorDraft) return;
+  function sincronizarEstadoAposPatch(atualizada: CotacaoSalva) {
+    setEditorDraft(editorFromCotacao(atualizada.cotacao));
+    if (detalhe?.id === atualizada.id) {
+      setDetalhe(atualizada);
+    }
+    if (salvaId === atualizada.id) {
+      setAnalise((prev) =>
+        prev
+          ? {
+              ...prev,
+              cotacao: atualizada.cotacao,
+              itens: atualizada.itens,
+              resultado: atualizada.resultado,
+              icms: atualizada.icms,
+              avisosFiscais: atualizada.avisosFiscais ?? atualizada.cotacao.avisosFiscais,
+              avisoFiscal: atualizada.avisoFiscal,
+              provider: atualizada.provider ?? prev.provider,
+            }
+          : prev,
+      );
+    }
+  }
+
+  /** PATCH cotação salva — detalhe ou nova análise com salvaId (markup/ICMS/despesas → DB + memória). */
+  async function aplicarEditorPersistido(id: string) {
+    if (!editorDraft) return;
     setAplicandoEditor(true);
     setErro("");
     try {
-      const atualizada = await api.atualizarCotacao(detalhe.id, payloadAtualizar(editorDraft));
-      setDetalhe(atualizada);
-      setEditorDraft(editorFromCotacao(atualizada.cotacao));
+      const atualizada = await api.atualizarCotacao(id, payloadAtualizar(editorDraft));
+      sincronizarEstadoAposPatch(atualizada);
       await carregarLista();
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Falha ao atualizar cotação.");
@@ -1625,7 +1699,7 @@ export function Dashboard() {
                 salvaId={detalhe.id}
                 editorDraft={editorDraft ?? undefined}
                 onEditorChange={setEditorDraft}
-                onAplicarEditor={() => void aplicarEditorDetalhe()}
+                onAplicarEditor={() => void aplicarEditorPersistido(detalhe.id)}
                 aplicandoEditor={aplicandoEditor}
                 onBaixarPdfCliente={baixarPdfClienteOrcamento}
                 irParaOrcamento={irParaOrcamento}
@@ -1637,6 +1711,9 @@ export function Dashboard() {
                 desfazendoAliquota={desfazendoAliquota}
                 onConfirmarNcm={confirmarNcmItem}
                 confirmandoNcm={confirmandoNcm}
+                onConfirmarTodosNcm={() => void confirmarTodosNcm()}
+                confirmandoTodosNcm={confirmandoTodosNcm}
+                resumoNcmLote={resumoNcmLote}
                 onDesfazerNcm={desfazerNcmItem}
                 onAlterarNcm={alterarNcmItem}
                 alterandoNcm={alterandoNcm}
@@ -1724,7 +1801,9 @@ export function Dashboard() {
                     setEditorDraft(d);
                     setCliente(d.cliente);
                   }}
-                  onAplicarEditor={() => void aplicarEditorAnalise()}
+                  onAplicarEditor={() =>
+                    void (salvaId ? aplicarEditorPersistido(salvaId) : aplicarEditorAnalise())
+                  }
                   aplicandoEditor={aplicandoEditor}
                   onBaixarPdfCliente={baixarPdfClienteOrcamento}
                   irParaOrcamento={irParaOrcamento}
@@ -1736,6 +1815,9 @@ export function Dashboard() {
                   desfazendoAliquota={desfazendoAliquota}
                   onConfirmarNcm={confirmarNcmItem}
                   confirmandoNcm={confirmandoNcm}
+                  onConfirmarTodosNcm={() => void confirmarTodosNcm()}
+                  confirmandoTodosNcm={confirmandoTodosNcm}
+                  resumoNcmLote={resumoNcmLote}
                   onDesfazerNcm={desfazerNcmItem}
                   onAlterarNcm={alterarNcmItem}
                   alterandoNcm={alterandoNcm}

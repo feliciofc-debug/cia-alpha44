@@ -4,6 +4,7 @@ import { fmtNcm } from "./lib/format.ts";
 import {
   itemPodeConfirmarNcm,
   itemPodeDesfazerNcm,
+  itensPendentesConfirmacaoNcm,
   itensResolucaoNcm,
 } from "./lib/ncm.ts";
 
@@ -23,6 +24,9 @@ export function BarraResolucaoNcm({
   aberta,
   onToggle,
   onConfirmarNcm,
+  onConfirmarTodosNcm,
+  confirmandoTodosNcm,
+  resumoNcmLote,
   onDesfazerNcm,
   onAlterarNcm,
   confirmandoNcm,
@@ -32,15 +36,19 @@ export function BarraResolucaoNcm({
   aberta: boolean;
   onToggle: () => void;
   onConfirmarNcm: (idx: number) => void | Promise<void>;
+  onConfirmarTodosNcm?: () => void | Promise<void>;
+  confirmandoTodosNcm?: boolean;
+  resumoNcmLote?: { aprovados: number; pendentes: number } | null;
   onDesfazerNcm?: (idx: number) => void | Promise<void>;
   onAlterarNcm: (idx: number, ncm: string) => void | Promise<void>;
   confirmandoNcm?: number | null;
   alterandoNcm?: number | null;
 }) {
   const fila = useMemo(() => itensResolucaoNcm(itens), [itens]);
+  const elegiveis = useMemo(() => itensPendentesConfirmacaoNcm(itens).length, [itens]);
   const [draftNcm, setDraftNcm] = useState<Record<number, string>>({});
 
-  if (!fila.length) return null;
+  if (!fila.length && !resumoNcmLote) return null;
 
   return (
     <div
@@ -55,10 +63,30 @@ export function BarraResolucaoNcm({
         >
           {aberta ? "▲ Ocultar resolução" : `▶ Resolver pendências (${fila.length})`}
         </button>
+        {elegiveis > 0 && onConfirmarTodosNcm && (
+          <button
+            type="button"
+            className="rounded-lg border-2 border-emerald-400/60 bg-emerald-500/20 px-4 py-2.5 text-sm font-bold text-emerald-100 hover:bg-emerald-500/30 disabled:opacity-50"
+            disabled={confirmandoTodosNcm || confirmandoNcm != null || alterandoNcm != null}
+            onClick={() => void onConfirmarTodosNcm()}
+          >
+            {confirmandoTodosNcm
+              ? "Aprovando…"
+              : `Aprovar todos os NCMs válidos (${elegiveis})`}
+          </button>
+        )}
         <p className="text-sm text-amber-100">
           {fila.length} item{fila.length === 1 ? "" : "s"} bloqueando ou aguardando confirmação de NCM
         </p>
       </div>
+
+      {resumoNcmLote && (
+        <p className="mt-3 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">
+          {resumoNcmLote.aprovados} aprovado{resumoNcmLote.aprovados === 1 ? "" : "s"} ·{" "}
+          {resumoNcmLote.pendentes} pendente{resumoNcmLote.pendentes === 1 ? "" : "s"} (precisam de NCM/edição
+          manual)
+        </p>
+      )}
 
       {aberta && (
         <ul className="mt-4 max-h-[24rem] space-y-3 overflow-y-auto">

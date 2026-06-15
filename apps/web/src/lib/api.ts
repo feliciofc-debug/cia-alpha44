@@ -349,6 +349,17 @@ export const api = {
       fetch(`${BASE}/api/cotacoes/${cotacaoId}/itens/${ordem}/confirmar-ncm`, h).then(handle<CotacaoSalva>),
     ),
 
+  confirmarNcmLote: (cotacaoId: string, confirmadoPor?: string) =>
+    withAuthHeaders({
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(confirmadoPor ? { confirmadoPor } : {}),
+    }).then((h) =>
+      fetch(`${BASE}/api/cotacoes/${cotacaoId}/itens/confirmar-ncm-lote`, h).then(
+        handle<CotacaoSalva & { aprovados: number; pulados: number; pendentes: number }>,
+      ),
+    ),
+
   desfazerNcmItem: (cotacaoId: string, ordem: number) =>
     withAuthHeaders({ method: "POST" }).then((h) =>
       fetch(`${BASE}/api/cotacoes/${cotacaoId}/itens/${ordem}/desfazer-ncm`, h).then(handle<CotacaoSalva>),

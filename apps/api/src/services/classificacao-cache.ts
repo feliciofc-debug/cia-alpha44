@@ -116,19 +116,27 @@ export async function salvarClassificacaoCacheLlm(
   }
 }
 
+export type SalvarClassificacaoCacheHumanoOpts = {
+  /** Lote: propaga erro e reverte transação. Individual: best-effort (default). */
+  strict?: boolean;
+  tx?: Prisma.TransactionClient;
+};
+
 /** Grava ou atualiza cache a partir de confirmação humana — prevalece sobre LLM. */
 export async function salvarClassificacaoCacheHumano(
   input: ClassificacaoCacheKeyInput,
   versoes: ClassificacaoCacheVersoes,
   resultado: ClassifyItemOutput,
+  opts?: SalvarClassificacaoCacheHumanoOpts,
 ): Promise<void> {
   if (!dbAtivo()) return;
 
   const chave = chaveClassificacaoCache(input, versoes.promptVersion, versoes.catalogVersion);
   const json = resultado as unknown as Prisma.InputJsonValue;
+  const db = opts?.tx ?? prisma;
 
   try {
-    await prisma.classificacaoCache.upsert({
+    await db.classificacaoCache.upsert({
       where: { chave },
       create: {
         chave,
@@ -144,8 +152,9 @@ export async function salvarClassificacaoCacheHumano(
         confirmadoHumano: true,
       },
     });
-  } catch {
-    /* cache best-effort */
+  } catch (e) {
+    if (opts?.strict) throw e;
+    /* cache best-effort (confirmação individual) */
   }
 }
 
