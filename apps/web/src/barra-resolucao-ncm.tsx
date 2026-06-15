@@ -46,6 +46,10 @@ export function BarraResolucaoNcm({
 }) {
   const fila = useMemo(() => itensResolucaoNcm(itens), [itens]);
   const elegiveis = useMemo(() => itensPendentesConfirmacaoNcm(itens).length, [itens]);
+  const operacaoBloqueada = Boolean(
+    confirmandoTodosNcm || confirmandoNcm != null || alterandoNcm != null,
+  );
+
   const [draftNcm, setDraftNcm] = useState<Record<number, string>>({});
 
   if (!fila.length && !resumoNcmLote) return null;
@@ -67,7 +71,7 @@ export function BarraResolucaoNcm({
           <button
             type="button"
             className="rounded-lg border-2 border-emerald-400/60 bg-emerald-500/20 px-4 py-2.5 text-sm font-bold text-emerald-100 hover:bg-emerald-500/30 disabled:opacity-50"
-            disabled={confirmandoTodosNcm || confirmandoNcm != null || alterandoNcm != null}
+            disabled={operacaoBloqueada}
             onClick={() => void onConfirmarTodosNcm()}
           >
             {confirmandoTodosNcm
@@ -123,7 +127,7 @@ export function BarraResolucaoNcm({
                       <button
                         type="button"
                         className="min-w-[9rem] rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-500 disabled:opacity-50"
-                        disabled={confirmando || editando}
+                        disabled={operacaoBloqueada}
                         onClick={() => void onConfirmarNcm(idx)}
                       >
                         {confirmando ? "Confirmando…" : "Confirmar NCM"}
@@ -133,7 +137,7 @@ export function BarraResolucaoNcm({
                       <button
                         type="button"
                         className="rounded-lg bg-slate-600 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-500 disabled:opacity-50"
-                        disabled={confirmando}
+                        disabled={operacaoBloqueada}
                         onClick={() => void onDesfazerNcm(idx)}
                       >
                         Desfazer
@@ -150,7 +154,7 @@ export function BarraResolucaoNcm({
                       maxLength={10}
                       className="mt-1 block w-36 rounded border border-white/20 bg-ink-800 px-2 py-2 font-mono text-sm text-white"
                       value={draft}
-                      disabled={editando || confirmando}
+                      disabled={operacaoBloqueada}
                       onChange={(e) =>
                         setDraftNcm((prev) => ({
                           ...prev,
@@ -162,7 +166,7 @@ export function BarraResolucaoNcm({
                   <button
                     type="button"
                     className="rounded-lg border border-brand-500/50 bg-brand-500/20 px-4 py-2 text-sm font-semibold text-brand-200 hover:bg-brand-500/30 disabled:opacity-50"
-                    disabled={editando || confirmando || draft.replace(/\D/g, "").length !== 8}
+                    disabled={operacaoBloqueada || draft.replace(/\D/g, "").length !== 8}
                     onClick={() => void onAlterarNcm(idx, draft)}
                   >
                     {editando ? "Aplicando…" : "Aplicar NCM"}

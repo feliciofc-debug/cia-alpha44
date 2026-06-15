@@ -37,6 +37,8 @@ const CLASSIFY_TIMEOUT_MS = 600_000;
 const PDF_TIMEOUT_MS = 180_000;
 const API_TIMEOUT_MS = 30_000;
 const SALVAR_TIMEOUT_MS = 180_000;
+/** PATCH NCM + recálculo — pode demorar em cotações grandes. */
+const NCM_ITEM_TIMEOUT_MS = 120_000;
 
 function fetchComTimeout(url: string, init: RequestInit, ms: number) {
   const ctrl = new AbortController();
@@ -341,38 +343,44 @@ export const api = {
     }).then((h) => fetch(`${BASE}/api/cotacoes/${id}`, h).then(handle<CotacaoSalva>)),
 
   confirmarNcmItem: (cotacaoId: string, ordem: number, confirmadoPor?: string) =>
-    withAuthHeaders({
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(confirmadoPor ? { confirmadoPor } : {}),
-    }).then((h) =>
-      fetch(`${BASE}/api/cotacoes/${cotacaoId}/itens/${ordem}/confirmar-ncm`, h).then(handle<CotacaoSalva>),
-    ),
+    fetchComTimeout(
+      `${BASE}/api/cotacoes/${cotacaoId}/itens/${ordem}/confirmar-ncm`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(confirmadoPor ? { confirmadoPor } : {}),
+      },
+      NCM_ITEM_TIMEOUT_MS,
+    ).then(handle<CotacaoSalva>),
 
   confirmarNcmLote: (cotacaoId: string, confirmadoPor?: string) =>
-    withAuthHeaders({
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(confirmadoPor ? { confirmadoPor } : {}),
-    }).then((h) =>
-      fetch(`${BASE}/api/cotacoes/${cotacaoId}/itens/confirmar-ncm-lote`, h).then(
-        handle<CotacaoSalva & { aprovados: number; pulados: number; pendentes: number }>,
-      ),
-    ),
+    fetchComTimeout(
+      `${BASE}/api/cotacoes/${cotacaoId}/itens/confirmar-ncm-lote`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(confirmadoPor ? { confirmadoPor } : {}),
+      },
+      NCM_ITEM_TIMEOUT_MS,
+    ).then(handle<CotacaoSalva & { aprovados: number; pulados: number; pendentes: number }>),
 
   desfazerNcmItem: (cotacaoId: string, ordem: number) =>
-    withAuthHeaders({ method: "POST" }).then((h) =>
-      fetch(`${BASE}/api/cotacoes/${cotacaoId}/itens/${ordem}/desfazer-ncm`, h).then(handle<CotacaoSalva>),
-    ),
+    fetchComTimeout(
+      `${BASE}/api/cotacoes/${cotacaoId}/itens/${ordem}/desfazer-ncm`,
+      { method: "POST" },
+      NCM_ITEM_TIMEOUT_MS,
+    ).then(handle<CotacaoSalva>),
 
   alterarNcmItem: (cotacaoId: string, ordem: number, ncm: string) =>
-    withAuthHeaders({
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ ncm }),
-    }).then((h) =>
-      fetch(`${BASE}/api/cotacoes/${cotacaoId}/itens/${ordem}/ncm`, h).then(handle<CotacaoSalva>),
-    ),
+    fetchComTimeout(
+      `${BASE}/api/cotacoes/${cotacaoId}/itens/${ordem}/ncm`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ncm }),
+      },
+      NCM_ITEM_TIMEOUT_MS,
+    ).then(handle<CotacaoSalva>),
 
   /** @deprecated use atualizarCotacao */
   atualizarFiscal: (id: string, opts: Record<string, unknown>) =>

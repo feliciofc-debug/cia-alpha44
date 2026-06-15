@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "./auth/auth.tsx";
 import { api, type AnaliseCompleta, type Meta } from "./lib/api.ts";
 import { brl, fmtNcm, pct, usdKg } from "./lib/format.ts";
@@ -68,6 +68,18 @@ function fmtData(iso: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function normalizarNcmDigitos(raw: string): string {
+  return raw.replace(/\D/g, "").padStart(8, "0").slice(0, 8);
+}
+
+function msgErroOperacaoNcm(e: unknown, fallback: string): string {
+  const msg = e instanceof Error ? e.message : fallback;
+  if (/abort/i.test(msg)) {
+    return "Operação NCM expirou (timeout). Tente novamente ou use «Aprovar todos os NCMs».";
+  }
+  return msg || fallback;
 }
 
 type AnaliseView = AnaliseCompleta | CotacaoSalva;
@@ -863,6 +875,7 @@ export function Dashboard() {
   const [resumoNcmLote, setResumoNcmLote] = useState<{ aprovados: number; pendentes: number } | null>(null);
   const [confirmandoIcms, setConfirmandoIcms] = useState(false);
   const [alterandoNcm, setAlterandoNcm] = useState<number | null>(null);
+  const ncmBusyRef = useRef(false);
   const [irParaOrcamento, setIrParaOrcamento] = useState(0);
   const [solicitarResolucaoNcm, setSolicitarResolucaoNcm] = useState(0);
   const [kpis, setKpis] = useState<DashboardKpis | null>(null);
@@ -1173,9 +1186,23 @@ export function Dashboard() {
     }
   }
 
+  function iniciarOperacaoNcm(): boolean {
+    if (ncmBusyRef.current) {
+      setErro("Aguarde a operação NCM anterior terminar.");
+      return false;
+    }
+    ncmBusyRef.current = true;
+    return true;
+  }
+
+  function finalizarOperacaoNcm() {
+    ncmBusyRef.current = false;
+  }
+
   async function confirmarNcmItem(idx: number) {
     const base = analise ?? detalhe;
     if (!base) return;
+    if (!iniciarOperacaoNcm()) return;
     setConfirmandoNcm(idx);
     setErro("");
     const confirmadoPor = user?.email ?? user?.nome;
@@ -1191,9 +1218,10 @@ export function Dashboard() {
       );
       if (analise) setAnalise({ ...analise, itens });
     } catch (e) {
-      setErro(e instanceof Error ? e.message : "Falha ao confirmar NCM.");
+      setErro(msgErroOperacaoNcm(e, "Falha ao confirmar NCM."));
     } finally {
       setConfirmandoNcm(null);
+      finalizarOperacaoNcm();
     }
   }
 
@@ -1206,6 +1234,7 @@ export function Dashboard() {
     if (n === 0) return;
     const msg = `Você revisou os ${n} itens? Esta ação confirma todos os NCMs válidos.`;
     if (!window.confirm(msg)) return;
+    if (!iniciarOperacaoNcm()) return;
 
     setConfirmandoTodosNcm(true);
     setErro("");
@@ -1217,45 +1246,50 @@ export function Dashboard() {
       setResumoNcmLote({ aprovados: atualizada.aprovados, pendentes: atualizada.pendentes });
       setSolicitarResolucaoNcm((n) => n + 1);
     } catch (e) {
-      setErro(e instanceof Error ? e.message : "Falha ao aprovar NCMs em lote.");
+      setErro(msgErroOperacaoNcm(e, "Falha ao aprovar NCMs em lote."));
     } finally {
       setConfirmandoTodosNcm(false);
+      finalizarOperacaoNcm();
     }
   }
 
   async function desfazerNcmItem(idx: number) {
     const base = analise ?? detalhe;
     if (!base) return;
+    if (!iniciarOperacaoNcm()) return;
     setConfirmandoNcm(idx);
     setErro("");
     try {
       const idSalvo = detalhe?.id ?? salvaId;
       if (idSalvo) {
         const atualizada = await api.desfazerNcmItem(idSalvo, idx);
-        if (detalhe?.id) {
-          setDetalhe(atualizada);
-        } else if (analise) {
-          setAnalise({ ...analise, itens: atualizada.itens });
-        }
+        sincronizarCotacaoSalva(atualizada);
         return;
       }
       const itens = base.itens.map((it, i) => (i === idx ? limparConfirmacaoNcm(it) : it));
       if (analise) setAnalise({ ...analise, itens });
     } catch (e) {
-      setErro(e instanceof Error ? e.message : "Falha ao desfazer confirmação.");
+      setErro(msgErroOperacaoNcm(e, "Falha ao desfazer confirmação."));
     } finally {
       setConfirmandoNcm(null);
+      finalizarOperacaoNcm();
     }
   }
 
   async function alterarNcmItem(idx: number, ncmRaw: string) {
     const base = analise ?? detalhe;
     if (!base) return;
-    const ncm = ncmRaw.replace(/\D/g, "").padStart(8, "0").slice(0, 8);
+    const ncm = normalizarNcmDigitos(ncmRaw);
     if (ncm.length !== 8 || ncm === "00000000") {
       setErro("Informe um NCM válido com 8 dígitos.");
       return;
     }
+    const ncmAtual = normalizarNcmDigitos(base.itens[idx]?.ncm ?? "");
+    if (ncm === ncmAtual) {
+      setErro("O NCM informado é igual ao atual. Edite para outro código ou use «Confirmar NCM».");
+      return;
+    }
+    if (!iniciarOperacaoNcm()) return;
     setAlterandoNcm(idx);
     setErro("");
     try {
@@ -1267,25 +1301,17 @@ export function Dashboard() {
 
       if (idSalvo) {
         const atualizada = await api.alterarNcmItem(idSalvo, idx, ncm);
-        if (detalhe?.id) {
-          setDetalhe(atualizada);
-        } else if (analise) {
-          setAnalise({
-            ...analise,
-            cotacao: atualizada.cotacao,
-            resultado: atualizada.resultado,
-            itens: atualizada.itens,
-          });
-        }
+        sincronizarCotacaoSalva(atualizada);
         return;
       }
 
       const { resultado, itens } = await api.calcular(cotacao);
       if (analise) setAnalise({ ...analise, cotacao, resultado, itens });
     } catch (e) {
-      setErro(e instanceof Error ? e.message : "Falha ao alterar NCM.");
+      setErro(msgErroOperacaoNcm(e, "Falha ao alterar NCM."));
     } finally {
       setAlterandoNcm(null);
+      finalizarOperacaoNcm();
     }
   }
 
