@@ -1,4 +1,4 @@
-import { FAMILIAS_PRODUTO } from "./catalogo.js";
+import { FAMILIAS_PRODUTO, RE_SIDERURGICO_PLANO } from "./catalogo.js";
 import type { FamiliaDetectada, FamiliaProduto, ResultadoDeteccaoFamilias } from "./tipos.js";
 
 const RE_ELETRICO = /el[eé]tr|electric|e-?scooter|hoverboard|电动|滑板车/i;
@@ -32,6 +32,7 @@ const IDS_PRECEDE_MATERIAL = new Set([
   "ferramentas_maquina",
   "sensores_instrumentos",
   "cozinha_utensilios",
+  "siderurgico_plano",
   "brinquedos",
 ]);
 
@@ -57,6 +58,9 @@ function matchFamilia(descricao: string, familia: FamiliaProduto): string | null
   if (!m) return null;
 
   if (familia.id === "brinquedos" && RE_ELETRICO.test(descricao)) {
+    return null;
+  }
+  if (familia.id === "metal_ferro_aco" && RE_SIDERURGICO_PLANO.test(descricao)) {
     return null;
   }
   return m[0] ?? "";

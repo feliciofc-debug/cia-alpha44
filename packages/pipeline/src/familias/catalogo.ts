@@ -1,5 +1,9 @@
 import type { FamiliaProduto } from "./tipos.js";
 
+/** Produto siderúrgico plano (cap. 72) — excluído de metal_ferro_aco (utensílio 73). */
+export const RE_SIDERURGICO_PLANO =
+  /chapa|laminad[oa]?|bobina|\bcoil\b|folha\s+(?:de\s+)?(?:a[cç]o|ferro|steel)|(?:a[cç]o|ferro|steel)\s+folha|hot\s*[- ]?rolled|cold\s*[- ]?rolled|钢板|热轧|冷轧|镀锌|galvaniz(?:ad[oa])?|\bCHP[-_]|(?:steel|metal|a[cç]o|ferro)\s+(?:sheet|plate)|(?:sheet|plate)\s+(?:steel|metal|a[cç]o|ferro)|\d+\s*mm\b/i;
+
 /** ~30 famílias frequentes China→BR — guard-rail de capítulo/posição. */
 export const FAMILIAS_PRODUTO: FamiliaProduto[] = [
   {
@@ -177,10 +181,17 @@ export const FAMILIAS_PRODUTO: FamiliaProduto[] = [
     ncmPreferidos: ["73239300", "73239400"],
   },
   {
+    id: "siderurgico_plano",
+    prefixos: ["72"],
+    re: RE_SIDERURGICO_PLANO,
+    termosBusca: "chapa laminada bobina aco carbono inox galvanizado plano folha",
+    ncmPreferidos: ["72085200", "72269200", "72104900", "72193300"],
+  },
+  {
     id: "metal_ferro_aco",
     prefixos: ["7323", "7326"],
-    re: /a[cç]o|ferro|steel|inox|stainless|inoxidable|不锈钢|铁|钢/i,
-    termosBusca: "artigos ferro aco inox uso domestico",
+    re: /(?:balde|bucket|tela(?:s)?|mesh|wire\s*cloth|wire\s*screen|grade(?:s)?|grelha|talher|cutlery|colher|garfo|utens[ií]lio(?:s)?|household|domestic|artigo(?:s)?\s+(?:de\s+)?(?:dom[eé]stic|ferro|a[cç]o|inox)|pe[cç]a(?:s)?\s+(?:de\s+)?a[cç]o|pe[cç]a\s+a[cç]o|prego|tacha|rebite)/i,
+    termosBusca: "artigos ferro aco inox uso domestico balde tela talher",
   },
   {
     id: "aluminio",

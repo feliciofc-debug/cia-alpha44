@@ -115,7 +115,8 @@ describe("familias — brinquedos × patinete elétrico", () => {
     const soDesc = detectarFamilias({ descOriginal: "滑板车T1 MAX", uso: "骑行" });
     const descComMaterial = detectarFamilias("滑板车 · Material: 高碳钢");
     expect(soDesc.familias.map((f) => f.familia.id)).not.toContain("metal_ferro_aco");
-    expect(descComMaterial.familias.map((f) => f.familia.id)).toContain("metal_ferro_aco");
+    expect(descComMaterial.familias.map((f) => f.familia.id)).not.toContain("metal_ferro_aco");
+    expect(descComMaterial.familias.map((f) => f.familia.id)).toContain("veiculo_leve_eletrico");
   });
 
   it("uso 配件 viés parte — inclui pecas, exclui veiculo completo", () => {
