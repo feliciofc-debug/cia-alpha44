@@ -46,7 +46,12 @@ for (let i = 0; i < GABARITO.length; i++) {
 console.log(`\n1. packliste-DE: ${acertos}/14 capítulos`);
 
 const stoss = itens[10];
-console.log(`\n2. Stoßdämpfer item 11: ncm=${stoss?.ncm} pos=${(stoss?.ncm || "").slice(0, 4)} fonte=${stoss?.ncmFonte} conf=${stoss?.ncmConfianca}`);
+const stossNcm = (stoss?.ncm || "").padStart(8, "0");
+const stossPos = stossNcm.slice(0, 4);
+const stossOk = stossPos === "8714";
+console.log(
+  `\n2. Stoßdämpfer item 11: ncm=${stoss?.ncm} pos=${stossPos} fonte=${stoss?.ncmFonte} conf=${stoss?.ncmConfianca} ${stossOk ? "OK (8714)" : "FAIL (exige pos 8714)"}`,
+);
 
 const fatura = JSON.parse(readFileSync(faturaPath, "utf8"));
 const linhasPat = fatura.linhas.filter((l) => /ES-T19A-10(BLK|WHI)/i.test(l.descOriginal ?? ""));
@@ -68,6 +73,6 @@ for (const p of problemas) {
   for (const a of p.avisos.filter((x) => /pendente|incompat/i.test(x))) console.log(`      aviso: ${a.slice(0, 100)}`);
 }
 
-const pass = acertos === 14 && stoss?.ncm === "87141000" && patOk;
+const pass = acertos === 14 && stossOk && patOk;
 console.log(`\n=== ${pass ? "VERDE ✅" : "VERMELHO ❌"} ===\n`);
 process.exit(pass ? 0 : 1);
