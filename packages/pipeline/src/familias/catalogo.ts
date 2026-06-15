@@ -89,10 +89,10 @@ export const FAMILIAS_PRODUTO: FamiliaProduto[] = [
   },
   {
     id: "brinquedos",
-    prefixos: ["9503"],
-    re: /brinquedo|toy|boneca|doll|puzzle|jogo|game\s*toy|patinete\s*infantil|kick\s*scooter|scooter\s*infantil|玩具|童/i,
-    termosBusca: "brinquedo toy infantil diversao",
-    ncmPreferidos: ["95030099", "95030031"],
+    prefixos: ["9503", "9504", "9505"],
+    re: /brinquedo|\btoys?\b|boneca|doll|puzzle|quebra[- ]?cabe[cç]a|building\s+blocks|blocos\s+de\s+montar|figura\s+colecion[aá]vel|collectible\s+figure|action\s+figure|手办|积木|rc\s+toy|carrinho.*controle\s+remoto|controle\s+remoto.*(?:carro|carrinho)|jogo\s+de\s+tabuleiro|board\s+game|jogo\s+infantil|jogo\s+de\s+cartas|card\s+game|game\s+toy|patinete\s+infantil|kick\s*scooter|scooter\s+infantil|玩具|童/i,
+    termosBusca: "brinquedo toy infantil diversao boneca puzzle tabuleiro",
+    ncmPreferidos: ["95030099", "95030031", "95042000", "95059000"],
   },
   {
     id: "bicicleta",
@@ -129,9 +129,10 @@ export const FAMILIAS_PRODUTO: FamiliaProduto[] = [
   },
   {
     id: "ferramentas_manual",
-    prefixos: ["8205"],
-    re: /chave\s*(ingl|fenda|phillips|allen)|ferramenta\s*manual|hand\s*tool|扳手|螺丝刀/i,
-    termosBusca: "ferramentas manuais chaves soquetes",
+    prefixos: ["8205", "8204"],
+    re: /jogo\s+de\s+chaves|chave\s+de\s+boca|wrench\s*set|schraubenschl[uü]ssel|schraubendreher|chave\s*(ingl|fenda|phillips|allen)|\bwrench\b|ferramenta\s*manual|hand\s*tool|扳手|螺丝刀/i,
+    termosBusca: "ferramentas manuais chaves boca soquetes wrench",
+    ncmPreferidos: ["82042000", "82054000"],
   },
   {
     id: "ferramentas_maquina",
@@ -143,8 +144,37 @@ export const FAMILIAS_PRODUTO: FamiliaProduto[] = [
   {
     id: "ferramentas_eletricas",
     prefixos: ["8467"],
-    re: /furadeira|parafusadeira|angle\s*grinder|serra\s*el[eé]tr|power\s*tool|电动工具/i,
-    termosBusca: "ferramentas pneumaticas eletricas furadeira",
+    re: /esmerilhadeira|lixadeira|polidora|winkelschleifer|schleifer|furadeira|parafusadeira|angle\s*grinder|\bgrinder\b|serra\s*el[eé]tr|power\s*tool|电动工具/i,
+    termosBusca: "ferramentas eletromecanicas manuais esmerilhadeira lixadeira furadeira",
+    ncmPreferidos: ["84672900", "84671190"],
+  },
+  {
+    id: "bombas_ar",
+    prefixos: ["8414"],
+    re: /fahrradpumpe|luftpumpe|handpumpe|bomba\s+de\s+(ar|bicicleta)|bomba\s+manual|air\s+pump|hand\s+pump|bike\s+pump|floor\s+pump|inflator/i,
+    termosBusca: "bombas ar manual bicicleta compressor manual inflador",
+    ncmPreferidos: ["84142000", "84142090"],
+  },
+  {
+    id: "bombas_liquido",
+    prefixos: ["8413"],
+    re: /bomba d['']?[áa]gua|water\s+pump|wasserpumpe|kreiselpumpe|bomba centr[ií]fuga|submersible\s+pump|tauchpumpe/i,
+    termosBusca: "bombas liquidos agua centrifuga submersa",
+    ncmPreferidos: ["84137010", "84138100"],
+  },
+  {
+    id: "sensores_instrumentos",
+    prefixos: ["8536", "9026", "9031"],
+    re: /sensor|transdutor|transducer|n[aä]herungssensor|proximity\s+sensor|detector\s+de\s+proximidade/i,
+    termosBusca: "sensor transdutor aparelho medicao controle automatico instrumento",
+    ncmPreferidos: ["85365090", "90261029", "90318099"],
+  },
+  {
+    id: "cozinha_utensilios",
+    prefixos: ["7323", "7324"],
+    re: /jogo\s+de\s+panelas|kochtopf|cookware|panelas?\s+(de\s+)?cozinha|conjunto\s+de\s+panelas|topf[- ]?set/i,
+    termosBusca: "artigos uso domestico cozinha panelas aco inox ferro",
+    ncmPreferidos: ["73239300", "73239400"],
   },
   {
     id: "metal_ferro_aco",
@@ -168,7 +198,7 @@ export const FAMILIAS_PRODUTO: FamiliaProduto[] = [
   {
     id: "textil_cama_mesa",
     prefixos: ["63"],
-    re: /toalha|towel|len[cç]ol|sheet|curtain|cortina|cotton|algod[aã]o|棉|布/i,
+    re: /toalha|towel|len[cç]ol|sheet|curtain|cortina|cotton|algod[aã]o|jogo\s+de\s+len[cç]ol|jogo\s+de\s+cama|bed\s+linen\s+set|kit\s+de\s+len[cç]ol|棉|布/i,
     termosBusca: "artigos texteis cama mesa banho",
   },
   {

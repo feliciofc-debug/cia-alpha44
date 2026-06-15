@@ -20,6 +20,25 @@ const IDS_PRODUTO_COMPLETO = new Set([
 ]);
 const IDS_PECA = new Set(["pecas_veiculo_leve", "parafusos_fixadores", "autopecas"]);
 
+/** Famílias de material/composição — cedem a produto funcional na mesma descrição. */
+const IDS_MATERIAL = new Set(["aluminio", "metal_ferro_aco", "plasticos_chapas", "plastico_utilidades"]);
+
+/** Produto funcional explícito — prevalece sobre material (não afeta veículo+metal explícito). */
+const IDS_PRECEDE_MATERIAL = new Set([
+  "bombas_ar",
+  "bombas_liquido",
+  "ferramentas_eletricas",
+  "ferramentas_manual",
+  "ferramentas_maquina",
+  "sensores_instrumentos",
+  "cozinha_utensilios",
+  "brinquedos",
+]);
+
+/** Ferramentas e bombas — precedem brinquedos/bicicleta quando o texto descreve o produto. */
+const IDS_FERRAMENTAS = new Set(["ferramentas_eletricas", "ferramentas_manual", "ferramentas_maquina"]);
+const IDS_BOMBA_AR = "bombas_ar";
+
 function normalizarInput(input: string | DetectarFamiliasInput): DetectarFamiliasInput {
   if (typeof input === "string") return { descOriginal: input };
   return input;
@@ -66,6 +85,33 @@ function aplicarViesUso(familias: FamiliaDetectada[], uso?: string | null): Fami
   return familias;
 }
 
+/**
+ * Produto funcional prevalece sobre material (bomba alumínio → bombas_ar, não 7615).
+ * Ferramentas prevalecem sobre brinquedos ("jogo de chaves" → 8204/8205, não 9503).
+ */
+function aplicarPrecedenciaFuncional(familias: FamiliaDetectada[]): FamiliaDetectada[] {
+  if (familias.length <= 1) return familias;
+
+  let out = familias;
+  const ids = new Set(out.map((f) => f.familia.id));
+  const temPrecedencia = out.some((f) => IDS_PRECEDE_MATERIAL.has(f.familia.id));
+  const temMaterial = out.some((f) => IDS_MATERIAL.has(f.familia.id));
+
+  if (temPrecedencia && temMaterial) {
+    out = out.filter((f) => !IDS_MATERIAL.has(f.familia.id));
+  }
+
+  if (out.some((f) => IDS_FERRAMENTAS.has(f.familia.id)) && out.some((f) => f.familia.id === "brinquedos")) {
+    out = out.filter((f) => f.familia.id !== "brinquedos");
+  }
+
+  if (ids.has(IDS_BOMBA_AR) && out.some((f) => f.familia.id === IDS_BOMBA_AR)) {
+    out = out.filter((f) => f.familia.id !== "bicicleta");
+  }
+
+  return out;
+}
+
 /** Todas as famílias que casam com descOriginal (+ viés uso). Material não participa. */
 export function detectarFamilias(input: string | DetectarFamiliasInput): ResultadoDeteccaoFamilias {
   const { descOriginal, uso } = normalizarInput(input);
@@ -80,6 +126,7 @@ export function detectarFamilias(input: string | DetectarFamiliasInput): Resulta
   }
 
   familias = aplicarViesUso(familias, uso);
+  familias = aplicarPrecedenciaFuncional(familias);
 
   const conflito = familias.length > 1;
   const avisoConflito = conflito

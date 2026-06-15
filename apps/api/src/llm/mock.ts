@@ -58,7 +58,12 @@ function mock2PassesItem(catalog: NcmCatalog, it: ClassifyItemInput): ClassifyIt
   const rgiExclusao9401 =
     "9401.61/69 (outros assentos) e 9401.71/79 (metal) não se aplicam — produto é assento giratório de altura ajustável (9401.3x).";
 
-  if (/garrafa|termic|termo|thermal|flask|isoterm|vacuum|inox/.test(desc)) {
+  if (/kochtopf|panelas|jogo de panelas/.test(desc)) {
+    posicao4 = "7323";
+    ncm = listarNcm8DaPosicao(catalog, posicao4)[0]?.ncm ?? "";
+    confianca = 0.78;
+    justificativaRGI = "RGI 1 — artigos de uso doméstico de aço inox (73.23).";
+  } else if (/garrafa|termic|termo|thermal|flask|isoterm|vacuum|thermoskanne/.test(desc)) {
     posicao4 = "9617";
     ncm = "96170010";
     justificativaRGI =
@@ -141,11 +146,6 @@ function mock2PassesItem(catalog: NcmCatalog, it: ClassifyItemInput): ClassifyIt
     ncm = listarNcm8DaPosicao(catalog, posicao4)[0]?.ncm ?? "";
     confianca = 0.8;
     justificativaRGI = "RGI 1 — ferramentas manuais (82.05).";
-  } else if (/kochtopf|panelas|jogo de panelas/.test(desc)) {
-    posicao4 = "7323";
-    ncm = listarNcm8DaPosicao(catalog, posicao4)[0]?.ncm ?? "";
-    confianca = 0.78;
-    justificativaRGI = "RGI 1 — artigos de uso doméstico de aço inox (73.23).";
   } else if (/deckenleuchte|luminaria de teto|luminária de teto|led/.test(desc) && /teto|ceiling|decken/.test(desc)) {
     posicao4 = "9405";
     ncm = "94052100";

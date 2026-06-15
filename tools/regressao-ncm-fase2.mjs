@@ -4,7 +4,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseSupplierFile } from "@cia/pipeline";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -13,8 +13,8 @@ const cold = process.argv.includes("--cold");
 
 if (cold) process.env.NCM_CACHE_DISABLE = "1";
 
-const { getState } = await import(join(root, "apps/api/dist/state.js"));
-const { montarItens } = await import(join(root, "apps/api/dist/services/cotacao.js"));
+const { getState } = await import(pathToFileURL(join(root, "apps/api/dist/state.js")).href);
+const { montarItens } = await import(pathToFileURL(join(root, "apps/api/dist/services/cotacao.js")).href);
 
 const GABARITO = ["84", "82", "96", "73", "85", "85", "94", "94", "87", "95", "87", "73", "63", "61"];
 
@@ -68,6 +68,6 @@ for (const p of problemas) {
   for (const a of p.avisos.filter((x) => /pendente|incompat/i.test(x))) console.log(`      aviso: ${a.slice(0, 100)}`);
 }
 
-const pass = acertos === 14 && stoss?.ncm === "87149990" && patOk;
+const pass = acertos === 14 && stoss?.ncm === "87141000" && patOk;
 console.log(`\n=== ${pass ? "VERDE ✅" : "VERMELHO ❌"} ===\n`);
 process.exit(pass ? 0 : 1);

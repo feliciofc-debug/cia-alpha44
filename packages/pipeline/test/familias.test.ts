@@ -36,7 +36,7 @@ function loadFixture(nome: string): { fonte: string; itens: FixtureItem[] } {
 describe("familias — catálogo", () => {
   it("tem ~30 famílias com prefixos 2 ou 4 dígitos", () => {
     expect(FAMILIAS_PRODUTO.length).toBeGreaterThanOrEqual(28);
-    expect(FAMILIAS_PRODUTO.length).toBeLessThanOrEqual(35);
+    expect(FAMILIAS_PRODUTO.length).toBeLessThanOrEqual(42);
     for (const f of FAMILIAS_PRODUTO) {
       expect(f.prefixos.length).toBeGreaterThan(0);
       for (const p of f.prefixos) {

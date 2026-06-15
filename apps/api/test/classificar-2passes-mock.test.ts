@@ -107,7 +107,7 @@ const PACKLISTE_DE = [
 ];
 
 describe("mock classify2Passes — packliste DE (P2b descPt)", () => {
-  it("≥12/14 itens no capítulo correto via tradução mock", async () => {
+  it("14/14 itens no capítulo correto via tradução mock", async () => {
     const outs = await mock.classify2Passes!(
       catalog,
       PACKLISTE_DE.map((p) => ({ descOriginal: p.desc })),
@@ -119,6 +119,6 @@ describe("mock classify2Passes — packliste DE (P2b descPt)", () => {
       const cap = ncm.slice(0, 2);
       if (cap === PACKLISTE_DE[i]!.cap) acertos++;
     }
-    expect(acertos).toBeGreaterThanOrEqual(12);
+    expect(acertos).toBe(14);
   });
 });
