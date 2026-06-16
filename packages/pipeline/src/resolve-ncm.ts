@@ -180,7 +180,7 @@ function escolherSubstituto(
 export function resolveNcm(catalog: NcmCatalog, input: ResolveNcmInput): ResolveNcmResult {
   const avisos: string[] = [];
   const deteccao = detectarFamilias({
-    descOriginal: textoDeteccaoFamilia(input.descOriginal ?? "", input.descPt),
+    descOriginal: (input.descOriginal ?? input.descricao ?? "").trim(),
     uso: input.uso,
   });
   const familia = deteccao.conflito ? null : (deteccao.familias[0]?.familia ?? null);

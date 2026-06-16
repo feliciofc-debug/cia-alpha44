@@ -8,7 +8,6 @@ import {
   montarCandidatosPasse1,
   prefixosDasFamilias,
   detectarFamilias,
-  textoDeteccaoFamilia,
   type ComexEntry,
   type NcmCatalog,
 } from "@cia/pipeline";
@@ -200,7 +199,7 @@ function mock2PassesItem(catalog: NcmCatalog, it: ClassifyItemInput): ClassifyIt
     justificativaRGI = "RGI 1 — luminária elétrica de teto/parede.";
   } else {
     const detInput = {
-      descOriginal: textoDeteccaoFamilia(it.descOriginal, descPt),
+      descOriginal: it.descOriginal,
       uso: it.uso,
     };
     const cands = montarCandidatosPasse1(catalog, descPt, undefined, 25, detInput);

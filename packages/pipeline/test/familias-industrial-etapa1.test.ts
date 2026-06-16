@@ -5,16 +5,14 @@ import {
   detectarFamilias,
   loadNcmVigente,
   montarCandidatosPasse1,
-  textoDeteccaoFamilia,
 } from "../src/index.js";
 
 const catalog = criarNcmCatalog(loadNcmVigente());
 
 function capP1(desc: string, descPt?: string) {
-  const texto = textoDeteccaoFamilia(desc, descPt);
-  const det = detectarFamilias({ descOriginal: texto });
+  const det = detectarFamilias({ descOriginal: desc });
   const fam = det.conflito ? null : (det.familias[0]?.familia ?? null);
-  const p1 = montarCandidatosPasse1(catalog, descPt ?? desc, fam, 25, { descOriginal: texto });
+  const p1 = montarCandidatosPasse1(catalog, descPt ?? desc, fam, 25, { descOriginal: desc });
   return { det, fam, p1, caps: p1.map((c) => c.posicao4) };
 }
 
@@ -31,7 +29,7 @@ describe("etapa 1 — vocabulário industrial DE", () => {
   it("bomba bicicleta + alumínio → bombas_ar (8414), sem conflito material", () => {
     const desc = "DE-BK-3001 — Fahrradpumpe Aluminium mit Manometer, Handpumpe";
     const descPt = "Bomba de bicicleta alumínio com manômetro, bomba manual";
-    const det = detectarFamilias({ descOriginal: textoDeteccaoFamilia(desc, descPt) });
+    const det = detectarFamilias({ descOriginal: desc });
     expect(det.conflito).toBe(false);
     expect(det.familias.map((f) => f.familia.id)).toEqual(["bombas_ar"]);
     const { caps } = capP1(desc, descPt);
@@ -59,7 +57,7 @@ describe("etapa 1 — vocabulário industrial DE", () => {
   it("jogo de chaves / Schraubenschlüssel → ferramentas_manual (8204/8205)", () => {
     const desc = "DE-WRK-SCHR — Schraubenschlüssel-Set 12-teilig metrisch, Chrom-Vanadium";
     const descPt = "Jogo de chaves de boca 12 peças métricas cromo-vanádio";
-    const det = detectarFamilias({ descOriginal: textoDeteccaoFamilia(desc, descPt) });
+    const det = detectarFamilias({ descOriginal: desc });
     expect(det.familias.map((f) => f.familia.id)).toContain("ferramentas_manual");
     expect(det.familias.map((f) => f.familia.id)).not.toContain("brinquedos");
     const { caps } = capP1(desc, descPt);

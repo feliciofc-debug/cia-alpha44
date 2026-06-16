@@ -9,7 +9,6 @@ import {
   listarNcm8DaPosicao,
   montarCandidatosPasse1,
   textoClassificacaoIa,
-  textoDeteccaoFamilia,
   type NcmCatalog,
 } from "@cia/pipeline";
 import type { ClassifyItemInput, ClassifyItemOutput, LlmProvider } from "./types.js";
@@ -141,7 +140,7 @@ export async function executar2PassesComLlm(
     const descPt = descricoesPt[i]!;
     const desc = descricaoIa(it, descPt);
     const detInput = {
-      descOriginal: textoDeteccaoFamilia(it.descOriginal, descPt),
+      descOriginal: it.descOriginal,
       uso: it.uso,
     };
     const candidatos = montarCandidatosPasse1(

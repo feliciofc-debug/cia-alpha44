@@ -13,3 +13,4 @@ export {
   prefixosDasFamilias,
   prefixoBuscaPrincipal,
 } from "./coerencia.js";
+export { validarNcmParaCacheHumano, type ValidacaoCacheHumano } from "./cache-humano.js";

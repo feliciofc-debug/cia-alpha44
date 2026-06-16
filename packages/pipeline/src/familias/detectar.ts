@@ -34,6 +34,8 @@ const IDS_PRECEDE_MATERIAL = new Set([
   "cozinha_utensilios",
   "siderurgico_plano",
   "brinquedos",
+  "moto_eletrica",
+  "veiculo_leve_eletrico",
 ]);
 
 /** Ferramentas e bombas — precedem brinquedos/bicicleta quando o texto descreve o produto. */

@@ -6,6 +6,7 @@ import {
   chaveClassificacaoCache,
   criarNcmCatalog,
   loadNcmVigenteCache,
+  validarNcmParaCacheHumano,
   type ClassificacaoCacheKeyInput,
   type NcmCatalog,
 } from "@cia/pipeline";
@@ -120,7 +121,16 @@ export type SalvarClassificacaoCacheHumanoOpts = {
   /** Lote: propaga erro e reverte transação. Individual: best-effort (default). */
   strict?: boolean;
   tx?: Prisma.TransactionClient;
+  /** Ignorar validação de coerência (apenas testes internos — não usar em prod). */
+  skipCoerencia?: boolean;
 };
+
+export class CacheHumanoIncoerenteError extends Error {
+  constructor(motivo: string) {
+    super(motivo);
+    this.name = "CacheHumanoIncoerenteError";
+  }
+}
 
 /** Grava ou atualiza cache a partir de confirmação humana — prevalece sobre LLM. */
 export async function salvarClassificacaoCacheHumano(
@@ -130,6 +140,17 @@ export async function salvarClassificacaoCacheHumano(
   opts?: SalvarClassificacaoCacheHumanoOpts,
 ): Promise<void> {
   if (!dbAtivo()) return;
+
+  const ncm = resultado.ncmCandidatos?.[0]?.ncm;
+  if (ncm && !opts?.skipCoerencia) {
+    const catalog = criarNcmCatalog(loadNcmVigenteCache());
+    const val = validarNcmParaCacheHumano(catalog, input, ncm);
+    if (!val.ok) {
+      if (opts?.strict) throw new CacheHumanoIncoerenteError(val.motivo ?? "NCM incoerente.");
+      console.warn(`[classificacao-cache] ${val.motivo}`);
+      return;
+    }
+  }
 
   const chave = chaveClassificacaoCache(input, versoes.promptVersion, versoes.catalogVersion);
   const json = resultado as unknown as Prisma.InputJsonValue;

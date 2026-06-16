@@ -30,6 +30,8 @@ export {
   ncmCoerenteComPrefixo,
   prefixosDasFamilias,
   prefixoBuscaPrincipal,
+  validarNcmParaCacheHumano,
+  type ValidacaoCacheHumano,
   type FamiliaDetectada,
   type ResultadoDeteccaoFamilias,
   type DetectarFamiliasInput,

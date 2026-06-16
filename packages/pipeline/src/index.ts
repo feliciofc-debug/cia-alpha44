@@ -151,6 +151,8 @@ export {
   ncmCoerenteComPrefixo,
   prefixosDasFamilias,
   prefixoBuscaPrincipal,
+  validarNcmParaCacheHumano,
+  type ValidacaoCacheHumano,
   enriquecerTextoClassificacao,
   textoClassificacaoIa,
   MIN_SCORE_BUSCA_NCM,
