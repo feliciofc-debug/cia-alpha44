@@ -89,6 +89,8 @@ export const itemSchema = z.object({
   material: z.string().optional(),
   /** Confiança do NCM final escolhido (2-passes), não necessariamente candidatos[0]. */
   ncmConfianca: z.number().min(0).max(1).optional(),
+  /** Posição persistida na cotação (campo Prisma Item.ordem). Ausente antes de salvar. */
+  ordem: z.number().int().nonnegative().optional(),
   ncm: z.string(),
   ncmCandidatos: z.array(ncmCandidatoSchema).default([]),
   pesoBrutoKg: z.number().nonnegative().nullable().default(null),

@@ -14,6 +14,7 @@ import {
   validarConfirmacaoNcmItens,
   ncm8Limpo,
   mesclarAvisoMoedaCotacao,
+  mesclarOrdemItensPersistidos,
 } from "@cia/shared";
 import {
   aplicarIcmsCotacao,
@@ -162,6 +163,7 @@ export function mapRowParaDominio(row: CotacaoComRelacoes): {
       mesclarItemMeta(
         {
           id: it.id,
+          ordem: it.ordem,
           descOriginal: it.descOriginal,
           descPt: it.descPt,
           descDuimp: it.descDuimp,
@@ -536,8 +538,8 @@ export async function atualizarCotacao(id: string, tenantSlug: string, state: Ap
   const { cotacao, itens: itensAtuais } = mapRowParaDominio(row);
   const itensDom =
     opts.itensAliquotas?.length
-      ? itensAtuais.map((it, ordem) => {
-          const patch = opts.itensAliquotas!.find((p) => p.ordem === ordem);
+      ? itensAtuais.map((it) => {
+          const patch = opts.itensAliquotas!.find((p) => p.ordem === (it.ordem ?? -1));
           if (!patch) return it;
           return aplicarPatchesAliquotasItem(it, {
             aliquotas: patch.aliquotas,
@@ -598,7 +600,8 @@ export async function atualizarCotacao(id: string, tenantSlug: string, state: Ap
     if (opts.itensAliquotas?.length) {
       for (const patch of opts.itensAliquotas) {
         const itemRow = row.itens.find((i) => i.ordem === patch.ordem);
-        const patchedItem = itensValidados[patch.ordem];
+        const idxDom = itensDom.findIndex((it) => (it.ordem ?? -1) === patch.ordem);
+        const patchedItem = idxDom >= 0 ? itensValidados[idxDom] : undefined;
         if (!itemRow || !patchedItem) continue;
         const metaAtual = (itemRow.meta as import("@cia/pipeline").ItemMetaPersistido | null) ?? {};
         const metaNovo = {
@@ -745,9 +748,9 @@ async function recalcularCotacaoPersistida(
   const refreshed = await buscarCotacaoRow(cotacaoId, tenantSlug);
   if (!refreshed) return null;
 
-  const { cotacao } = mapRowParaDominio(refreshed);
+  const { cotacao, itens: itensDb } = mapRowParaDominio(refreshed);
   const { resultado, itens } = calcularCotacao(cotacao, state);
-  const itensValidados = validarConfirmacaoNcmItens(itens);
+  const itensValidados = validarConfirmacaoNcmItens(mesclarOrdemItensPersistidos(itens, itensDb));
   const canal = canalPredominante(itensValidados);
 
   await prisma.cotacao.update({

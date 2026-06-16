@@ -78,7 +78,9 @@ export function PainelEditorCotacao({
         <p className="text-sm font-bold text-white">Editor da cotação</p>
         <p className="mt-1 text-xs text-slate-400">
           Ajuste margem, despesas, UF e cabeçalho — depois clique em recalcular.
-          {modo === "salva" ? " Alterações são salvas no mesmo processo." : ""}
+          {modo === "salva"
+            ? " Alterações são gravadas na cotação salva (tela e PDF usam o mesmo valor)."
+            : " Preview em memória — salve a cotação antes de enviar o PDF ao cliente."}
         </p>
       </div>
 

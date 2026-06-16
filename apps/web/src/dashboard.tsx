@@ -19,7 +19,7 @@ import { PainelKpisView } from "./painel-kpis.tsx";
 import { BenchmarkReferenciaView } from "./benchmark-referencia-view.tsx";
 import { PreviewOrcamentoCliente } from "./preview-orcamento-cliente.tsx";
 import { cotacaoParaSalvar, itensParaSalvar } from "./lib/cotacao-payload.ts";
-import { pdfBloqueadoPorNcm, resumoBloqueioNcm, avisoCompatibilidadePdf, itemPodeConfirmarNcmIndividual, itemPodeDesfazerNcm, itensPendentesConfirmacaoNcm, itensResolucaoNcm, metaConfirmacaoNcm, limparConfirmacaoNcm } from "./lib/ncm.ts";
+import { pdfBloqueadoPorNcm, mensagemBloqueioPdf, avisoCompatibilidadePdf, itemPodeConfirmarNcmIndividual, itemPodeDesfazerNcm, itensPendentesConfirmacaoNcm, itensResolucaoNcm, metaConfirmacaoNcm, limparConfirmacaoNcm, idxPorOrdem, ordemDoItem, pendenciasNcmOrdenadas } from "./lib/ncm.ts";
 import { avisoMoedaCotacao } from "@cia/shared";
 import { PdfDownloadBar } from "./pdf-download-bar.tsx";
 import { BarraResolucaoNcm } from "./barra-resolucao-ncm.tsx";
@@ -217,7 +217,7 @@ function AnalisePainel({
   onBaixarPdfCliente,
   irParaOrcamento,
   solicitarResolucaoNcm,
-  onIrParaResolucaoNcm,
+  resolucaoNcmIdx,
   onAlterarAliquota,
   recalculandoAliquota,
   onDesfazerAliquota,
@@ -246,18 +246,19 @@ function AnalisePainel({
   irParaOrcamento?: number;
   /** Incrementar para abrir barra de resolução NCM (Detalhamento técnico). */
   solicitarResolucaoNcm?: number;
-  onIrParaResolucaoNcm?: () => void;
+  /** Índice do item a destacar ao abrir a resolução NCM. */
+  resolucaoNcmIdx?: number;
   onAlterarAliquota?: (idx: number, campo: AliquotaCampo, valor: number) => void | Promise<void>;
   recalculandoAliquota?: boolean;
   onDesfazerAliquota?: (idx: number, campo: ChaveTributoRastro) => void | Promise<void>;
   desfazendoAliquota?: { idx: number; campo: ChaveTributoRastro } | null;
-  onConfirmarNcm: (idx: number) => void | Promise<void>;
+  onConfirmarNcm: (ordem: number) => void | Promise<void>;
   confirmandoNcm?: number | null;
   onConfirmarTodosNcm?: () => void | Promise<void>;
   confirmandoTodosNcm?: boolean;
   resumoNcmLote?: { aprovados: number; pendentes: number } | null;
-  onDesfazerNcm?: (idx: number) => void | Promise<void>;
-  onAlterarNcm: (idx: number, ncm: string) => void | Promise<void>;
+  onDesfazerNcm?: (ordem: number) => void | Promise<void>;
+  onAlterarNcm: (ordem: number, ncm: string) => void | Promise<void>;
   alterandoNcm?: number | null;
   onConfirmarIcmsSaida?: () => void | Promise<void>;
   confirmandoIcms?: boolean;
@@ -272,6 +273,7 @@ function AnalisePainel({
     return "orcamento";
   });
   const [resolucaoAberta, setResolucaoAberta] = useState(qtdResolucao > 0);
+  const [destaqueResolucaoIdx, setDestaqueResolucaoIdx] = useState<number | null>(null);
   const [exportandoConc, setExportandoConc] = useState<"xlsx" | "csv" | null>(null);
 
   async function exportarConciliacao(fmt: "xlsx" | "csv") {
@@ -305,21 +307,31 @@ function AnalisePainel({
     });
   }, [irParaOrcamento]);
 
-  function irParaResolucaoNcm() {
+  function irParaResolucaoNcm(idx?: number) {
     setResolucaoAberta(true);
     setAba("tecnica");
-    requestAnimationFrame(() =>
-      document.getElementById("barra-resolucao-ncm")?.scrollIntoView({ behavior: "smooth", block: "start" }),
-    );
+    if (idx != null) {
+      setDestaqueResolucaoIdx(idx);
+      requestAnimationFrame(() => {
+        document.getElementById("barra-resolucao-ncm")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+      window.setTimeout(() => setDestaqueResolucaoIdx(null), 2100);
+    } else {
+      setDestaqueResolucaoIdx(null);
+      requestAnimationFrame(() =>
+        document.getElementById("barra-resolucao-ncm")?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      );
+    }
   }
   useEffect(() => {
     if (!solicitarResolucaoNcm) return;
-    irParaResolucaoNcm();
-  }, [solicitarResolucaoNcm]);
+    irParaResolucaoNcm(resolucaoNcmIdx);
+  }, [solicitarResolucaoNcm, resolucaoNcmIdx]);
 
   const qtdFotos = contarItensComFoto(itens);
   const ncmBloqueiaPdf = pdfBloqueadoPorNcm(itens);
-  const motivoBloqueioPdf = resumoBloqueioNcm(itens);
+  const pendenciasNcm = pendenciasNcmOrdenadas(itens);
+  const motivoBloqueioPdf = mensagemBloqueioPdf(itens);
   const avisoCompatPdf = avisoCompatibilidadePdf(itens);
   const avisoMoedaEur = avisoMoedaCotacao(analise.cotacao);
   const icmsMeta = "icms" in analise ? analise.icms : undefined;
@@ -399,8 +411,9 @@ function AnalisePainel({
             {itens.map((it, i) => {
               const fobKg = fobKgItem(it);
               const foto = fotoItemSrc(it);
+              const ordem = it.ordem ?? i;
               return (
-                <tr key={i} className="border-t border-white/5 text-slate-300">
+                <tr key={ordem} className="border-t border-white/5 text-slate-300">
                   <td className="p-2 align-top">
                     {foto ? (
                       <img
@@ -471,20 +484,20 @@ function AnalisePainel({
                       <button
                         type="button"
                         className="block w-full rounded bg-emerald-600 px-2 py-1.5 text-xs font-bold text-white shadow hover:bg-emerald-500 disabled:opacity-50"
-                        disabled={confirmandoNcm === i}
-                        onClick={() => void onConfirmarNcm(i)}
+                        disabled={confirmandoNcm === ordem}
+                        onClick={() => void onConfirmarNcm(ordem)}
                       >
-                        {confirmandoNcm === i ? "Confirmando…" : "Confirmar NCM"}
+                        {confirmandoNcm === ordem ? "Confirmando…" : "Confirmar NCM"}
                       </button>
                     )}
                     {itemPodeDesfazerNcm(it) && onDesfazerNcm && (
                       <button
                         type="button"
                         className="block w-full rounded bg-slate-600/80 px-2 py-1 text-[10px] font-semibold text-slate-200 hover:bg-slate-500 disabled:opacity-50"
-                        disabled={confirmandoNcm === i}
-                        onClick={() => void onDesfazerNcm(i)}
+                        disabled={confirmandoNcm === ordem}
+                        onClick={() => void onDesfazerNcm(ordem)}
                       >
-                        {confirmandoNcm === i ? "…" : "Desfazer confirmação"}
+                        {confirmandoNcm === ordem ? "…" : "Desfazer confirmação"}
                       </button>
                     )}
                     {itemPodeDesfazerNcm(it) && (
@@ -669,10 +682,7 @@ function AnalisePainel({
             <button
               type="button"
               className="w-full rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-left text-sm text-red-200 transition hover:bg-red-500/20 focus:outline-none focus:ring-2 focus:ring-red-400/50"
-              onClick={() => {
-                setResolucaoAberta(true);
-                setAba("tecnica");
-              }}
+              onClick={() => irParaResolucaoNcm(pendenciasNcm[0]?.idx)}
             >
               {motivoBloqueioPdf}
               <span className="mt-1 block text-xs font-semibold text-red-100 underline">Clique para resolver →</span>
@@ -703,6 +713,7 @@ function AnalisePainel({
             onAlterarNcm={onAlterarNcm}
             confirmandoNcm={confirmandoNcm}
             alterandoNcm={alterandoNcm}
+            destaqueIdx={destaqueResolucaoIdx}
           />
         </div>
       )}
@@ -742,11 +753,11 @@ function AnalisePainel({
                 <button
                   type="button"
                   className="mt-2 block rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-500"
-                  onClick={() => {
-                    irParaResolucaoNcm();
-                  }}
+                  onClick={() => irParaResolucaoNcm(pendenciasNcm[0]?.idx)}
                 >
-                  Resolver pendências ({qtdResolucao}) — abrir painel NCM
+                  {pendenciasNcm[0]
+                    ? `Ir para ${pendenciasNcm[0].nome.slice(0, 36)} — resolver NCM`
+                    : `Resolver pendências (${qtdResolucao}) — abrir painel NCM`}
                 </button>
               )}
             </div>
@@ -768,7 +779,8 @@ function AnalisePainel({
             avisoCompatibilidade={avisoCompatPdf}
             avisoMoeda={avisoMoedaEur}
             qtdPendenciasNcm={qtdResolucao}
-            onIrParaResolucaoNcm={onIrParaResolucaoNcm ?? irParaResolucaoNcm}
+            pendenciasNcm={pendenciasNcm}
+            onIrParaResolucaoNcm={irParaResolucaoNcm}
           />
         </div>
       ) : (
@@ -878,6 +890,12 @@ export function Dashboard() {
   const ncmBusyRef = useRef(false);
   const [irParaOrcamento, setIrParaOrcamento] = useState(0);
   const [solicitarResolucaoNcm, setSolicitarResolucaoNcm] = useState(0);
+  const [resolucaoNcmIdx, setResolucaoNcmIdx] = useState<number | undefined>(undefined);
+
+  function solicitarResolucaoNcmComFoco(idx?: number) {
+    setResolucaoNcmIdx(idx);
+    setSolicitarResolucaoNcm((n) => n + 1);
+  }
   const [kpis, setKpis] = useState<DashboardKpis | null>(null);
   const [series, setSeries] = useState<DashboardSeries | null>(null);
   const [kpisLoading, setKpisLoading] = useState(false);
@@ -1090,7 +1108,7 @@ export function Dashboard() {
           ...payloadAtualizar(draft),
           itensAliquotas: [
             {
-              ordem: idx,
+              ordem: ordemDoItem(base.itens, idx),
               aliquotas: itEditado.aliquotas,
               aliquotasOverride: itEditado.aliquotasOverride,
             },
@@ -1133,7 +1151,7 @@ export function Dashboard() {
         const draft = editorDraft ?? editorFromCotacao(base.cotacao);
         const atualizada = await api.atualizarCotacao(detalhe.id, {
           ...payloadAtualizar(draft),
-          itensAliquotas: [{ ordem: idx, desfazerTributos: [campo] }],
+          itensAliquotas: [{ ordem: ordemDoItem(base.itens, idx), desfazerTributos: [campo] }],
         });
         setDetalhe(atualizada);
         setEditorDraft(editorFromCotacao(atualizada.cotacao));
@@ -1208,17 +1226,19 @@ export function Dashboard() {
     ncmBusyRef.current = false;
   }
 
-  async function confirmarNcmItem(idx: number) {
+  async function confirmarNcmItem(ordem: number) {
     const base = cotacaoAtiva();
     if (!base) return;
+    const idx = idxPorOrdem(base.itens, ordem);
+    if (idx < 0) return;
     if (!iniciarOperacaoNcm()) return;
-    setConfirmandoNcm(idx);
+    setConfirmandoNcm(ordem);
     setErro("");
     const confirmadoPor = user?.email ?? user?.nome;
     try {
       const idSalvo = detalhe?.id ?? salvaId;
       if (idSalvo) {
-        const atualizada = await api.confirmarNcmItem(idSalvo, idx, confirmadoPor);
+        const atualizada = await api.confirmarNcmItem(idSalvo, ordem, confirmadoPor);
         sincronizarCotacaoSalva(atualizada);
         return;
       }
@@ -1268,16 +1288,18 @@ export function Dashboard() {
     }
   }
 
-  async function desfazerNcmItem(idx: number) {
+  async function desfazerNcmItem(ordem: number) {
     const base = cotacaoAtiva();
     if (!base) return;
+    const idx = idxPorOrdem(base.itens, ordem);
+    if (idx < 0) return;
     if (!iniciarOperacaoNcm()) return;
-    setConfirmandoNcm(idx);
+    setConfirmandoNcm(ordem);
     setErro("");
     try {
       const idSalvo = detalhe?.id ?? salvaId;
       if (idSalvo) {
-        const atualizada = await api.desfazerNcmItem(idSalvo, idx);
+        const atualizada = await api.desfazerNcmItem(idSalvo, ordem);
         sincronizarCotacaoSalva(atualizada);
         return;
       }
@@ -1291,9 +1313,11 @@ export function Dashboard() {
     }
   }
 
-  async function alterarNcmItem(idx: number, ncmRaw: string) {
+  async function alterarNcmItem(ordem: number, ncmRaw: string) {
     const base = cotacaoAtiva();
     if (!base) return;
+    const idx = idxPorOrdem(base.itens, ordem);
+    if (idx < 0) return;
     const ncm = normalizarNcmDigitos(ncmRaw);
     if (ncm.length !== 8 || ncm === "00000000") {
       setErro("Informe um NCM válido com 8 dígitos.");
@@ -1306,17 +1330,17 @@ export function Dashboard() {
       return;
     }
     if (!iniciarOperacaoNcm()) return;
-    setAlterandoNcm(idx);
+    setAlterandoNcm(ordem);
     setErro("");
     try {
       const idSalvo = detalhe?.id ?? salvaId;
-      const itEditado = limparConfirmacaoNcm({ ...base.itens[idx]!, ncm });
+      const itEditado = limparConfirmacaoNcm({ ...base.itens[idx]!, ncm, ordem });
       const itensLocal = base.itens.map((it, i) => (i === idx ? itEditado : it));
       const draft = editorDraft ?? editorFromCotacao(base.cotacao, "cliente" in base ? base.cotacao.cliente : cliente);
       const cotacao = { ...aplicarEditorNaCotacao(base.cotacao, draft), itens: itensLocal };
 
       if (idSalvo) {
-        const atualizada = await api.alterarNcmItem(idSalvo, idx, ncm);
+        const atualizada = await api.alterarNcmItem(idSalvo, ordem, ncm);
         sincronizarCotacaoSalva(atualizada);
         return;
       }
@@ -1442,6 +1466,20 @@ export function Dashboard() {
         provider: analise.provider,
       });
       setSalvaId(salva.id);
+      setAnalise((prev) =>
+        prev
+          ? {
+              ...prev,
+              cotacao: salva.cotacao,
+              itens: salva.itens,
+              resultado: salva.resultado,
+              icms: salva.icms,
+              avisosFiscais: salva.avisosFiscais ?? salva.cotacao.avisosFiscais,
+              avisoFiscal: salva.avisoFiscal,
+              provider: salva.provider ?? prev.provider,
+            }
+          : prev,
+      );
       await carregarLista();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Falha ao salvar.";
@@ -1699,10 +1737,11 @@ export function Dashboard() {
                 <PdfDownloadBar
                   label="PDF trade"
                   bloqueado={pdfBloqueadoPorNcm(detalhe.itens)}
-                  motivoBloqueio={resumoBloqueioNcm(detalhe.itens)}
+                  motivoBloqueio={mensagemBloqueioPdf(detalhe.itens)}
                   qtdPendencias={itensResolucaoNcm(detalhe.itens).length}
+                  pendencias={pendenciasNcmOrdenadas(detalhe.itens)}
                   onBaixar={() => api.baixarPdf(detalhe.id, "trade")}
-                  onIrParaResolucaoNcm={() => setSolicitarResolucaoNcm((n) => n + 1)}
+                  onIrParaResolucaoNcm={solicitarResolucaoNcmComFoco}
                 />
                 <button
                   type="button"
@@ -1746,7 +1785,7 @@ export function Dashboard() {
                 onBaixarPdfCliente={baixarPdfClienteOrcamento}
                 irParaOrcamento={irParaOrcamento}
                 solicitarResolucaoNcm={solicitarResolucaoNcm}
-                onIrParaResolucaoNcm={() => setSolicitarResolucaoNcm((n) => n + 1)}
+                resolucaoNcmIdx={resolucaoNcmIdx}
                 onAlterarAliquota={alterarAliquotaItem}
                 recalculandoAliquota={recalculandoAliquota}
                 onDesfazerAliquota={desfazerAliquotaItem}
@@ -1850,7 +1889,7 @@ export function Dashboard() {
                   onBaixarPdfCliente={baixarPdfClienteOrcamento}
                   irParaOrcamento={irParaOrcamento}
                   solicitarResolucaoNcm={solicitarResolucaoNcm}
-                  onIrParaResolucaoNcm={() => setSolicitarResolucaoNcm((n) => n + 1)}
+                  resolucaoNcmIdx={resolucaoNcmIdx}
                   onAlterarAliquota={alterarAliquotaItem}
                   recalculandoAliquota={recalculandoAliquota}
                   onDesfazerAliquota={desfazerAliquotaItem}

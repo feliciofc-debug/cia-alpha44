@@ -48,6 +48,8 @@ export interface Risco {
 
 export interface Item {
   id?: string;
+  /** Posição persistida na cotação (Prisma Item.ordem). Ausente antes de salvar. */
+  ordem?: number;
   descOriginal: string;
   descPt: string;
   descDuimp: string;

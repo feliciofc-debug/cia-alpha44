@@ -2,6 +2,7 @@ import { fmtNcm } from "./lib/format.ts";
 import { fotoItemSrc } from "./lib/item-foto.ts";
 import type { Cotacao, Despesa, Item, ResultadoCotacao } from "./lib/types.ts";
 import { PdfDownloadBar } from "./pdf-download-bar.tsx";
+import type { PendenciaNcmItem } from "./lib/ncm.ts";
 
 function parseDataIso(iso?: string) {
   const src = iso?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
@@ -130,6 +131,7 @@ export function PreviewOrcamentoCliente({
   avisoCompatibilidade,
   avisoMoeda,
   qtdPendenciasNcm = 0,
+  pendenciasNcm,
   onIrParaResolucaoNcm,
 }: {
   cotacao: Cotacao;
@@ -148,7 +150,8 @@ export function PreviewOrcamentoCliente({
   /** P2c — planilha EUR tratada como US$ sem conversão. */
   avisoMoeda?: string | null;
   qtdPendenciasNcm?: number;
-  onIrParaResolucaoNcm?: () => void;
+  pendenciasNcm?: PendenciaNcmItem[];
+  onIrParaResolucaoNcm?: (idx?: number) => void;
 }) {
   const dataStr = fmtDataBr(criadoEm);
   const porto = `PORTO ${cotacao.origem || "RJ"}`;
@@ -338,6 +341,7 @@ export function PreviewOrcamentoCliente({
             bloqueado={pdfBloqueado}
             motivoBloqueio={motivoBloqueioPdf}
             qtdPendencias={qtdPendenciasNcm}
+            pendencias={pendenciasNcm}
             onBaixar={onBaixarPdf}
             onIrParaResolucaoNcm={onIrParaResolucaoNcm}
           />

@@ -52,9 +52,9 @@ export function itemPrecisaResolucaoNcm(it: Item): boolean {
   return false;
 }
 
-export function itensResolucaoNcm(itens: Item[]): Array<{ idx: number; item: Item }> {
+export function itensResolucaoNcm(itens: Item[]): Array<{ idx: number; ordem: number; item: Item }> {
   return itens
-    .map((item, idx) => ({ idx, item }))
+    .map((item, idx) => ({ idx, ordem: item.ordem ?? idx, item }))
     .filter(({ item }) => itemPrecisaResolucaoNcm(item));
 }
 

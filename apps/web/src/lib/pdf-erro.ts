@@ -1,5 +1,7 @@
 /** Erro estruturado ao falhar geração/download de PDF (422 NCM, timeout, etc.). */
 
+import type { PendenciaNcmItem } from "./ncm.ts";
+
 export interface ItemInvalidoPdf {
   ordem: number;
   descricao: string;
@@ -24,10 +26,26 @@ export class PdfDownloadError extends Error {
     return this.itensInvalidos?.length ?? 0;
   }
 
-  mensagemAcionavel(fallbackCount = 0): string {
+  mensagemAcionavel(fallbackCount = 0, pendencias?: PendenciaNcmItem[]): string {
+    if (pendencias?.length) {
+      const visiveis = pendencias.slice(0, 2);
+      const restantes = pendencias.length - visiveis.length;
+      let msg = `PDF bloqueado: ${visiveis.map((p) => `${p.nome} (${p.motivoCurto})`).join("; ")}`;
+      if (restantes > 0) msg += ` +${restantes} → ver todos`;
+      return `${msg}. Resolva na aba abaixo.`;
+    }
+
+    if (this.codigo === "NCM_INVALIDO" && this.itensInvalidos?.length) {
+      const visiveis = this.itensInvalidos.slice(0, 2);
+      const restantes = this.itensInvalidos.length - visiveis.length;
+      let msg = `PDF bloqueado: ${visiveis.map((i) => `${i.descricao} (NCM pendente)`).join("; ")}`;
+      if (restantes > 0) msg += ` +${restantes} → ver todos`;
+      return `${msg}. Resolva na aba abaixo.`;
+    }
+
     const n = this.contagemPendencias || fallbackCount;
     if (this.codigo === "NCM_INVALIDO" && n > 0) {
-      return `PDF bloqueado: ${n} item(ns) com NCM pendente`;
+      return `PDF bloqueado: ${n} item(ns) com NCM pendente. Resolva na aba abaixo.`;
     }
     return this.message;
   }

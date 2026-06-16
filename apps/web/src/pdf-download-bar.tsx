@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { PdfDownloadError } from "./lib/pdf-erro.ts";
+import { mensagemToastDePendencias, type PendenciaNcmItem } from "./lib/ncm.ts";
 
 type ToastState = {
-  mensagem: string;
+  titulo: string;
+  visiveis: PendenciaNcmItem[];
+  restantes: number;
   codigo?: string;
-  contagem: number;
   mostrarResolver: boolean;
 };
 
@@ -15,6 +17,7 @@ export function PdfDownloadBar({
   bloqueado,
   motivoBloqueio,
   qtdPendencias = 0,
+  pendencias,
   onBaixar,
   onIrParaResolucaoNcm,
 }: {
@@ -24,8 +27,9 @@ export function PdfDownloadBar({
   bloqueado: boolean;
   motivoBloqueio?: string;
   qtdPendencias?: number;
+  pendencias?: PendenciaNcmItem[];
   onBaixar: () => void | Promise<void>;
-  onIrParaResolucaoNcm?: () => void;
+  onIrParaResolucaoNcm?: (idx?: number) => void;
 }) {
   const [internoBaixando, setInternoBaixando] = useState(false);
   const baixando = baixandoProp ?? internoBaixando;
@@ -33,26 +37,25 @@ export function PdfDownloadBar({
   const [tooltipVisivel, setTooltipVisivel] = useState(false);
   const toastId = useId();
 
+  const fila = useMemo(() => pendencias ?? [], [pendencias]);
   const motivo = motivoBloqueio ?? "Corrija os NCMs pendentes antes de gerar o PDF.";
-  const contagemExibir = toast?.contagem || qtdPendencias;
 
   const mostrarToastBloqueio = useCallback(
-    (opts?: { codigo?: string; contagem?: number; mensagem?: string }) => {
-      const n = opts?.contagem ?? qtdPendencias;
-      const codigo = opts?.codigo;
-      const mensagem =
-        opts?.mensagem ??
-        (codigo === "NCM_INVALIDO" && n > 0
-          ? `PDF bloqueado: ${n} item(ns) com NCM pendente`
-          : motivo);
+    (opts?: { codigo?: string; titulo?: string }) => {
+      const fromFila =
+        fila.length > 0 ? mensagemToastDePendencias(fila) : { titulo: motivo, visiveis: [], restantes: 0 };
+
       setToast({
-        mensagem,
-        codigo,
-        contagem: n,
-        mostrarResolver: Boolean(onIrParaResolucaoNcm && (codigo === "NCM_INVALIDO" || n > 0 || bloqueado)),
+        titulo: opts?.titulo ?? fromFila.titulo,
+        visiveis: fromFila.visiveis,
+        restantes: fromFila.restantes,
+        codigo: opts?.codigo,
+        mostrarResolver: Boolean(
+          onIrParaResolucaoNcm && (opts?.codigo === "NCM_INVALIDO" || fila.length > 0 || bloqueado),
+        ),
       });
     },
-    [bloqueado, motivo, onIrParaResolucaoNcm, qtdPendencias],
+    [bloqueado, fila, motivo, onIrParaResolucaoNcm],
   );
 
   useEffect(() => {
@@ -61,9 +64,9 @@ export function PdfDownloadBar({
     return () => window.clearTimeout(t);
   }, [toast]);
 
-  function handleResolver() {
+  function irPara(idx?: number) {
     setToast(null);
-    onIrParaResolucaoNcm?.();
+    onIrParaResolucaoNcm?.(idx);
   }
 
   async function executarDownload() {
@@ -76,8 +79,7 @@ export function PdfDownloadBar({
       const err = e instanceof PdfDownloadError ? e : new PdfDownloadError(e instanceof Error ? e.message : "Falha ao gerar PDF.");
       mostrarToastBloqueio({
         codigo: err.codigo,
-        contagem: err.contagemPendencias || qtdPendencias,
-        mensagem: err.mensagemAcionavel(qtdPendencias),
+        titulo: err.mensagemAcionavel(qtdPendencias, fila),
       });
     } finally {
       setInternoBaixando(false);
@@ -87,11 +89,12 @@ export function PdfDownloadBar({
   function handleAreaClick() {
     if (baixando) return;
     if (bloqueado) {
-      mostrarToastBloqueio({ codigo: "NCM_INVALIDO", contagem: qtdPendencias });
+      mostrarToastBloqueio({ codigo: "NCM_INVALIDO" });
     }
   }
 
   const desabilitado = baixando || bloqueado;
+  const primeiroPendente = fila[0];
 
   return (
     <div className="relative w-full sm:w-auto">
@@ -101,20 +104,41 @@ export function PdfDownloadBar({
           role="alert"
           className="absolute bottom-full right-0 z-20 mb-2 w-full min-w-[280px] max-w-md rounded-lg border border-red-400/60 bg-red-950 px-4 py-3 text-sm text-red-50 shadow-xl sm:w-max"
         >
-          <p className="font-semibold">{toast.mensagem}</p>
-          {toast.codigo === "NCM_INVALIDO" && contagemExibir > 0 && (
-            <p className="mt-1 text-xs text-red-200/90">
-              {contagemExibir} item(ns) exigem confirmação ou revisão na barra NCM.
-            </p>
+          <p className="font-semibold leading-snug">{toast.titulo}</p>
+          {toast.visiveis.length > 0 && (
+            <ul className="mt-2 space-y-1 text-xs">
+              {toast.visiveis.map((p) => (
+                <li key={p.idx}>
+                  <button
+                    type="button"
+                    className="font-semibold text-emerald-300 underline hover:text-emerald-200"
+                    onClick={() => irPara(p.idx)}
+                  >
+                    Ir para {p.nome}
+                  </button>
+                </li>
+              ))}
+              {toast.restantes > 0 && (
+                <li>
+                  <button
+                    type="button"
+                    className="font-semibold text-red-100 underline hover:text-white"
+                    onClick={() => irPara()}
+                  >
+                    +{toast.restantes} → ver todos na aba técnica
+                  </button>
+                </li>
+              )}
+            </ul>
           )}
           <div className="mt-3 flex flex-wrap gap-2">
             {toast.mostrarResolver && (
               <button
                 type="button"
                 className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-500"
-                onClick={handleResolver}
+                onClick={() => irPara(primeiroPendente?.idx)}
               >
-                Resolver pendências
+                {primeiroPendente ? `Ir para ${primeiroPendente.nome.slice(0, 28)}` : "Resolver pendências"}
               </button>
             )}
             <button
@@ -169,7 +193,7 @@ export function PdfDownloadBar({
           onClick={(e) => {
             e.stopPropagation();
             if (bloqueado) {
-              mostrarToastBloqueio({ codigo: "NCM_INVALIDO", contagem: qtdPendencias });
+              mostrarToastBloqueio({ codigo: "NCM_INVALIDO" });
               return;
             }
             void executarDownload();
