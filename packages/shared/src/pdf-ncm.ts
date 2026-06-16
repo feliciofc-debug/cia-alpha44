@@ -12,14 +12,14 @@ export const LIMIAR_CONFIANCA_NCM = 0.85;
 export function itemBloqueiaPdfNcm(it: Item): boolean {
   const key = ncm8Limpo(it.ncm ?? "");
   if (!key || key === "00000000") return true;
-  if (it.compatibilidadeProduto === "incompativel") return true;
   if (confirmacaoNcmVigente(it)) return false;
+  if (it.compatibilidadeProduto === "incompativel") return true;
   if (it.compatibilidadeProduto === "revisar") return true;
   if (it.ncmValido === false) return true;
   return false;
 }
 
-/** Item elegível para Confirmar NCM — alinhado a bloqueios + baixa confiança + NCM pendente. */
+/** Item elegível para Confirmar NCM em lote (não inclui incompatível — exige override 1-a-1). */
 export function itemPodeConfirmarNcm(it: Item): boolean {
   if (it.compatibilidadeProduto === "incompativel") return false;
   if (confirmacaoNcmVigente(it)) return false;
@@ -29,6 +29,15 @@ export function itemPodeConfirmarNcm(it: Item): boolean {
   if (it.ncmFonte === "pendente") return true;
   if (it.ncmConfianca != null && it.ncmConfianca < LIMIAR_CONFIANCA_NCM) return true;
   return false;
+}
+
+/** Confirmar NCM individual — analista pode forçar mesmo se heurística marcou incompatível. */
+export function itemPodeConfirmarNcmIndividual(it: Item): boolean {
+  if (confirmacaoNcmVigente(it)) return false;
+  const key = ncm8Limpo(it.ncm ?? "");
+  if (!key || key === "00000000") return false;
+  if (it.compatibilidadeProduto === "incompativel") return true;
+  return itemPodeConfirmarNcm(it);
 }
 
 export function itensPendentesConfirmacaoNcm(itens: Item[]): Item[] {

@@ -6,6 +6,7 @@ import { extrairItemMeta, mesclarItemMeta } from "@cia/pipeline";
 import {
   confirmacaoNcmVigente,
   itemPodeConfirmarNcm,
+  itemPodeConfirmarNcmIndividual,
   itensResolucaoNcm,
   limparConfirmacaoNcm,
   metaConfirmacaoNcm,
@@ -30,6 +31,7 @@ import {
 import type { Prisma } from "@prisma/client";
 import { extrairResumoFinanceiro } from "../lib/financeiro.js";
 import { calcularCotacao } from "./cotacao.js";
+import { avaliarCompatibilidadeProduto } from "../siscomex/compatibilidade-produto.js";
 import {
   outputConfirmacaoHumana,
   salvarClassificacaoCacheHumano,
@@ -787,7 +789,7 @@ export async function confirmarNcmItem(
   if (!itemRow) return null;
 
   const it = itemDominioFromRow(itemRow);
-  if (!itemPodeConfirmarNcm(it)) return null;
+  if (!itemPodeConfirmarNcmIndividual(it)) return null;
 
   const versoes = await versoesClassificacaoCacheAtual();
   await confirmarNcmItemInterno(itemRow, confirmadoPor, versoes, { cacheStrict: false });
@@ -914,41 +916,30 @@ export async function alterarNcmItem(cotacaoId: string, tenantSlug: string, orde
     } as Item,
     metaAtual,
   );
-  const novoMeta = extrairItemMeta(limparConfirmacaoNcm({ ...base, ncm }));
+  const descricao = (base.descOriginal || base.descPt || "").trim();
+  const { resultado: comp } = avaliarCompatibilidadeProduto(state.ncmCatalog, {
+    descricao,
+    descricaoFamilia: base.descOriginal || base.descPt,
+    material: base.material,
+    ncm,
+  });
+  const itemAtualizado = limparConfirmacaoNcm({
+    ...base,
+    ncm,
+    compatibilidadeProduto: comp.compatibilidadeProduto,
+    motivoCompatibilidade: comp.motivoCompatibilidade,
+  });
+  const novoMeta = extrairItemMeta(itemAtualizado);
 
   await prisma.item.update({
     where: { id: itemRow.id },
     data: { ncm, meta: novoMeta as Prisma.InputJsonValue },
   });
 
-  const refreshed = await buscarCotacaoRow(cotacaoId, tenantSlug);
-  if (!refreshed) return null;
+  const recalculada = await recalcularCotacaoPersistida(cotacaoId, tenantSlug, state, row);
+  if (!recalculada) return null;
 
-  const { cotacao } = mapRowParaDominio(refreshed);
-  const { resultado, itens } = calcularCotacao(cotacao, state);
-  const itensValidados = validarConfirmacaoNcmItens(itens);
-  const canal = canalPredominante(itensValidados);
-
-  await prisma.cotacao.update({
-    where: { id: cotacaoId },
-    data: {
-      status: resultado ? "CALCULADA" : row.status,
-      totalBRL: resultado?.totalBRL ?? null,
-      totalUS: resultado?.totalUS ?? null,
-      canalPredominante: canal,
-      resultadoCalculo: (resultado ?? undefined) as unknown as Prisma.InputJsonValue | undefined,
-      calculadoEm: resultado ? new Date() : row.calculadoEm,
-    },
-  });
-
-  const salva = formatCotacaoSalva(refreshed as CotacaoComRelacoes);
-  return {
-    ...salva,
-    id: cotacaoId,
-    itens: itensValidados,
-    resultado,
-    criadoEm: refreshed.criadoEm.toISOString(),
-  };
+  return recalculada;
 }
 
 export async function excluirCotacao(id: string, tenantSlug: string): Promise<boolean> {

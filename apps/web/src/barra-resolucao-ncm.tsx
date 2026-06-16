@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import type { Item } from "./lib/types.ts";
 import { fmtNcm } from "./lib/format.ts";
 import {
-  itemPodeConfirmarNcm,
+  itemPodeConfirmarNcmIndividual,
   itemPodeDesfazerNcm,
   itensPendentesConfirmacaoNcm,
   itensResolucaoNcm,
@@ -97,7 +97,7 @@ export function BarraResolucaoNcm({
           {fila.map(({ idx, item: it }: { idx: number; item: Item }) => {
             const desc = (it.descPt || it.descOriginal || "Item").slice(0, 72);
             const draft = draftNcm[idx] ?? (it.ncm || "").replace(/\D/g, "").slice(0, 8);
-            const podeConfirmar = itemPodeConfirmarNcm(it);
+            const podeConfirmar = itemPodeConfirmarNcmIndividual(it);
             const podeDesfazer = itemPodeDesfazerNcm(it);
             const editando = alterandoNcm === idx;
             const confirmando = confirmandoNcm === idx;
@@ -130,7 +130,11 @@ export function BarraResolucaoNcm({
                         disabled={operacaoBloqueada}
                         onClick={() => void onConfirmarNcm(idx)}
                       >
-                        {confirmando ? "Confirmando…" : "Confirmar NCM"}
+                        {confirmando
+                          ? "Confirmando…"
+                          : it.compatibilidadeProduto === "incompativel"
+                            ? "Confirmar NCM (override)"
+                            : "Confirmar NCM"}
                       </button>
                     )}
                     {podeDesfazer && onDesfazerNcm && (

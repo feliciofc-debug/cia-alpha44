@@ -29,6 +29,7 @@ export {
   confirmacaoNcmVigente,
   limparConfirmacaoNcm,
   itemPodeConfirmarNcm,
+  itemPodeConfirmarNcmIndividual,
   itemBloqueiaPdfNcm,
   itensBloqueandoPdf,
   itensPendentesConfirmacaoNcm,

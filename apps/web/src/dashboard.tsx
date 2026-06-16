@@ -19,7 +19,7 @@ import { PainelKpisView } from "./painel-kpis.tsx";
 import { BenchmarkReferenciaView } from "./benchmark-referencia-view.tsx";
 import { PreviewOrcamentoCliente } from "./preview-orcamento-cliente.tsx";
 import { cotacaoParaSalvar, itensParaSalvar } from "./lib/cotacao-payload.ts";
-import { pdfBloqueadoPorNcm, resumoBloqueioNcm, avisoCompatibilidadePdf, itemPodeConfirmarNcm, itemPodeDesfazerNcm, itensPendentesConfirmacaoNcm, itensResolucaoNcm, metaConfirmacaoNcm, limparConfirmacaoNcm } from "./lib/ncm.ts";
+import { pdfBloqueadoPorNcm, resumoBloqueioNcm, avisoCompatibilidadePdf, itemPodeConfirmarNcmIndividual, itemPodeDesfazerNcm, itensPendentesConfirmacaoNcm, itensResolucaoNcm, metaConfirmacaoNcm, limparConfirmacaoNcm } from "./lib/ncm.ts";
 import { avisoMoedaCotacao } from "@cia/shared";
 import { PdfDownloadBar } from "./pdf-download-bar.tsx";
 import { BarraResolucaoNcm } from "./barra-resolucao-ncm.tsx";
@@ -467,7 +467,7 @@ function AnalisePainel({
                       </span>
                     )}
                     <div className="mt-1.5 space-y-1 border-t border-white/10 pt-1">
-                    {itemPodeConfirmarNcm(it) && (
+                    {itemPodeConfirmarNcmIndividual(it) && (
                       <button
                         type="button"
                         className="block w-full rounded bg-emerald-600 px-2 py-1.5 text-xs font-bold text-white shadow hover:bg-emerald-500 disabled:opacity-50"
@@ -1066,7 +1066,7 @@ export function Dashboard() {
   }
 
   async function alterarAliquotaItem(idx: number, campo: AliquotaCampo, valor: number) {
-    const base = analise ?? detalhe;
+    const base = cotacaoAtiva();
     if (!base) return;
     const itAtual = base.itens[idx];
     if (!itAtual) return;
@@ -1124,7 +1124,7 @@ export function Dashboard() {
   }
 
   async function desfazerAliquotaItem(idx: number, campo: ChaveTributoRastro) {
-    const base = analise ?? detalhe;
+    const base = cotacaoAtiva();
     if (!base) return;
     setDesfazendoAliquota({ idx, campo });
     setErro("");
@@ -1168,21 +1168,30 @@ export function Dashboard() {
     }
   }
 
+  function cotacaoAtiva(): AnaliseView | null {
+    /** Cotação aberta na lista (detalhe) prevalece sobre analise stale da sessão anterior. */
+    return detalhe ?? analise;
+  }
+
   function sincronizarCotacaoSalva(atualizada: CotacaoSalva) {
     if (detalhe?.id === atualizada.id) {
       setDetalhe(atualizada);
     }
-    if (salvaId === atualizada.id && analise) {
-      setAnalise({
-        ...analise,
-        cotacao: atualizada.cotacao,
-        itens: atualizada.itens,
-        resultado: atualizada.resultado,
-        icms: atualizada.icms,
-        avisosFiscais: atualizada.avisosFiscais ?? atualizada.cotacao.avisosFiscais,
-        avisoFiscal: atualizada.avisoFiscal,
-        provider: atualizada.provider ?? analise.provider,
-      });
+    if (salvaId === atualizada.id) {
+      setAnalise((prev) =>
+        prev
+          ? {
+              ...prev,
+              cotacao: atualizada.cotacao,
+              itens: atualizada.itens,
+              resultado: atualizada.resultado,
+              icms: atualizada.icms,
+              avisosFiscais: atualizada.avisosFiscais ?? atualizada.cotacao.avisosFiscais,
+              avisoFiscal: atualizada.avisoFiscal,
+              provider: atualizada.provider ?? prev.provider,
+            }
+          : prev,
+      );
     }
   }
 
@@ -1200,7 +1209,7 @@ export function Dashboard() {
   }
 
   async function confirmarNcmItem(idx: number) {
-    const base = analise ?? detalhe;
+    const base = cotacaoAtiva();
     if (!base) return;
     if (!iniciarOperacaoNcm()) return;
     setConfirmandoNcm(idx);
@@ -1226,12 +1235,18 @@ export function Dashboard() {
   }
 
   async function confirmarTodosNcm() {
-    const base = analise ?? detalhe;
+    const base = cotacaoAtiva();
     if (!base) return;
     const idSalvo = detalhe?.id ?? salvaId;
-    if (!idSalvo) return;
+    if (!idSalvo) {
+      setErro("Salve a cotação antes de aprovar NCMs em lote.");
+      return;
+    }
     const n = itensPendentesConfirmacaoNcm(base.itens).length;
-    if (n === 0) return;
+    if (n === 0) {
+      setErro("Nenhum item elegível para aprovação em lote nesta cotação.");
+      return;
+    }
     const msg = `Você revisou os ${n} itens? Esta ação confirma todos os NCMs válidos.`;
     if (!window.confirm(msg)) return;
     if (!iniciarOperacaoNcm()) return;
@@ -1254,7 +1269,7 @@ export function Dashboard() {
   }
 
   async function desfazerNcmItem(idx: number) {
-    const base = analise ?? detalhe;
+    const base = cotacaoAtiva();
     if (!base) return;
     if (!iniciarOperacaoNcm()) return;
     setConfirmandoNcm(idx);
@@ -1277,7 +1292,7 @@ export function Dashboard() {
   }
 
   async function alterarNcmItem(idx: number, ncmRaw: string) {
-    const base = analise ?? detalhe;
+    const base = cotacaoAtiva();
     if (!base) return;
     const ncm = normalizarNcmDigitos(ncmRaw);
     if (ncm.length !== 8 || ncm === "00000000") {
@@ -1285,7 +1300,8 @@ export function Dashboard() {
       return;
     }
     const ncmAtual = normalizarNcmDigitos(base.itens[idx]?.ncm ?? "");
-    if (ncm === ncmAtual) {
+    const compat = base.itens[idx]?.compatibilidadeProduto;
+    if (ncm === ncmAtual && compat !== "incompativel") {
       setErro("O NCM informado é igual ao atual. Edite para outro código ou use «Confirmar NCM».");
       return;
     }

@@ -6,7 +6,7 @@ import {
   metaConfirmacaoNcm,
   validarConfirmacaoNcmItem,
 } from "@cia/shared";
-import { itemBloqueiaPdfNcm, itensBloqueandoPdf, itemPodeConfirmarNcm, itensResolucaoNcm } from "@cia/shared";
+import { itemBloqueiaPdfNcm, itensBloqueandoPdf, itemPodeConfirmarNcm, itemPodeConfirmarNcmIndividual, itensResolucaoNcm } from "@cia/shared";
 
 function item(partial: Partial<Item>): Item {
   return {
@@ -92,6 +92,7 @@ describe("pdf-ncm", () => {
     );
     expect(itemPodeConfirmarNcm(item({ ncmFonte: "pendente" }))).toBe(true);
     expect(itemPodeConfirmarNcm(item({ compatibilidadeProduto: "incompativel" }))).toBe(false);
+    expect(itemPodeConfirmarNcmIndividual(item({ compatibilidadeProduto: "incompativel" }))).toBe(true);
     expect(
       itemPodeConfirmarNcm({
         ...item({ compatibilidadeProduto: "revisar" }),
@@ -109,6 +110,14 @@ describe("pdf-ncm", () => {
     expect(itemPodeConfirmarNcm(baixaConf)).toBe(true);
     expect(itemBloqueiaPdfNcm(baixaConf)).toBe(false);
     expect(itensBloqueandoPdf([baixaConf])).toHaveLength(0);
+  });
+
+  it("incompatível confirmado pelo analista destrava PDF", () => {
+    const inc = item({ compatibilidadeProduto: "incompativel" });
+    expect(itemBloqueiaPdfNcm(inc)).toBe(true);
+    expect(itemPodeConfirmarNcmIndividual(inc)).toBe(true);
+    const confirmado = { ...inc, ...metaConfirmacaoNcm("87149490") };
+    expect(itemBloqueiaPdfNcm(confirmado)).toBe(false);
   });
 
   it("itensResolucaoNcm inclui revisar e incompatível", () => {
