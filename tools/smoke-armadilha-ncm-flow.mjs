@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Smoke fluxo NCM armadilha — passos 2-5 + regressão (API prod).
- * VPS: set -a && source /etc/cia-alpha44/api.env && set +a && node tools/smoke-armadilha-ncm-flow.mjs
+ * Smoke fluxo NCM — passos 2-5 (DESTRUTIVO: PATCH + confirmar).
+ * VPS: SMOKE_DESTRUCTIVE=1 SMOKE_COT=<sandbox-id> node tools/smoke-armadilha-ncm-flow.mjs
  */
 import { createClerkClient } from "@clerk/backend";
 import {
@@ -12,8 +12,11 @@ import {
   ncm8Limpo,
 } from "@cia/shared";
 
+import { exigirCotacaoExplicita, exigirMutacaoAutorizada } from "./smoke-guard.mjs";
+
 const API = process.env.SMOKE_API ?? "https://api2.amzofertas.com.br/cia";
-const COT = process.env.SMOKE_COT ?? "cmqfu34co000ukwgg6d0e8pcd";
+const COT = exigirCotacaoExplicita(process.env.SMOKE_COT, "smoke-armadilha-ncm-flow");
+exigirMutacaoAutorizada(API, COT, "smoke-armadilha-ncm-flow");
 const ORDEM_CHAPA = 13;
 
 const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
