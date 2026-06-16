@@ -5,6 +5,8 @@ export * from "./icms-cotacao.js";
 export * from "./despesas.js";
 export * from "./schemas.js";
 export * from "./pdf-ncm.js";
+export * from "./pdf-ncm-audit.js";
+export * from "./ncm-utils.js";
 export * from "./ordem-item.js";
 export * from "./ncm-confirmacao.js";
 export * from "./aliquota-rastro.js";

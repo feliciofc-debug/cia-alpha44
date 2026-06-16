@@ -1,5 +1,5 @@
 import type { Item } from "./schemas.js";
-import { ncm8Limpo } from "./pdf-ncm.js";
+import { ncm8Limpo } from "./ncm-utils.js";
 
 /** Confirmação humana ainda válida para o NCM atual do item. */
 export function confirmacaoNcmVigente(it: Item): boolean {

@@ -69,13 +69,23 @@ describe("pdf-ncm", () => {
     ).toBe(false);
   });
 
-  it("bloqueia ncmValido false até confirmação", () => {
-    expect(itemBloqueiaPdfNcm(item({ ncmValido: false }))).toBe(true);
+  it("ncmValido false sozinho não bloqueia se validarNcm ok (gate unificado)", () => {
+    const ctx = { catalogExiste: () => true, validarNcm: () => ({ ok: true }) };
+    expect(itemBloqueiaPdfNcm(item({ ncmValido: false, compatibilidadeProduto: "compativel" }), ctx)).toBe(
+      false,
+    );
+  });
+
+  it("confirmação destrava ncmValido false quando validar falharia", () => {
+    const ctx = { catalogExiste: () => true, validarNcm: () => ({ ok: false, avisos: ["x"] }) };
     expect(
-      itemBloqueiaPdfNcm({
-        ...item({ ncmValido: false }),
-        ...metaConfirmacaoNcm("87149490"),
-      }),
+      itemBloqueiaPdfNcm(
+        {
+          ...item({ ncmValido: false }),
+          ...metaConfirmacaoNcm("87149490"),
+        },
+        ctx,
+      ),
     ).toBe(false);
   });
 
@@ -84,9 +94,10 @@ describe("pdf-ncm", () => {
     expect(itensBloqueandoPdf([item({ compatibilidadeProduto: "compativel" })])).toHaveLength(0);
   });
 
-  it("itemPodeConfirmarNcm — revisar, ncmValido false, baixa confiança", () => {
+  it("itemPodeConfirmarNcm — revisar, validar falho, baixa confiança", () => {
+    const ctxFalha = { catalogExiste: () => true, validarNcm: () => ({ ok: false, avisos: ["x"] }) };
     expect(itemPodeConfirmarNcm(item({ compatibilidadeProduto: "revisar" }))).toBe(true);
-    expect(itemPodeConfirmarNcm(item({ ncmValido: false }))).toBe(true);
+    expect(itemPodeConfirmarNcm(item({ compatibilidadeProduto: "compativel" }), ctxFalha)).toBe(true);
     expect(itemPodeConfirmarNcm(item({ compatibilidadeProduto: "compativel", ncmConfianca: 0.55 }))).toBe(
       true,
     );
@@ -120,13 +131,17 @@ describe("pdf-ncm", () => {
     expect(itemBloqueiaPdfNcm(confirmado)).toBe(false);
   });
 
-  it("itensResolucaoNcm inclui revisar e incompatível", () => {
+  it("itensResolucaoNcm inclui revisar, incompatível e validar falho", () => {
+    const ctx = {
+      catalogExiste: () => true,
+      validarNcm: (_n: string, _d: string, _f: string) => ({ ok: false, avisos: ["incoerente"] }),
+    };
     const itens = [
       item({ compatibilidadeProduto: "revisar" }),
-      item({ compatibilidadeProduto: "compativel" }),
+      item({ compatibilidadeProduto: "compativel", descPt: "Amortecedor patinete", ncm: "87149490" }),
       item({ compatibilidadeProduto: "incompativel" }),
     ];
-    const fila = itensResolucaoNcm(itens);
-    expect(fila.map((f) => f.idx)).toEqual([0, 2]);
+    const fila = itensResolucaoNcm(itens, ctx);
+    expect(fila.map((f) => f.idx)).toEqual([0, 1, 2]);
   });
 });

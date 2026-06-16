@@ -22,6 +22,8 @@ const IDS_PECA = new Set(["pecas_veiculo_leve", "parafusos_fixadores", "autopeca
 
 const IDS_FILTROS = "filtros_separadores";
 const IDS_AUTO_8708 = new Set(["autopecas", "pecas_veiculo_leve"]);
+const IDS_ALIMENTOS = "alimentos_bebidas";
+const IDS_EMBALAGEM = "embalagem_papel";
 
 /** Famílias de material/composição — cedem a produto funcional na mesma descrição. */
 const IDS_MATERIAL = new Set(["aluminio", "metal_ferro_aco", "plasticos_chapas", "plastico_utilidades"]);
@@ -40,6 +42,7 @@ const IDS_PRECEDE_MATERIAL = new Set([
   "moto_eletrica",
   "veiculo_leve_eletrico",
   IDS_FILTROS,
+  IDS_ALIMENTOS,
 ]);
 
 /** Ferramentas e bombas — precedem brinquedos/bicicleta quando o texto descreve o produto. */
@@ -67,6 +70,13 @@ function matchFamilia(descricao: string, familia: FamiliaProduto): string | null
     return null;
   }
   if (familia.id === "metal_ferro_aco" && RE_SIDERURGICO_PLANO.test(descricao)) {
+    return null;
+  }
+  if (
+    familia.id === "alimentos_bebidas" &&
+    /\bfiltro\b/i.test(descricao) &&
+    /caf[eé]|coffee|ch[aá]\b|tea\b|\bar\b|oleo|óleo|oil/i.test(descricao)
+  ) {
     return null;
   }
   return m[0] ?? "";
@@ -121,6 +131,10 @@ function aplicarPrecedenciaFuncional(familias: FamiliaDetectada[]): FamiliaDetec
 
   if (out.some((f) => f.familia.id === IDS_FILTROS) && out.some((f) => IDS_AUTO_8708.has(f.familia.id))) {
     out = out.filter((f) => !IDS_AUTO_8708.has(f.familia.id));
+  }
+
+  if (out.some((f) => f.familia.id === IDS_ALIMENTOS) && out.some((f) => f.familia.id === IDS_EMBALAGEM)) {
+    out = out.filter((f) => f.familia.id !== IDS_EMBALAGEM);
   }
 
   return out;

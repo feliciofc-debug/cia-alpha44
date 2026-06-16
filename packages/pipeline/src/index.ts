@@ -163,6 +163,11 @@ export {
   type DetectarFamiliasInput,
 } from "./classificar-ncm.js";
 export {
+  criarPdfNcmAuditCtx,
+  auditarItemNcmParaPdfComCatalog,
+  enriquecerItensPdfNcmAudit,
+} from "./pdf-ncm-audit-ctx.js";
+export {
   criarTecSource,
   montarRastrosCache,
   type TecEntry,

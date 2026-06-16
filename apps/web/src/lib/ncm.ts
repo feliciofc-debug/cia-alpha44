@@ -75,11 +75,7 @@ export function severidadeNcmItem(it: Item): SeveridadeNcmResolucao {
 }
 
 function itemNcmBloqueiaSevero(it: Item): boolean {
-  const key = ncm8Limpo(it.ncm ?? "");
-  if (!key || key === "00000000") return true;
-  if (it.ncmValido === false) return true;
-  if (it.ncmFonte === "pendente") return true;
-  if (it.compatibilidadeProduto === "incompativel") return true;
+  if (itemBloqueiaPdfNcm(it)) return true;
   return false;
 }
 
@@ -100,6 +96,7 @@ function motivoCompatibilidadeLegivel(it: Item): string | null {
 
 /** Motivo completo na lista de resolução — português simples. */
 export function motivoResolucaoNcm(it: Item): string {
+  if (it.pdfNcmAudit?.motivo?.trim()) return it.pdfNcmAudit.motivo.trim();
   const key = ncm8Limpo(it.ncm ?? "");
   if (!key || key === "00000000") {
     return "Classificação pendente — sem candidato válido";
@@ -128,6 +125,12 @@ export function motivoResolucaoNcm(it: Item): string {
 
 /** Rótulo curto para toast e banner (produto-primeiro). */
 export function motivoCurtoNcm(it: Item): string {
+  if (it.pdfNcmAudit?.bloqueia && it.pdfNcmAudit.motivo) {
+    const m = it.pdfNcmAudit.motivo.toLowerCase();
+    if (m.includes("siscomex")) return "NCM inválido";
+    if (m.includes("incoerente") || m.includes("incompat")) return "incoerente";
+    if (m.includes("pendente")) return "NCM pendente";
+  }
   const key = ncm8Limpo(it.ncm ?? "");
   if (!key || key === "00000000" || it.ncmFonte === "pendente") return "NCM pendente";
   if (it.compatibilidadeProduto === "incompativel") return "incompatível";

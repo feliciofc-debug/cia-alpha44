@@ -129,6 +129,15 @@ export const itemSchema = z.object({
   /** NCM vigente no momento da confirmação (invalida se o item mudar). */
   ncmConfirmado: z.string().optional(),
   ncmConfirmadoPor: z.string().optional(),
+  /** Snapshot do gate PDF (computado na API com catálogo Siscomex). */
+  pdfNcmAudit: z
+    .object({
+      bloqueia: z.boolean(),
+      precisaConfirmacao: z.boolean(),
+      motivo: z.string().optional(),
+      avisos: z.array(z.string()).optional(),
+    })
+    .optional(),
   /** Rastro FOB/kg (T6). */
   fobKgFonte: z.string().optional(),
   fobPendente: z.boolean().optional(),

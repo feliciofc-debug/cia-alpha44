@@ -6,6 +6,7 @@ import multipart from "@fastify/multipart";
 import { z } from "zod";
 import { cotacaoSchema, listarUfsFiscais, mesclarAvisoMoedaCotacao } from "@cia/shared";
 import type { LinhaCrua } from "@cia/pipeline";
+import { criarPdfNcmAuditCtx, enriquecerItensPdfNcmAudit } from "@cia/pipeline";
 import { getState, recarregarNcmCatalog, recarregarComexBenchmark } from "./state.js";
 import { buscarCambioPtax } from "./services/cambio.js";
 import { calcularCotacao, montarItens } from "./services/cotacao.js";
@@ -319,7 +320,9 @@ export async function buildServer() {
         cambioEurUsdData: body.data.cambioEurUsdData,
         cambioEurUsdFonte: body.data.cambioEurUsdFonte,
       });
-    return { itens, provider, classificacaoCache, cambioEurUsd, cambioEurUsdData, cambioEurUsdFonte };
+    const state = getState();
+    const itensAudit = enriquecerItensPdfNcmAudit(itens, criarPdfNcmAuditCtx(state.ncmCatalog));
+    return { itens: itensAudit, provider, classificacaoCache, cambioEurUsd, cambioEurUsdData, cambioEurUsdFonte };
   },
   );
 
@@ -328,9 +331,11 @@ export async function buildServer() {
     const parsed = cotacaoSchema.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ erro: "Cotação inválida", detalhe: parsed.error.flatten() });
     const cotacao = mesclarAvisoMoedaCotacao(parsed.data);
-    const { resultado, itens, icms, params } = calcularCotacao(cotacao, getState());
+    const state = getState();
+    const { resultado, itens, icms, params } = calcularCotacao(cotacao, state);
+    const itensAudit = enriquecerItensPdfNcmAudit(itens, criarPdfNcmAuditCtx(state.ncmCatalog));
     const avisosFiscais = cotacao.avisosFiscais ?? icms.avisosFiscais ?? [];
-    return { resultado, itens, icms, avisosFiscais, params, moedaPlanilha: cotacao.moedaPlanilha ?? null };
+    return { resultado, itens: itensAudit, icms, avisosFiscais, params, moedaPlanilha: cotacao.moedaPlanilha ?? null };
   });
 
   const salvarBody = z.object({
@@ -417,7 +422,7 @@ export async function buildServer() {
     try {
       const { id } = req.params as { id: string };
       const tipo = (req.query as { tipo?: string }).tipo === "trade" ? "trade" : "cliente";
-      const row = await buscarCotacao(id, tenantSlug(req));
+      const row = await buscarCotacao(id, tenantSlug(req), getState().ncmCatalog);
       if (!row) return reply.status(404).send({ erro: "Cotação não encontrada." });
       const buf = await comTimeout(
         gerarPdfCotacao(row, tipo, getState().ncmCatalog),
@@ -441,7 +446,7 @@ export async function buildServer() {
   app.get("/api/cotacoes/:id", async (req, reply) => {
     try {
       const { id } = req.params as { id: string };
-      const row = await buscarCotacao(id, tenantSlug(req));
+      const row = await buscarCotacao(id, tenantSlug(req), getState().ncmCatalog);
       if (!row) return reply.status(404).send({ erro: "Cotação não encontrada." });
       return row;
     } catch (e) {
@@ -503,7 +508,14 @@ export async function buildServer() {
         return reply.status(400).send({ erro: "Índice de item inválido." });
       }
       const body = z.object({ confirmadoPor: z.string().optional() }).safeParse(req.body ?? {});
-      const atualizada = await confirmarNcmItem(id, tenantSlug(req), idx, body.success ? body.data.confirmadoPor : undefined);
+      const atualizada = await confirmarNcmItem(
+        id,
+        tenantSlug(req),
+        idx,
+        body.success ? body.data.confirmadoPor : undefined,
+        undefined,
+        getState().ncmCatalog,
+      );
       if (!atualizada) return reply.status(404).send({ erro: "Cotação ou item não encontrado." });
       return atualizada;
     } catch (e) {
@@ -535,7 +547,7 @@ export async function buildServer() {
       if (!Number.isFinite(idx) || idx < 0) {
         return reply.status(400).send({ erro: "Índice de item inválido." });
       }
-      const atualizada = await desfazerConfirmacaoNcmItem(id, tenantSlug(req), idx);
+      const atualizada = await desfazerConfirmacaoNcmItem(id, tenantSlug(req), idx, undefined, getState().ncmCatalog);
       if (!atualizada) return reply.status(404).send({ erro: "Cotação ou item não encontrado." });
       return atualizada;
     } catch (e) {
@@ -565,7 +577,7 @@ export async function buildServer() {
   app.get("/api/cotacoes/:id/foto/:ordem", async (req, reply) => {
     try {
       const { id, ordem } = req.params as { id: string; ordem: string };
-      const row = await buscarCotacao(id, tenantSlug(req));
+      const row = await buscarCotacao(id, tenantSlug(req), getState().ncmCatalog);
       if (!row) return reply.status(404).send({ erro: "Cotação não encontrada." });
       const idx = Number(ordem);
       const item = row.itens[idx];

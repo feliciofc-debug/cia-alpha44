@@ -259,10 +259,17 @@ export const FAMILIAS_PRODUTO: FamiliaProduto[] = [
     ncmPreferidos: ["85366100"],
   },
   {
+    id: "alimentos_bebidas",
+    prefixos: ["15", "19", "20", "21", "22"],
+    re: /azeite|olive\s*oil|óleo\s*de\s*oliva|oleo\s*de\s*oliva|extravirgem|extra\s*virgin|aliment|food|bebida|drink|vinho|wine|caf[eé]|coffee|ch[aá]\b|tea\b|leite|milk|mel\b|honey|a[cç][uú]car|sugar|farinha|flour|arroz|rice|massa\b|pasta\b|molho|sauce|conserva|tempero|spice|erva[- ]?mate|iogurte|yogurt|suco|juice|refrigerante|cerveja|beer|whisky|vodka|巧克力|食品|饮料|橄榄油|食用油/i,
+    termosBusca: "alimentos bebidas oleo azeite cafe acucar arroz massa",
+    ncmPreferidos: ["15092000", "09030090", "22042100", "21069090"],
+  },
+  {
     id: "embalagem_papel",
     prefixos: ["4819", "3923"],
-    re: /caixa|box|carton|embalagem|packaging|paper\s*bag|sacola|papel[aã]o|纸箱|包装/i,
-    termosBusca: "embalagens caixas papel plastico",
+    re: /(?:caixa|carton|box)\s*(?:de\s*)?(?:papel[aã]o|carton|kraft|ondulad)|saco\s*(?:de\s*)?(?:papel|kraft)|paper\s*bag|embalagem\s*(?:de\s*)?(?:papel[aã]o|papel|carton|plastico|pl[aá]stico|kraft)|packaging\s*(?:box|carton|bag)|papel[aã]o\s*(?:ondulado|kraft|corrugado)|caixa\s*para\s|纸箱|包装箱|纸盒/i,
+    termosBusca: "embalagens caixas papel plastico sacola kraft",
   },
   {
     id: "eletro_portatil",

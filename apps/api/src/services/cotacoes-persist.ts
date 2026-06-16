@@ -2,7 +2,13 @@
 
 import { prisma, type CanalAduaneiro, type Cotacao as CotacaoRow } from "@cia/db";
 import type { ResultadoCotacao } from "@cia/fiscal-engine";
-import { extrairItemMeta, mesclarItemMeta } from "@cia/pipeline";
+import {
+  extrairItemMeta,
+  mesclarItemMeta,
+  criarPdfNcmAuditCtx,
+  enriquecerItensPdfNcmAudit,
+  type NcmCatalog,
+} from "@cia/pipeline";
 import {
   confirmacaoNcmVigente,
   itemPodeConfirmarNcm,
@@ -348,8 +354,9 @@ export async function salvarCotacao(input: SalvarCotacaoInput) {
   return formatCotacaoSalva(row as CotacaoComRelacoes, input.provider);
 }
 
-function formatCotacaoSalva(row: CotacaoComRelacoes, provider?: string) {
-  const { cotacao, itens, resultado } = mapRowParaDominio(row);
+function formatCotacaoSalva(row: CotacaoComRelacoes, provider?: string, catalog?: NcmCatalog) {
+  const { cotacao, itens: itensBase, resultado } = mapRowParaDominio(row);
+  const itens = catalog ? enriquecerItensPdfNcmAudit(itensBase, criarPdfNcmAuditCtx(catalog)) : itensBase;
   const financeiro = extrairResumoFinanceiro(resultado, cotacao.params.markupPct);
   const icms = aplicarIcmsCotacao(cotacao).meta;
   return {
@@ -421,12 +428,12 @@ export async function listarCotacoes(tenantSlug: string, opts?: { cliente?: stri
   };
 }
 
-export async function buscarCotacao(id: string, tenantSlug: string) {
+export async function buscarCotacao(id: string, tenantSlug: string, catalog?: NcmCatalog) {
   if (!dbAtivo()) throw new PersistenciaIndisponivelError();
 
   const row = await buscarCotacaoRow(id, tenantSlug);
   if (!row) return null;
-  return formatCotacaoSalva(row as CotacaoComRelacoes);
+  return formatCotacaoSalva(row as CotacaoComRelacoes, undefined, catalog);
 }
 
 export async function duplicarCotacao(
@@ -751,7 +758,11 @@ async function recalcularCotacaoPersistida(
   const { cotacao, itens: itensDb } = mapRowParaDominio(refreshed);
   const { resultado, itens } = calcularCotacao(cotacao, state);
   const itensValidados = validarConfirmacaoNcmItens(mesclarOrdemItensPersistidos(itens, itensDb));
-  const canal = canalPredominante(itensValidados);
+  const itensEnriquecidos = enriquecerItensPdfNcmAudit(
+    itensValidados,
+    criarPdfNcmAuditCtx(state.ncmCatalog),
+  );
+  const canal = canalPredominante(itensEnriquecidos);
 
   await prisma.cotacao.update({
     where: { id: cotacaoId },
@@ -765,11 +776,11 @@ async function recalcularCotacaoPersistida(
     },
   });
 
-  const salva = formatCotacaoSalva(refreshed as CotacaoComRelacoes);
+  const salva = formatCotacaoSalva(refreshed as CotacaoComRelacoes, undefined, state.ncmCatalog);
   return {
     ...salva,
     id: cotacaoId,
-    itens: itensValidados,
+    itens: itensEnriquecidos,
     resultado,
     criadoEm: refreshed.criadoEm.toISOString(),
     calculadoEm: resultado ? new Date().toISOString() : salva.calculadoEm,
@@ -783,6 +794,7 @@ export async function confirmarNcmItem(
   ordem: number,
   confirmadoPor?: string,
   provider?: string,
+  catalog?: NcmCatalog,
 ) {
   if (!dbAtivo()) throw new PersistenciaIndisponivelError();
 
@@ -793,14 +805,15 @@ export async function confirmarNcmItem(
   if (!itemRow) return null;
 
   const it = itemDominioFromRow(itemRow);
-  if (!itemPodeConfirmarNcmIndividual(it)) return null;
+  const ctx = catalog ? criarPdfNcmAuditCtx(catalog) : undefined;
+  if (!itemPodeConfirmarNcmIndividual(it, ctx)) return null;
 
   const versoes = await versoesClassificacaoCacheAtual();
   await confirmarNcmItemInterno(itemRow, confirmadoPor, versoes, { cacheStrict: false });
 
   const atualizada = await buscarCotacaoRow(cotacaoId, tenantSlug);
   if (!atualizada) return null;
-  return formatCotacaoSalva(atualizada as CotacaoComRelacoes, provider);
+  return formatCotacaoSalva(atualizada as CotacaoComRelacoes, provider, catalog);
 }
 
 /** Confirma em lote todos os itens elegíveis (itemPodeConfirmarNcm), recalcula no fim. */
@@ -818,6 +831,7 @@ export async function confirmarNcmItensLote(
 
   const versoes = await versoesClassificacaoCacheAtual();
   const sortedRows = [...row.itens].sort((a, b) => a.ordem - b.ordem);
+  const ctx = criarPdfNcmAuditCtx(state.ncmCatalog);
 
   let pulados = 0;
   const elegiveis: ItemRowPersist[] = [];
@@ -828,7 +842,7 @@ export async function confirmarNcmItensLote(
       pulados++;
       continue;
     }
-    if (!itemPodeConfirmarNcm(it)) continue;
+    if (!itemPodeConfirmarNcm(it, ctx)) continue;
     elegiveis.push(itemRow);
   }
 
@@ -845,7 +859,7 @@ export async function confirmarNcmItensLote(
   const recalculada = await recalcularCotacaoPersistida(cotacaoId, tenantSlug, state, row);
   if (!recalculada) return null;
 
-  const pendentes = itensResolucaoNcm(recalculada.itens).length;
+  const pendentes = itensResolucaoNcm(recalculada.itens, ctx).length;
 
   return {
     ...recalculada,
@@ -862,6 +876,7 @@ export async function desfazerConfirmacaoNcmItem(
   tenantSlug: string,
   ordem: number,
   provider?: string,
+  catalog?: NcmCatalog,
 ) {
   if (!dbAtivo()) throw new PersistenciaIndisponivelError();
 
@@ -892,7 +907,7 @@ export async function desfazerConfirmacaoNcmItem(
 
   const atualizada = await buscarCotacaoRow(cotacaoId, tenantSlug);
   if (!atualizada) return null;
-  return formatCotacaoSalva(atualizada as CotacaoComRelacoes, provider);
+  return formatCotacaoSalva(atualizada as CotacaoComRelacoes, provider, catalog);
 }
 
 /** Altera NCM do item salvo, limpa confirmação humana e recalcula a cotação. */
