@@ -6,6 +6,7 @@ export interface ItemInvalidoPdf {
   ordem: number;
   descricao: string;
   ncm: string;
+  avisos?: string[];
 }
 
 export class PdfDownloadError extends Error {

@@ -39,6 +39,7 @@ export {
   itensPendentesConfirmacaoNcm,
   itensResolucaoNcm,
   itemPrecisaResolucaoNcm,
+  mesclarItensInvalidosPdfAudit,
   LIMIAR_CONFIANCA_NCM,
   idxPorOrdem,
   ordemDoItem,

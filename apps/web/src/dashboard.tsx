@@ -19,7 +19,8 @@ import { PainelKpisView } from "./painel-kpis.tsx";
 import { BenchmarkReferenciaView } from "./benchmark-referencia-view.tsx";
 import { PreviewOrcamentoCliente } from "./preview-orcamento-cliente.tsx";
 import { cotacaoParaSalvar, itensParaSalvar } from "./lib/cotacao-payload.ts";
-import { pdfBloqueadoPorNcm, mensagemBloqueioPdf, avisoCompatibilidadePdf, itemPodeConfirmarNcmIndividual, itemPodeDesfazerNcm, itensPendentesConfirmacaoNcm, itensResolucaoNcm, metaConfirmacaoNcm, limparConfirmacaoNcm, idxPorOrdem, ordemDoItem, pendenciasNcmOrdenadas } from "./lib/ncm.ts";
+import { pdfBloqueadoPorNcm, mensagemBloqueioPdf, avisoCompatibilidadePdf, itemPodeConfirmarNcmIndividual, itemPodeDesfazerNcm, itensPendentesConfirmacaoNcm, itensResolucaoNcm, metaConfirmacaoNcm, limparConfirmacaoNcm, idxPorOrdem, ordemDoItem, pendenciasNcmOrdenadas, mesclarItensInvalidosPdfAudit } from "./lib/ncm.ts";
+import { PdfDownloadError, type ItemInvalidoPdf } from "./lib/pdf-erro.ts";
 import { avisoMoedaCotacao } from "@cia/shared";
 import { PdfDownloadBar } from "./pdf-download-bar.tsx";
 import { BarraResolucaoNcm } from "./barra-resolucao-ncm.tsx";
@@ -896,6 +897,24 @@ export function Dashboard() {
     setResolucaoNcmIdx(idx);
     setSolicitarResolucaoNcm((n) => n + 1);
   }
+
+  function aplicarItensInvalidosPdf422(itensInvalidos: ItemInvalidoPdf[]) {
+    if (!itensInvalidos.length) return;
+    const patch = (itens: Item[]) => mesclarItensInvalidosPdfAudit(itens, itensInvalidos);
+    if (detalhe) setDetalhe({ ...detalhe, itens: patch(detalhe.itens) });
+    setAnalise((prev) => (prev ? { ...prev, itens: patch(prev.itens) } : prev));
+    solicitarResolucaoNcmComFoco();
+  }
+
+  async function baixarPdfComTratamentoNcm(fn: () => Promise<void>) {
+    try {
+      await fn();
+    } catch (e) {
+      const err = e instanceof PdfDownloadError ? e : null;
+      if (err?.itensInvalidos?.length) aplicarItensInvalidosPdf422(err.itensInvalidos);
+      throw e;
+    }
+  }
   const [kpis, setKpis] = useState<DashboardKpis | null>(null);
   const [series, setSeries] = useState<DashboardSeries | null>(null);
   const [kpisLoading, setKpisLoading] = useState(false);
@@ -1357,14 +1376,16 @@ export function Dashboard() {
 
   async function baixarPdfClienteOrcamento() {
     const idSalvo = detalhe?.id ?? salvaId;
-    if (idSalvo) {
-      await api.baixarPdf(idSalvo, "cliente");
-      return;
-    }
-    if (!analise) return;
-    const draft = editorDraft ?? editorFromCotacao(analise.cotacao, cliente);
-    const cotacao = aplicarEditorNaCotacao(analise.cotacao, draft);
-    await api.previewPdf({ cotacao, itens: analise.itens, resultado: analise.resultado }, "cliente");
+    await baixarPdfComTratamentoNcm(async () => {
+      if (idSalvo) {
+        await api.baixarPdf(idSalvo, "cliente");
+        return;
+      }
+      if (!analise) return;
+      const draft = editorDraft ?? editorFromCotacao(analise.cotacao, cliente);
+      const cotacao = aplicarEditorNaCotacao(analise.cotacao, draft);
+      await api.previewPdf({ cotacao, itens: analise.itens, resultado: analise.resultado }, "cliente");
+    });
   }
 
   function sincronizarEstadoAposPatch(atualizada: CotacaoSalva) {
@@ -1740,7 +1761,7 @@ export function Dashboard() {
                   motivoBloqueio={mensagemBloqueioPdf(detalhe.itens)}
                   qtdPendencias={itensResolucaoNcm(detalhe.itens).length}
                   pendencias={pendenciasNcmOrdenadas(detalhe.itens)}
-                  onBaixar={() => api.baixarPdf(detalhe.id, "trade")}
+                  onBaixar={() => baixarPdfComTratamentoNcm(() => api.baixarPdf(detalhe.id, "trade"))}
                   onIrParaResolucaoNcm={solicitarResolucaoNcmComFoco}
                 />
                 <button

@@ -66,7 +66,7 @@ describe("gate PDF — front/back concordam (lote misto)", () => {
       frontBackBloqueia: true,
     },
     {
-      nome: "azeite compatível validar ok (família alimentos)",
+      nome: "azeite compatível (família alimentos)",
       it: {
         descOriginal: "Azeite de oliva extravirgem, em embalagem de vidro de 1 litro",
         descPt: "Azeite de oliva extravirgem, em embalagem de vidro de 1 litro",
@@ -82,6 +82,22 @@ describe("gate PDF — front/back concordam (lote misto)", () => {
       } as Item,
       frontBackBloqueia: false,
     },
+    {
+      nome: "carrinho compatível — validarNcm falharia mas PDF libera",
+      it: {
+        descOriginal: "Carrinho de controle remoto (brinquedo)",
+        descPt: "Carrinho de controle remoto (brinquedo) — plástico/eletrônico",
+        descDuimp: "Carrinho",
+        ncm: "95030097",
+        ncmValido: true,
+        ncmFonte: "ia",
+        compatibilidadeProduto: "compativel",
+        pesoLiqKg: 1,
+        fobTotalUS: 10,
+        aliquotas: { ii: 0, ipi: 0, pis: 0, cofins: 0, icms: 0 },
+      } as Item,
+      frontBackBloqueia: false,
+    },
   ];
 
   for (const { nome, it: itemCase, frontBackBloqueia } of casos) {
@@ -89,9 +105,9 @@ describe("gate PDF — front/back concordam (lote misto)", () => {
       const audit = auditarItemNcmParaPdf(itemCase, ctx);
       expect(itemBloqueiaPdfNcm(itemCase, ctx)).toBe(audit.bloqueia);
       expect(audit.bloqueia).toBe(frontBackBloqueia);
-      if (nome === "azeite compatível validar ok (família alimentos)") {
-        const validar = validarNcmItem("15092000", itemCase.descPt, catalog, "ia");
-        expect(validar.ok).toBe(true);
+      if (nome === "carrinho compatível — validarNcm falharia mas PDF libera") {
+        const validar = validarNcmItem("95030097", itemCase.descPt, catalog, "ia");
+        expect(validar.ok).toBe(false);
       }
     });
   }

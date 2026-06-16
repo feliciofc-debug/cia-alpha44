@@ -11,6 +11,7 @@ export {
   auditarItemNcmParaPdf,
   enriquecerItemPdfNcmAudit,
   enriquecerItensPdfNcmAudit,
+  mesclarItensInvalidosPdfAudit,
   type PdfNcmAuditContext,
   type PdfNcmAuditResult,
 } from "./pdf-ncm-audit.js";
@@ -21,12 +22,11 @@ export function itemBloqueiaPdfNcm(it: Item, ctx?: PdfNcmAuditContext): boolean 
 }
 
 /** Revisão opcional na barra — confiança baixa não bloqueia PDF. */
-export function itemRevisaoOpcionalNcm(it: Item): boolean {
+export function itemRevisaoOpcionalNcm(it: Item, ctx?: PdfNcmAuditContext): boolean {
   if (confirmacaoNcmVigente(it)) return false;
-  if (itemBloqueiaPdfNcm(it)) return false;
+  if (itemBloqueiaPdfNcm(it, ctx)) return false;
   const key = ncm8Limpo(it.ncm ?? "");
   if (!key || key === "00000000") return false;
-  if (it.ncmFonte === "pendente") return true;
   if (it.ncmConfianca != null && it.ncmConfianca < LIMIAR_CONFIANCA_NCM) return true;
   return false;
 }
@@ -39,7 +39,7 @@ export function itemPodeConfirmarNcm(it: Item, ctx?: PdfNcmAuditContext): boolea
   if (!key || key === "00000000") return false;
   const audit = auditarItemNcmParaPdf(it, ctx);
   if (audit.bloqueia && audit.precisaConfirmacao) return true;
-  return itemRevisaoOpcionalNcm(it);
+  return itemRevisaoOpcionalNcm(it, ctx);
 }
 
 /** Confirmar NCM individual — analista pode forçar qualquer item bloqueado. */
@@ -56,11 +56,13 @@ export function itensPendentesConfirmacaoNcm(itens: Item[], ctx?: PdfNcmAuditCon
   return itens.filter((it) => itemPodeConfirmarNcm(it, ctx));
 }
 
-/** Item exige ação humana na barra de resolução (confirmar e/ou editar NCM). */
+/**
+ * Item exige ação humana na barra de resolução (confirmar e/ou editar NCM).
+ * INVARIANTE: itemBloqueiaPdfNcm ⇒ true.
+ */
 export function itemPrecisaResolucaoNcm(it: Item, ctx?: PdfNcmAuditContext): boolean {
-  const audit = auditarItemNcmParaPdf(it, ctx);
-  if (audit.bloqueia) return true;
-  return itemRevisaoOpcionalNcm(it);
+  if (itemBloqueiaPdfNcm(it, ctx)) return true;
+  return itemRevisaoOpcionalNcm(it, ctx);
 }
 
 export function itensResolucaoNcm(

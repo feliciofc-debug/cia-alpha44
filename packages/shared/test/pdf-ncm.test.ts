@@ -6,7 +6,14 @@ import {
   metaConfirmacaoNcm,
   validarConfirmacaoNcmItem,
 } from "@cia/shared";
-import { itemBloqueiaPdfNcm, itensBloqueandoPdf, itemPodeConfirmarNcm, itemPodeConfirmarNcmIndividual, itensResolucaoNcm } from "@cia/shared";
+import {
+  itemBloqueiaPdfNcm,
+  itemPrecisaResolucaoNcm,
+  itensBloqueandoPdf,
+  itemPodeConfirmarNcm,
+  itemPodeConfirmarNcmIndividual,
+  itensResolucaoNcm,
+} from "@cia/shared";
 
 function item(partial: Partial<Item>): Item {
   return {
@@ -97,7 +104,7 @@ describe("pdf-ncm", () => {
   it("itemPodeConfirmarNcm — revisar, validar falho, baixa confiança", () => {
     const ctxFalha = { catalogExiste: () => true, validarNcm: () => ({ ok: false, avisos: ["x"] }) };
     expect(itemPodeConfirmarNcm(item({ compatibilidadeProduto: "revisar" }))).toBe(true);
-    expect(itemPodeConfirmarNcm(item({ compatibilidadeProduto: "compativel" }), ctxFalha)).toBe(true);
+    expect(itemPodeConfirmarNcm(item({ compatibilidadeProduto: "compativel" }), ctxFalha)).toBe(false);
     expect(itemPodeConfirmarNcm(item({ compatibilidadeProduto: "compativel", ncmConfianca: 0.55 }))).toBe(
       true,
     );
@@ -112,7 +119,7 @@ describe("pdf-ncm", () => {
     ).toBe(false);
   });
 
-  it("baixa confiança só exibe botão — compatível conf 0,80 não bloqueia PDF (fix A intacto)", () => {
+  it("baixa confiança não bloqueia PDF (revisão opcional)", () => {
     const baixaConf = item({
       compatibilidadeProduto: "compativel",
       ncmValido: true,
@@ -120,7 +127,14 @@ describe("pdf-ncm", () => {
     });
     expect(itemPodeConfirmarNcm(baixaConf)).toBe(true);
     expect(itemBloqueiaPdfNcm(baixaConf)).toBe(false);
+    expect(itemPrecisaResolucaoNcm(baixaConf)).toBe(true);
     expect(itensBloqueandoPdf([baixaConf])).toHaveLength(0);
+  });
+
+  it("ncmFonte pendente bloqueia e entra na barra", () => {
+    const pend = item({ ncm: "95030097", ncmFonte: "pendente", compatibilidadeProduto: "compativel" });
+    expect(itemBloqueiaPdfNcm(pend)).toBe(true);
+    expect(itemPrecisaResolucaoNcm(pend)).toBe(true);
   });
 
   it("incompatível confirmado pelo analista destrava PDF", () => {
@@ -131,7 +145,7 @@ describe("pdf-ncm", () => {
     expect(itemBloqueiaPdfNcm(confirmado)).toBe(false);
   });
 
-  it("itensResolucaoNcm inclui revisar, incompatível e validar falho", () => {
+  it("itensResolucaoNcm inclui revisar e incompatível (compatível fora)", () => {
     const ctx = {
       catalogExiste: () => true,
       validarNcm: (_n: string, _d: string, _f: string) => ({ ok: false, avisos: ["incoerente"] }),
@@ -142,6 +156,6 @@ describe("pdf-ncm", () => {
       item({ compatibilidadeProduto: "incompativel" }),
     ];
     const fila = itensResolucaoNcm(itens, ctx);
-    expect(fila.map((f) => f.idx)).toEqual([0, 1, 2]);
+    expect(fila.map((f) => f.idx)).toEqual([0, 2]);
   });
 });

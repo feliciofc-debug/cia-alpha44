@@ -3,7 +3,6 @@ import type { Item } from "@cia/shared";
 import {
   auditarItemNcmParaPdf,
   itemBloqueiaPdfNcm,
-  itemPodeConfirmarNcmIndividual,
   itemPrecisaResolucaoNcm,
   metaConfirmacaoNcm,
   type PdfNcmAuditContext,
@@ -36,41 +35,34 @@ const ctxOk: PdfNcmAuditContext = {
   validarNcm: () => ({ ok: true }),
 };
 
-describe("auditarItemNcmParaPdf — gate unificado", () => {
-  it("azeite em vidro — front e back liberam (sem confirmação)", () => {
+describe("auditarItemNcmParaPdf — juiz único (compatibilidadeProduto)", () => {
+  it("azeite compatível — libera mesmo se validarNcm falhasse", () => {
     const azeite = item({
       descPt: "Azeite de oliva extravirgem, em embalagem de vidro de 1 litro",
       ncm: "15092000",
       compatibilidadeProduto: "compativel",
-      pdfNcmAudit: { bloqueia: false, precisaConfirmacao: false },
     });
-    expect(itemBloqueiaPdfNcm(azeite)).toBe(false);
-    expect(itemPrecisaResolucaoNcm(azeite)).toBe(false);
-    expect(auditarItemNcmParaPdf(azeite, ctxOk).bloqueia).toBe(false);
+    expect(auditarItemNcmParaPdf(azeite, ctxValidarFalha).bloqueia).toBe(false);
+    expect(itemBloqueiaPdfNcm(azeite, ctxValidarFalha)).toBe(false);
+    expect(itemPrecisaResolucaoNcm(azeite, ctxValidarFalha)).toBe(false);
   });
 
-  it("compatível + validar ok → libera sem confirmação", () => {
+  it("compatível + catálogo ok → libera (validarNcm ignorado no gate)", () => {
     const ok = item({ compatibilidadeProduto: "compativel", ncmConfianca: 0.97 });
-    const audit = auditarItemNcmParaPdf(ok, ctxOk);
+    const audit = auditarItemNcmParaPdf(ok, ctxValidarFalha);
     expect(audit).toEqual({ bloqueia: false, precisaConfirmacao: false });
-    expect(itemBloqueiaPdfNcm(ok, ctxOk)).toBe(false);
-    expect(itemPrecisaResolucaoNcm(ok, ctxOk)).toBe(false);
   });
 
-  it("baixa confiança não bloqueia PDF (revisão opcional)", () => {
+  it("baixa confiança compatível não bloqueia PDF", () => {
     const baixa = item({ compatibilidadeProduto: "compativel", ncmConfianca: 0.55 });
     expect(itemBloqueiaPdfNcm(baixa, ctxOk)).toBe(false);
     expect(itemPrecisaResolucaoNcm(baixa, ctxOk)).toBe(true);
   });
 
-  it("confirmacaoNcmVigente libera mesmo com validar falho", () => {
+  it("confirmacaoNcmVigente libera revisar/incompatível confirmado", () => {
     const confirmado = {
-      ...item({
-        descPt: "Azeite de oliva extravirgem",
-        ncm: "15092000",
-        compatibilidadeProduto: "compativel",
-      }),
-      ...metaConfirmacaoNcm("15092000"),
+      ...item({ compatibilidadeProduto: "revisar" }),
+      ...metaConfirmacaoNcm("87149490"),
     };
     expect(auditarItemNcmParaPdf(confirmado, ctxValidarFalha).bloqueia).toBe(false);
   });
@@ -81,11 +73,11 @@ describe("auditarItemNcmParaPdf — gate unificado", () => {
     expect(auditarItemNcmParaPdf(item({ ncm: "" }), ctxOk).bloqueia).toBe(true);
   });
 
-  it("usa pdfNcmAudit embutido quando ctx ausente", () => {
+  it("pdfNcmAudit legado não bloqueia compatível sem ctx", () => {
     const embutido = item({
-      pdfNcmAudit: { bloqueia: true, precisaConfirmacao: true, motivo: "teste" },
+      pdfNcmAudit: { bloqueia: true, precisaConfirmacao: true, motivo: "legado" },
       compatibilidadeProduto: "compativel",
     });
-    expect(auditarItemNcmParaPdf(embutido).bloqueia).toBe(true);
+    expect(auditarItemNcmParaPdf(embutido).bloqueia).toBe(false);
   });
 });

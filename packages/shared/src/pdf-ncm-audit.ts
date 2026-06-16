@@ -11,24 +11,21 @@ export interface PdfNcmAuditResult {
 
 export interface PdfNcmAuditContext {
   catalogExiste: (ncm8: string) => boolean;
-  validarNcm: (ncm8: string, desc: string, fonte: string) => { ok: boolean; avisos?: string[] };
+  /** @deprecated Não usado no gate PDF — validarNcmItem é insumo da classificação. */
+  validarNcm?: (ncm8: string, desc: string, fonte: string) => { ok: boolean; avisos?: string[] };
 }
 
-function descricaoItem(it: Item): string {
-  return (it.descPt || it.descOriginal || "").trim();
-}
-
-/** Predicado único para gate PDF — mesma política no front e no back. */
+/**
+ * Gate único de fechamento PDF — juiz: compatibilidadeProduto (+ NCM presente na Siscomex).
+ * validarNcmItem NÃO bloqueia PDF; só alimenta a classificação (compatível/revisar/incompatível).
+ */
 export function auditarItemNcmParaPdf(it: Item, ctx?: PdfNcmAuditContext): PdfNcmAuditResult {
-  // 1. override humano vence
   if (confirmacaoNcmVigente(it)) {
     return { bloqueia: false, precisaConfirmacao: false };
   }
 
-  const desc = descricaoItem(it);
   const key = ncm8Limpo(it.ncm ?? "");
 
-  // 2. NCM vazio / 00000000
   if (!key || key === "00000000") {
     return {
       bloqueia: true,
@@ -37,7 +34,14 @@ export function auditarItemNcmParaPdf(it: Item, ctx?: PdfNcmAuditContext): PdfNc
     };
   }
 
-  // 3. incompatível
+  if (it.ncmFonte === "pendente") {
+    return {
+      bloqueia: true,
+      precisaConfirmacao: true,
+      motivo: "Classificação NCM pendente — informe ou confirme o código",
+    };
+  }
+
   if (it.compatibilidadeProduto === "incompativel") {
     return {
       bloqueia: true,
@@ -46,7 +50,6 @@ export function auditarItemNcmParaPdf(it: Item, ctx?: PdfNcmAuditContext): PdfNc
     };
   }
 
-  // 6. revisar (antes de catálogo — independe de validarNcmItem)
   if (it.compatibilidadeProduto === "revisar") {
     return {
       bloqueia: true,
@@ -55,14 +58,8 @@ export function auditarItemNcmParaPdf(it: Item, ctx?: PdfNcmAuditContext): PdfNc
     };
   }
 
-  // Regras 4–5 exigem catálogo + validarNcmItem (back e front com ctx).
-  if (!ctx) {
-    if (it.pdfNcmAudit) return it.pdfNcmAudit;
-    return { bloqueia: false, precisaConfirmacao: false };
-  }
-
-  // 4. ausente na Siscomex
-  if (!ctx.catalogExiste(key)) {
+  // compatível — só bloqueia se NCM ausente na Siscomex (quando catálogo disponível)
+  if (ctx && !ctx.catalogExiste(key)) {
     return {
       bloqueia: true,
       precisaConfirmacao: true,
@@ -70,21 +67,6 @@ export function auditarItemNcmParaPdf(it: Item, ctx?: PdfNcmAuditContext): PdfNc
     };
   }
 
-  // 5. validarNcmItem
-  if (desc) {
-    const v = ctx.validarNcm(key, desc, it.ncmFonte ?? "ia");
-    if (!v.ok) {
-      const avisos = v.avisos?.length ? [...v.avisos] : ["NCM incoerente com o produto."];
-      return {
-        bloqueia: true,
-        precisaConfirmacao: true,
-        motivo: avisos[0],
-        avisos,
-      };
-    }
-  }
-
-  // 7. compatível + existe + validar ok → libera
   return { bloqueia: false, precisaConfirmacao: false };
 }
 
@@ -94,4 +76,30 @@ export function enriquecerItemPdfNcmAudit(it: Item, ctx: PdfNcmAuditContext): It
 
 export function enriquecerItensPdfNcmAudit(itens: Item[], ctx: PdfNcmAuditContext): Item[] {
   return itens.map((it) => enriquecerItemPdfNcmAudit(it, ctx));
+}
+
+/** Aplica audit de bloqueio a partir do 422 PDF (ordem persistida). Respeita juiz único. */
+export function mesclarItensInvalidosPdfAudit(
+  itens: Item[],
+  invalidos: Array<{ ordem: number; avisos?: string[] }>,
+): Item[] {
+  if (!invalidos.length) return itens;
+  const byOrdem = new Map(invalidos.map((inv) => [inv.ordem, inv]));
+  return itens.map((it, idx) => {
+    const ordem = it.ordem ?? idx + 1;
+    const inv = byOrdem.get(ordem);
+    if (!inv) return it;
+    const audit = auditarItemNcmParaPdf(it);
+    if (!audit.bloqueia) return it;
+    const avisos = inv.avisos?.length ? [...inv.avisos] : ["NCM pendente de revisão."];
+    return {
+      ...it,
+      pdfNcmAudit: {
+        bloqueia: true,
+        precisaConfirmacao: true,
+        motivo: avisos[0],
+        avisos,
+      },
+    };
+  });
 }

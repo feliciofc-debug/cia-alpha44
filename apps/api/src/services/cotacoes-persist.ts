@@ -664,7 +664,7 @@ export async function atualizarCotacao(id: string, tenantSlug: string, state: Ap
     });
   });
 
-  return formatCotacaoSalva(updated as CotacaoComRelacoes);
+  return formatCotacaoSalva(updated as CotacaoComRelacoes, undefined, state.ncmCatalog);
 }
 
 /** @deprecated use atualizarCotacao */
