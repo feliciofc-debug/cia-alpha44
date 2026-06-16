@@ -113,6 +113,13 @@ export const FAMILIAS_PRODUTO: FamiliaProduto[] = [
     ncmPreferidos: ["87141000", "87089990"],
   },
   {
+    id: "filtros_separadores",
+    prefixos: ["8421"],
+    re: /filtro\s*(de\s*)?(óleo|oleo|combust[ií]vel|ar|lubrificante|hidr[aá]ulic|[aá]gua|water|oil|fuel|air)|oil\s*filter|fuel\s*filter|air\s*filter|water\s*filter|hydraulic\s*filter|elemento\s*filtrante|cartucho\s*filtrante|filter\s*(element|cartridge)|滤清器|滤芯|机油滤|空气滤|燃油滤|柴油滤|油水分离/i,
+    termosBusca: "filtro oleo combustivel ar lubrificante elemento filtrante separador 8421",
+    ncmPreferidos: ["84212300", "84213100", "84212990", "84219990"],
+  },
+  {
     id: "autopecas",
     prefixos: ["8708"],
     re: /autope[cç]a|auto\s*part|car\s*part|vehicle\s*part|汽车配件|汽配/i,
