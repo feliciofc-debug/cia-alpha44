@@ -40,6 +40,8 @@ export function auditarNcmsParaPdf(itens: Item[], catalog: NcmCatalog): void {
 
     const avisos = [...(it.ncmAvisos ?? [])];
 
+    if (confirmacaoNcmVigente(it)) continue;
+
     if (it.compatibilidadeProduto === "incompativel") {
       invalidos.push({
         ordem: i + 1,
@@ -59,8 +61,6 @@ export function auditarNcmsParaPdf(itens: Item[], catalog: NcmCatalog): void {
       });
       continue;
     }
-
-    if (confirmacaoNcmVigente(it)) continue;
 
     let bloqueado = it.ncmValido === false || it.compatibilidadeProduto === "revisar";
 

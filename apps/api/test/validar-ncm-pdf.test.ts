@@ -75,22 +75,22 @@ describe("auditarNcmsParaPdf", () => {
     ).not.toThrow();
   });
 
-  it("continua bloqueando incompatível mesmo com confirmação", () => {
+  it("libera incompatível com confirmação humana (override)", () => {
     expect(() =>
       auditarNcmsParaPdf(
         [
           {
             ...item({
-              descPt: "Produto divergente",
-              ncm: "87149990",
+              descPt: "Chapa aço 5mm",
+              ncm: "72085200",
               compatibilidadeProduto: "incompativel",
             }),
-            ...metaConfirmacaoNcm("87149990"),
+            ...metaConfirmacaoNcm("72085200"),
           },
         ],
         catalog,
       ),
-    ).toThrow(NcmInvalidoPdfError);
+    ).not.toThrow();
   });
 
   it("re-bloqueia se NCM mudou após confirmação", () => {

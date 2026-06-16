@@ -119,6 +119,8 @@ export const itemSchema = z.object({
   /** Compatibilidade semântica produto × NCM (T5 — independente de ncmValido Siscomex). */
   compatibilidadeProduto: z.enum(["compativel", "incompativel", "revisar"]).optional(),
   motivoCompatibilidade: z.string().optional(),
+  /** Família detectada na classificação — reutilizada na re-avaliação de compatibilidade. */
+  familiaProdutoId: z.string().optional(),
   /** Revisão humana do NCM — destrava PDF mantendo o código. */
   ncmRevisadoHumano: z.boolean().optional(),
   ncmRevisadoEm: z.string().optional(),

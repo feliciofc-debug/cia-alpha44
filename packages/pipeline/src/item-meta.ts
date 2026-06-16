@@ -12,6 +12,8 @@ export interface ItemMetaPersistido {
   ncmAvisos?: string[];
   compatibilidadeProduto?: Item["compatibilidadeProduto"];
   motivoCompatibilidade?: string;
+  /** ID da família de produto (detectarFamilia) persistida na classificação. */
+  familiaProdutoId?: string;
   fobKgFonte?: string;
   fobPendente?: boolean;
   fobKgBase?: Item["fobKgBase"];
@@ -35,6 +37,7 @@ export function extrairItemMeta(it: Item): ItemMetaPersistido {
     ncmAvisos: it.ncmAvisos,
     compatibilidadeProduto: it.compatibilidadeProduto,
     motivoCompatibilidade: it.motivoCompatibilidade,
+    familiaProdutoId: (it as Item & { familiaProdutoId?: string }).familiaProdutoId,
     fobKgFonte: it.fobKgFonte,
     fobPendente: it.fobPendente,
     fobKgBase: it.fobKgBase,
@@ -62,6 +65,7 @@ export function mesclarItemMeta(it: Item, meta: unknown): Item {
     ...(m.ncmAvisos != null ? { ncmAvisos: m.ncmAvisos } : {}),
     ...(m.compatibilidadeProduto != null ? { compatibilidadeProduto: m.compatibilidadeProduto } : {}),
     ...(m.motivoCompatibilidade != null ? { motivoCompatibilidade: m.motivoCompatibilidade } : {}),
+    ...(m.familiaProdutoId != null ? { familiaProdutoId: m.familiaProdutoId } : {}),
     ...(m.fobKgFonte != null ? { fobKgFonte: m.fobKgFonte } : {}),
     ...(m.fobPendente != null ? { fobPendente: m.fobPendente } : {}),
     ...(m.fobKgBase != null ? { fobKgBase: m.fobKgBase } : {}),

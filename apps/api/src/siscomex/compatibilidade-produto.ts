@@ -4,7 +4,8 @@
  * "incompativel" final exige (a)+(b) concordando ou (c) confirmando.
  */
 
-import { detectarFamilia, ncmCoerenteComFamilia, normNcm8, type NcmCatalog } from "@cia/pipeline";
+import { detectarFamilia, FAMILIAS_PRODUTO, ncmCoerenteComFamilia, normNcm8, type NcmCatalog } from "@cia/pipeline";
+import type { FamiliaProduto } from "@cia/pipeline";
 import type { LlmCallFn } from "../llm/classificar-ncm-2passes.js";
 import {
   SYSTEM_JUIZ_COMPATIBILIDADE,
@@ -33,6 +34,8 @@ export interface EntradaCompatibilidade {
   descricaoFamilia?: string;
   /** Material (材质) — alimenta heurística T5 quando presente. */
   material?: string;
+  /** Família persistida na classificação — prevalece sobre redetectar em descrição enxuta. */
+  familiaId?: string;
 }
 
 type SinalFamilia = "ok" | "indicio_incompativel" | "neutro";
@@ -43,8 +46,15 @@ interface AvaliacaoFamilia {
   termosBusca?: string;
 }
 
-function avaliarCamadaFamilia(descricao: string, ncm: string): AvaliacaoFamilia {
-  const familia = detectarFamilia(descricao);
+function resolverFamiliaParaCompat(entrada: EntradaCompatibilidade): FamiliaProduto | null {
+  if (entrada.familiaId) {
+    return FAMILIAS_PRODUTO.find((f) => f.id === entrada.familiaId) ?? null;
+  }
+  const descFamilia = (entrada.descricaoFamilia ?? entrada.descricao).trim();
+  return descFamilia ? detectarFamilia(descFamilia) : null;
+}
+
+function avaliarCamadaFamilia(familia: FamiliaProduto | null, ncm: string): AvaliacaoFamilia {
   if (!familia) {
     return { sinal: "neutro", motivo: "Família não detectada ou conflito de famílias." };
   }
@@ -60,6 +70,21 @@ function avaliarCamadaFamilia(descricao: string, ncm: string): AvaliacaoFamilia 
     sinal: "indicio_incompativel",
     motivo: `Família "${familia.id}" (cap. ${familia.prefixos.join("/")}) incompatível com NCM ${normNcm8(ncm) ?? ncm}.`,
     termosBusca: familia.termosBusca,
+  };
+}
+
+/** NCM no mesmo capítulo da família → nunca incompatível (piso revisar). */
+function aplicarPisoCoerenciaCapitulo(
+  ncm: string,
+  familia: FamiliaProduto | null,
+  resultado: ResultadoCompatibilidade,
+): ResultadoCompatibilidade {
+  if (!familia || !ncmCoerenteComFamilia(ncm, familia)) return resultado;
+  if (resultado.compatibilidadeProduto !== "incompativel") return resultado;
+  return {
+    ...resultado,
+    compatibilidadeProduto: "revisar",
+    motivoCompatibilidade: `${resultado.motivoCompatibilidade} Capítulo NCM coerente com família "${familia.id}" — mínimo revisar.`,
   };
 }
 
@@ -116,34 +141,36 @@ export function avaliarCompatibilidadeProduto(
   const ncmKey = normNcm8(entrada.ncm) ?? entrada.ncm.replace(/\D/g, "").padStart(8, "0");
   const descricaoNcm = catalog.descricaoCompleta(ncmKey) ?? catalog.descricao(ncmKey) ?? "";
 
-  const descFamilia = (entrada.descricaoFamilia ?? entrada.descricao).trim();
-  const familia = avaliarCamadaFamilia(descFamilia, ncmKey);
+  const familia = resolverFamiliaParaCompat(entrada);
+  const familiaEval = avaliarCamadaFamilia(familia, ncmKey);
   const textoHeuristica = [
     entrada.descricao,
     entrada.material?.trim() ? `Material: ${entrada.material.trim()}` : "",
   ]
     .filter(Boolean)
     .join(" ");
-  const heuristica = avaliarHeuristicaTermos(textoHeuristica, descricaoNcm, familia.termosBusca, ncmKey);
-  const decisao = combinarCamadasAB(familia, heuristica);
+  const heuristica = avaliarHeuristicaTermos(textoHeuristica, descricaoNcm, familiaEval.termosBusca, ncmKey);
+  const decisao = combinarCamadasAB(familiaEval, heuristica);
 
   if (decisao !== "inconclusivo") {
+    const base: ResultadoCompatibilidade = {
+      compatibilidadeProduto: decisao,
+      motivoCompatibilidade: motivoCombinado(familiaEval, heuristica, decisao),
+      camada: decisao === "incompativel" ? "combinada" : heuristica.status === "compativel" ? "heuristica" : "combinada",
+    };
     return {
-      resultado: {
-        compatibilidadeProduto: decisao,
-        motivoCompatibilidade: motivoCombinado(familia, heuristica, decisao),
-        camada: decisao === "incompativel" ? "combinada" : heuristica.status === "compativel" ? "heuristica" : "combinada",
-      },
+      resultado: aplicarPisoCoerenciaCapitulo(ncmKey, familia, base),
       precisaLlm: false,
     };
   }
 
+  const revisar: ResultadoCompatibilidade = {
+    compatibilidadeProduto: "revisar",
+    motivoCompatibilidade: motivoCombinado(familiaEval, heuristica, "revisar"),
+    camada: "heuristica",
+  };
   return {
-    resultado: {
-      compatibilidadeProduto: "revisar",
-      motivoCompatibilidade: motivoCombinado(familia, heuristica, "revisar"),
-      camada: "heuristica",
-    },
+    resultado: aplicarPisoCoerenciaCapitulo(ncmKey, familia, revisar),
     precisaLlm: true,
   };
 }
@@ -194,7 +221,10 @@ export async function avaliarCompatibilidadeLote(
       const descricaoNcm = catalog.descricaoCompleta(ncmKey) ?? catalog.descricao(ncmKey) ?? "";
       if (!descricaoNcm) return;
       const juiz = await juizLlm(chamarLlm, e.descricao, ncmKey, descricaoNcm);
-      if (juiz) resultados[i] = juiz;
+      if (juiz) {
+        const familia = resolverFamiliaParaCompat(e);
+        resultados[i] = aplicarPisoCoerenciaCapitulo(ncmKey, familia, juiz);
+      }
     }),
   );
 
@@ -209,4 +239,4 @@ export function combinarCamadasABParaTeste(
   return combinarCamadasAB(familia, heuristica as ResultadoHeuristica);
 }
 
-export { avaliarCamadaFamilia, avaliarHeuristicaTermos };
+export { avaliarCamadaFamilia, avaliarHeuristicaTermos, aplicarPisoCoerenciaCapitulo, resolverFamiliaParaCompat };

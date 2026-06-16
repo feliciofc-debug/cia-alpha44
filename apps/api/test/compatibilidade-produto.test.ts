@@ -141,6 +141,29 @@ describe("compatibilidade produto × NCM — casos obrigatórios", () => {
     expect(["incompativel", "revisar"]).toContain(resultado.compatibilidadeProduto);
     expect(resultado.compatibilidadeProduto).not.toBe("compativel");
   });
+
+  it("chapa cap 72 + familia siderurgico_plano → nunca incompativel (piso revisar)", () => {
+    const { resultado } = avaliarCompatibilidadeProduto(catalog, {
+      descricao: "CHP-LF-3MM chapa laminada frio 3mm",
+      descricaoFamilia: "CHP-LF-3MM chapa laminada frio 3mm",
+      ncm: "72085200",
+      familiaId: "siderurgico_plano",
+    });
+    expect(resultado.compatibilidadeProduto).not.toBe("incompativel");
+    expect(["compativel", "revisar"]).toContain(resultado.compatibilidadeProduto);
+  });
+
+  it("familia persistida prevalece sobre descPt enxuta na re-avaliação", () => {
+    const descOriginal = "CHP-LF-3MM chapa laminada frio 3mm";
+    const descPtIa = "Chapa de aço laminado a frio espessura 3 mm";
+    const { resultado } = avaliarCompatibilidadeProduto(catalog, {
+      descricao: descPtIa,
+      descricaoFamilia: descOriginal,
+      ncm: "72085200",
+      familiaId: "siderurgico_plano",
+    });
+    expect(resultado.compatibilidadeProduto).not.toBe("incompativel");
+  });
 });
 
 describe("avisoCompatibilidadePdf", () => {

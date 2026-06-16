@@ -9,6 +9,7 @@ import {
   calibrarFobKg,
   confiancaNcmFinal,
   criarNcmCatalog,
+  detectarFamilia,
   loadNcmVigenteCache,
   lookupBenchmark,
   preencherFobKgPlanilha,
@@ -283,6 +284,7 @@ export async function montarItens(
         : null;
     const pesoLiq = pesoLiqReal(l);
     const fobTotal = l.fobTotalUS ?? 0;
+    const familia = detectarFamilia({ descOriginal: l.descOriginal, uso: l.uso ?? undefined });
 
     const avisosClassificacao: string[] = [];
     if (c?.classificacaoBaixaConfianca) {
@@ -320,6 +322,7 @@ export async function montarItens(
           ncmAvisos: [...resolvido.avisos, ...validacao.avisos, ...avisosClassificacao].length
             ? [...resolvido.avisos, ...validacao.avisos, ...avisosClassificacao]
             : undefined,
+          ...(familia ? { familiaProdutoId: familia.id } : {}),
           pesoBrutoKg: l.pesoBrutoKg,
           pesoLiqKg: pesoLiq,
           qtd: l.qtd,
@@ -349,6 +352,7 @@ export async function montarItens(
       descricaoFamilia: linhasNorm[i]!.descOriginal,
       material: linhasNorm[i]!.material ?? undefined,
       ncm: it.ncm,
+      familiaId: it.familiaProdutoId,
     })),
     juiz,
   );
