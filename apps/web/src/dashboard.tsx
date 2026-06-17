@@ -20,6 +20,7 @@ import { BenchmarkReferenciaView } from "./benchmark-referencia-view.tsx";
 import { PreviewOrcamentoCliente } from "./preview-orcamento-cliente.tsx";
 import { cotacaoParaSalvar, itensParaSalvar } from "./lib/cotacao-payload.ts";
 import { pdfBloqueadoPorNcm, mensagemBloqueioPdf, avisoCompatibilidadePdf, itemPodeConfirmarNcmIndividual, itemPodeDesfazerNcm, itensPendentesConfirmacaoNcm, itensResolucaoNcm, metaConfirmacaoNcm, limparConfirmacaoNcm, idxPorOrdem, ordemDoItem, pendenciasNcmOrdenadas, mesclarItensInvalidosPdfAudit } from "./lib/ncm.ts";
+import { BUILD_SHA } from "./lib/build-info.ts";
 import { PdfDownloadError, type ItemInvalidoPdf } from "./lib/pdf-erro.ts";
 import { avisoMoedaCotacao } from "@cia/shared";
 import { PdfDownloadBar } from "./pdf-download-bar.tsx";
@@ -650,6 +651,9 @@ function AnalisePainel({
         <p className="font-semibold text-white">
           {salvaId ? "Cotação salva" : "Análise concluída"}
           {salvaId && <span className="ml-2 text-xs font-normal text-slate-400">#{salvaId.slice(0, 8)}</span>}
+          <span className="ml-2 text-[10px] font-normal text-slate-600" title="Versão do front (commit Vercel)">
+            · build {BUILD_SHA}
+          </span>
         </p>
         <p className="mt-1 text-sm text-slate-300">
           Provedor: {provider} · {itens.length} itens · {analise.cotacao.empresaTrade || "—"} →{" "}
