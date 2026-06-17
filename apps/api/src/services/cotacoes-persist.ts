@@ -15,6 +15,7 @@ import {
   limparConfirmacaoNcm,
   metaConfirmacaoNcm,
   ncmInformadoParaFechamento,
+  normalizarAceiteNcmInformado,
   validarConfirmacaoNcmItem,
   validarConfirmacaoNcmItens,
   ncm8Limpo,
@@ -192,7 +193,8 @@ export function mapRowParaDominio(row: CotacaoComRelacoes): {
         it.meta,
       ),
     )
-    .map(validarConfirmacaoNcmItem);
+    .map(validarConfirmacaoNcmItem)
+    .map(normalizarAceiteNcmInformado);
 
   const despesas = [...row.despesas]
     .sort((a, b) => a.ordem - b.ordem)

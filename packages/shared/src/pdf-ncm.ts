@@ -14,6 +14,7 @@ export {
   enriquecerItensPdfNcmAudit,
   mesclarItensInvalidosPdfAudit,
   ncmInformadoParaFechamento,
+  normalizarAceiteNcmInformado,
   type PdfNcmAuditContext,
   type PdfNcmAuditResult,
 } from "./pdf-ncm-audit.js";

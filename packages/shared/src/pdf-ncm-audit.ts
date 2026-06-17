@@ -21,6 +21,12 @@ export function ncmInformadoParaFechamento(it: Item): boolean {
   return Boolean(key && key !== "00000000");
 }
 
+/** NCM informado ⇒ aceito — normaliza flag de exibição (não revalida catálogo). */
+export function normalizarAceiteNcmInformado(it: Item): Item {
+  if (!ncmInformadoParaFechamento(it)) return it;
+  return { ...it, ncmValido: true };
+}
+
 /**
  * Gate de fechamento PDF — regra estrutural única:
  * bloqueia SOMENTE se NCM ausente / 00000000.

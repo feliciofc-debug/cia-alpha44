@@ -1,7 +1,7 @@
 /** Orquestração da cotação: montar itens (parser→IA→TEC) e calcular (engine+benchmark+risco). */
 
 import { calcCotacao, type CotacaoFiscalInput } from "@cia/fiscal-engine";
-import { validarConfirmacaoNcmItens, aplicarIcmsCotacao, type IcmsCotacaoMeta } from "@cia/shared";
+import { validarConfirmacaoNcmItens, aplicarIcmsCotacao, ncmInformadoParaFechamento, type IcmsCotacaoMeta } from "@cia/shared";
 import {
   analisarRisco,
   anexarMetaFobItem,
@@ -315,7 +315,7 @@ export async function montarItens(
           ncmConfianca:
             confiancaNcmFinal(ncm, candidatosBrutos, c?.confiancaPasse2) ?? undefined,
           ncmCandidatos: resolvido.ncmCandidatos,
-          ncmValido: resolvido.valido && validacao.ok,
+          ncmValido: ncmInformadoParaFechamento({ ncm } as Item),
           ncmFonte: resolvido.fonte,
           ncmDescricaoOficial: resolvido.descricaoOficial ?? undefined,
           ncmPlanilhaOriginal: resolvido.ncmPlanilhaOriginal ?? undefined,

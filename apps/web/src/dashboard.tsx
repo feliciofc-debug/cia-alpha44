@@ -19,7 +19,7 @@ import { PainelKpisView } from "./painel-kpis.tsx";
 import { BenchmarkReferenciaView } from "./benchmark-referencia-view.tsx";
 import { PreviewOrcamentoCliente } from "./preview-orcamento-cliente.tsx";
 import { cotacaoParaSalvar, itensParaSalvar } from "./lib/cotacao-payload.ts";
-import { pdfBloqueadoPorNcm, mensagemBloqueioPdf, avisoCompatibilidadePdf, itemPodeConfirmarNcmIndividual, itemPodeDesfazerNcm, itensPendentesConfirmacaoNcm, itensResolucaoNcm, metaConfirmacaoNcm, limparConfirmacaoNcm, idxPorOrdem, ordemDoItem, pendenciasNcmOrdenadas, mesclarItensInvalidosPdfAudit } from "./lib/ncm.ts";
+import { pdfBloqueadoPorNcm, mensagemBloqueioPdf, avisoCompatibilidadePdf, itemPodeConfirmarNcmIndividual, itemPodeDesfazerNcm, itensPendentesConfirmacaoNcm, itensResolucaoNcm, metaConfirmacaoNcm, limparConfirmacaoNcm, idxPorOrdem, ordemDoItem, pendenciasNcmOrdenadas, mesclarItensInvalidosPdfAudit, ncmInformadoParaFechamento } from "./lib/ncm.ts";
 import { BUILD_SHA } from "./lib/build-info.ts";
 import { PdfDownloadError, type ItemInvalidoPdf } from "./lib/pdf-erro.ts";
 import { avisoMoedaCotacao } from "@cia/shared";
@@ -432,10 +432,16 @@ function AnalisePainel({
                     <div className="truncate text-slate-500">{it.descDuimp.slice(0, 80)}</div>
                   </td>
                   <td className="max-w-[11rem] p-2 align-top">
-                    <span className={it.ncmValido === false ? "font-semibold text-red-400" : "text-emerald-300"}>
+                    <span
+                      className={
+                        ncmInformadoParaFechamento(it)
+                          ? "text-emerald-300"
+                          : "font-semibold text-red-400"
+                      }
+                    >
                       {fmtNcm(it.ncm || "00000000")}
                     </span>
-                    {it.compatibilidadeProduto === "incompativel" && (
+                    {!ncmInformadoParaFechamento(it) && it.compatibilidadeProduto === "incompativel" && (
                       <span
                         className="mt-0.5 block text-[10px] font-semibold text-orange-400"
                         title={it.motivoCompatibilidade}
@@ -443,7 +449,7 @@ function AnalisePainel({
                         ⚠ NCM × produto incompatível
                       </span>
                     )}
-                    {it.compatibilidadeProduto === "revisar" && (
+                    {!ncmInformadoParaFechamento(it) && it.compatibilidadeProduto === "revisar" && (
                       <span
                         className="mt-0.5 block text-[10px] font-medium text-amber-400"
                         title={it.motivoCompatibilidade}
@@ -471,7 +477,14 @@ function AnalisePainel({
                         {it.ncmDescricaoOficial.slice(0, 50)}
                       </span>
                     )}
-                    {it.ncmAvisos?.slice(0, 1).map((a, j) => (
+                    {it.ncmAvisos
+                      ?.filter(
+                        (a) =>
+                          !ncmInformadoParaFechamento(it) ||
+                          !/classifica/i.test(a),
+                      )
+                      .slice(0, 1)
+                      .map((a, j) => (
                       <span key={j} className="block max-w-[12rem] text-[10px] text-amber-400/90" title={a}>
                         {a.slice(0, 70)}{a.length > 70 ? "…" : ""}
                       </span>
