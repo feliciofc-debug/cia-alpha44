@@ -98,57 +98,22 @@ function motivoCompatibilidadeLegivel(it: Item): string | null {
 
 /** Motivo completo na lista de resolução — português simples. */
 export function motivoResolucaoNcm(it: Item): string {
-  if (confirmacaoNcmVigente(it)) {
-    return it.pdfNcmAudit?.avisos?.[0] ?? "NCM confirmado pelo analista";
-  }
-  if (it.pdfNcmAudit?.motivo?.trim() && itemBloqueiaPdfNcm(it)) return it.pdfNcmAudit.motivo.trim();
   const key = ncm8Limpo(it.ncm ?? "");
   if (!key || key === "00000000") {
-    return "Classificação pendente — sem candidato válido";
+    return "NCM pendente — informe o código de 8 dígitos";
   }
-  if (it.ncmValido === false) {
-    return "NCM inválido — corrija ou confirme manualmente";
-  }
-  if (it.ncmFonte === "pendente") {
-    return "Classificação pendente — sem candidato";
-  }
-  if (it.compatibilidadeProduto === "incompativel") {
-    return motivoCompatibilidadeLegivel(it) ?? "NCM incompatível com o produto";
-  }
-  if (it.compatibilidadeProduto === "revisar") {
-    const legivel = motivoCompatibilidadeLegivel(it);
-    if (legivel) return legivel.endsWith(".") ? legivel : `${legivel} — confirme`;
-    return "Revisar compatibilidade — confirme o NCM";
-  }
-  const aviso = it.ncmAvisos?.find((a) => a.trim().length > 0 && a.length <= 96);
-  if (aviso) return aviso;
-  if (it.ncmConfianca != null && it.ncmConfianca < LIMIAR_CONFIANCA_NCM) {
-    return `Baixa confiança (${Math.round(it.ncmConfianca * 100)}%) — confirme`;
-  }
-  return "Confirme o NCM antes de gerar o PDF";
+  return "NCM pendente — informe o código de 8 dígitos";
 }
 
 /** Rótulo curto para toast e banner (produto-primeiro). */
 export function motivoCurtoNcm(it: Item): string {
-  if (it.pdfNcmAudit?.bloqueia && it.pdfNcmAudit.motivo) {
-    const m = it.pdfNcmAudit.motivo.toLowerCase();
-    if (m.includes("siscomex")) return "NCM inválido";
-    if (m.includes("incoerente") || m.includes("incompat")) return "incoerente";
-    if (m.includes("pendente")) return "NCM pendente";
-  }
   const key = ncm8Limpo(it.ncm ?? "");
-  if (!key || key === "00000000" || it.ncmFonte === "pendente") return "NCM pendente";
-  if (it.compatibilidadeProduto === "incompativel") return "incompatível";
-  if (it.compatibilidadeProduto === "revisar") return "revisar";
-  if (it.ncmValido === false) return "NCM inválido";
-  if (it.ncmConfianca != null && it.ncmConfianca < LIMIAR_CONFIANCA_NCM) return "confirme";
-  return "revisar";
+  if (!key || key === "00000000") return "NCM pendente";
+  return "NCM pendente";
 }
 
 export function pendenciasNcmOrdenadas(itens: Item[]): PendenciaNcmItem[] {
-  const fila = itensResolucaoNcm(itens)
-    .filter(({ item }) => !confirmacaoNcmVigente(item))
-    .map(({ idx, ordem, item }) => {
+  const fila = itensResolucaoNcm(itens).map(({ idx, ordem, item }) => {
     const severidade = severidadeNcmItem(item);
     return {
       idx,

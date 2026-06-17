@@ -49,8 +49,11 @@ describe("ordem-item", () => {
     expect(div[0]).toMatchObject({ idx: 1, ordem: 5, ncm: "09030090" });
   });
 
-  it("itensResolucaoNcm expõe ordem persistida", () => {
-    const itens = [item({ ordem: 0, compatibilidadeProduto: "compativel", ncmRevisadoHumano: true, ncmConfirmado: "09096110" }), item({ ordem: 7, compatibilidadeProduto: "revisar" })];
+  it("itensResolucaoNcm expõe ordem persistida — só sem NCM", () => {
+    const itens = [
+      item({ ordem: 0, compatibilidadeProduto: "compativel" }),
+      item({ ordem: 7, compatibilidadeProduto: "revisar", ncm: "" }),
+    ];
     const res = itensResolucaoNcm(itens);
     expect(res).toHaveLength(1);
     expect(res[0]).toMatchObject({ idx: 1, ordem: 7 });

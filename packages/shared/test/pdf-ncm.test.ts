@@ -43,119 +43,65 @@ describe("ncm-confirmacao", () => {
     expect(confirmacaoNcmVigente({ ...confirmado, ncm: "87149990" })).toBe(false);
   });
 
-  it("invalida confirmação quando NCM muda", () => {
+  it("invalida confirmação quando NCM muda — PDF segue liberado se NCM informado", () => {
     const confirmado = { ...item({ compatibilidadeProduto: "revisar" }), ...metaConfirmacaoNcm("87149490") };
     const invalidado = validarConfirmacaoNcmItem({ ...confirmado, ncm: "90319090" });
     expect(invalidado.ncmRevisadoHumano).toBe(false);
     expect(invalidado.ncmConfirmado).toBeUndefined();
-    expect(itemBloqueiaPdfNcm(invalidado)).toBe(true);
+    expect(itemBloqueiaPdfNcm(invalidado)).toBe(false);
   });
 
-  it("limparConfirmacaoNcm remove rastro e PDF volta a bloquear", () => {
+  it("limparConfirmacaoNcm remove rastro — NCM informado continua OK", () => {
     const confirmado = { ...item({ compatibilidadeProduto: "revisar" }), ...metaConfirmacaoNcm("87149490") };
     expect(itemBloqueiaPdfNcm(confirmado)).toBe(false);
     const limpo = limparConfirmacaoNcm(confirmado);
     expect(limpo.ncmRevisadoHumano).toBe(false);
-    expect(itemBloqueiaPdfNcm(limpo)).toBe(true);
+    expect(itemBloqueiaPdfNcm(limpo)).toBe(false);
   });
 });
 
-describe("pdf-ncm", () => {
-  it("bloqueia NCM vazio e incompatível", () => {
+describe("pdf-ncm — NCM informado aceito", () => {
+  it("bloqueia só NCM vazio", () => {
     expect(itemBloqueiaPdfNcm(item({ ncm: "" }))).toBe(true);
-    expect(itemBloqueiaPdfNcm(item({ compatibilidadeProduto: "incompativel" }))).toBe(true);
+    expect(itemBloqueiaPdfNcm(item({ compatibilidadeProduto: "incompativel" }))).toBe(false);
+    expect(itemBloqueiaPdfNcm(item({ compatibilidadeProduto: "revisar" }))).toBe(false);
   });
 
-  it("bloqueia revisar até confirmação humana com rastro", () => {
-    expect(itemBloqueiaPdfNcm(item({ compatibilidadeProduto: "revisar" }))).toBe(true);
-    expect(
-      itemBloqueiaPdfNcm({
-        ...item({ compatibilidadeProduto: "revisar" }),
-        ...metaConfirmacaoNcm("87149490"),
-      }),
-    ).toBe(false);
+  it("ncmValido false não bloqueia se NCM informado", () => {
+    expect(itemBloqueiaPdfNcm(item({ ncmValido: false, compatibilidadeProduto: "revisar" }))).toBe(false);
   });
 
-  it("ncmValido false sozinho não bloqueia se validarNcm ok (gate unificado)", () => {
-    const ctx = { catalogExiste: () => true, validarNcm: () => ({ ok: true }) };
-    expect(itemBloqueiaPdfNcm(item({ ncmValido: false, compatibilidadeProduto: "compativel" }), ctx)).toBe(
-      false,
-    );
-  });
-
-  it("confirmação destrava ncmValido false quando validar falharia", () => {
-    const ctx = { catalogExiste: () => true, validarNcm: () => ({ ok: false, avisos: ["x"] }) };
-    expect(
-      itemBloqueiaPdfNcm(
-        {
-          ...item({ ncmValido: false }),
-          ...metaConfirmacaoNcm("87149490"),
-        },
-        ctx,
-      ),
-    ).toBe(false);
-  });
-
-  it("compatível sem flags extras não bloqueia", () => {
+  it("compatível e revisar com NCM não bloqueiam", () => {
     expect(itemBloqueiaPdfNcm(item({ compatibilidadeProduto: "compativel" }))).toBe(false);
     expect(itensBloqueandoPdf([item({ compatibilidadeProduto: "compativel" })])).toHaveLength(0);
   });
 
-  it("itemPodeConfirmarNcm — revisar, validar falho, baixa confiança", () => {
-    const ctxFalha = { catalogExiste: () => true, validarNcm: () => ({ ok: false, avisos: ["x"] }) };
-    expect(itemPodeConfirmarNcm(item({ compatibilidadeProduto: "revisar" }))).toBe(true);
-    expect(itemPodeConfirmarNcm(item({ compatibilidadeProduto: "compativel" }), ctxFalha)).toBe(false);
-    expect(itemPodeConfirmarNcm(item({ compatibilidadeProduto: "compativel", ncmConfianca: 0.55 }))).toBe(
-      true,
-    );
-    expect(itemPodeConfirmarNcm(item({ ncmFonte: "pendente" }))).toBe(true);
-    expect(itemPodeConfirmarNcm(item({ compatibilidadeProduto: "incompativel" }))).toBe(false);
-    expect(itemPodeConfirmarNcmIndividual(item({ compatibilidadeProduto: "incompativel" }))).toBe(true);
-    expect(
-      itemPodeConfirmarNcm({
-        ...item({ compatibilidadeProduto: "revisar" }),
-        ...metaConfirmacaoNcm("87149490"),
-      }),
-    ).toBe(false);
+  it("itemPodeConfirmarNcm — só sem NCM informado", () => {
+    expect(itemPodeConfirmarNcm(item({ ncm: "" }))).toBe(true);
+    expect(itemPodeConfirmarNcm(item({ compatibilidadeProduto: "revisar" }))).toBe(false);
+    expect(itemPodeConfirmarNcm(item({ ncmFonte: "pendente", ncm: "95030097" }))).toBe(false);
+    expect(itemPodeConfirmarNcmIndividual(item({ compatibilidadeProduto: "incompativel" }))).toBe(false);
   });
 
-  it("baixa confiança não bloqueia PDF (revisão opcional)", () => {
-    const baixaConf = item({
-      compatibilidadeProduto: "compativel",
-      ncmValido: true,
-      ncmConfianca: 0.8,
-    });
-    expect(itemPodeConfirmarNcm(baixaConf)).toBe(true);
+  it("baixa confiança com NCM não entra na barra", () => {
+    const baixaConf = item({ compatibilidadeProduto: "compativel", ncmConfianca: 0.8 });
     expect(itemBloqueiaPdfNcm(baixaConf)).toBe(false);
-    expect(itemPrecisaResolucaoNcm(baixaConf)).toBe(true);
-    expect(itensBloqueandoPdf([baixaConf])).toHaveLength(0);
+    expect(itemPrecisaResolucaoNcm(baixaConf)).toBe(false);
   });
 
-  it("ncmFonte pendente bloqueia e entra na barra", () => {
+  it("ncmFonte pendente com dígitos — libera PDF", () => {
     const pend = item({ ncm: "95030097", ncmFonte: "pendente", compatibilidadeProduto: "compativel" });
-    expect(itemBloqueiaPdfNcm(pend)).toBe(true);
-    expect(itemPrecisaResolucaoNcm(pend)).toBe(true);
+    expect(itemBloqueiaPdfNcm(pend)).toBe(false);
+    expect(itemPrecisaResolucaoNcm(pend)).toBe(false);
   });
 
-  it("incompatível confirmado pelo analista destrava PDF", () => {
-    const inc = item({ compatibilidadeProduto: "incompativel" });
-    expect(itemBloqueiaPdfNcm(inc)).toBe(true);
-    expect(itemPodeConfirmarNcmIndividual(inc)).toBe(true);
-    const confirmado = { ...inc, ...metaConfirmacaoNcm("87149490") };
-    expect(itemBloqueiaPdfNcm(confirmado)).toBe(false);
-  });
-
-  it("itensResolucaoNcm inclui revisar e incompatível (compatível fora)", () => {
-    const ctx = {
-      catalogExiste: () => true,
-      validarNcm: (_n: string, _d: string, _f: string) => ({ ok: false, avisos: ["incoerente"] }),
-    };
+  it("itensResolucaoNcm — só itens sem NCM", () => {
     const itens = [
       item({ compatibilidadeProduto: "revisar" }),
-      item({ compatibilidadeProduto: "compativel", descPt: "Amortecedor patinete", ncm: "87149490" }),
+      item({ ncm: "" }),
       item({ compatibilidadeProduto: "incompativel" }),
     ];
-    const fila = itensResolucaoNcm(itens, ctx);
-    expect(fila.map((f) => f.idx)).toEqual([0, 2]);
+    const fila = itensResolucaoNcm(itens);
+    expect(fila.map((f) => f.idx)).toEqual([1]);
   });
 });

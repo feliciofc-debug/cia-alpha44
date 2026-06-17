@@ -4,7 +4,6 @@ import {
   auditarItemNcmParaPdf,
   itemBloqueiaPdfNcm,
   itemPrecisaResolucaoNcm,
-  metaConfirmacaoNcm,
   type PdfNcmAuditContext,
 } from "@cia/shared";
 
@@ -22,62 +21,28 @@ function item(partial: Partial<Item>): Item {
   } as Item;
 }
 
-const ctxValidarFalha: PdfNcmAuditContext = {
-  catalogExiste: () => true,
-  validarNcm: () => ({
-    ok: false,
-    avisos: ["NCM incoerente com o produto (embalagem_papel, prefixos 4819/3923)."],
-  }),
-};
+const ctxSemCatalogo: PdfNcmAuditContext = { catalogExiste: () => false };
 
-const ctxOk: PdfNcmAuditContext = {
-  catalogExiste: () => true,
-  validarNcm: () => ({ ok: true }),
-};
-
-describe("auditarItemNcmParaPdf — juiz único (compatibilidadeProduto)", () => {
-  it("azeite compatível — libera mesmo se validarNcm falhasse", () => {
-    const azeite = item({
-      descPt: "Azeite de oliva extravirgem, em embalagem de vidro de 1 litro",
-      ncm: "15092000",
-      compatibilidadeProduto: "compativel",
-    });
-    expect(auditarItemNcmParaPdf(azeite, ctxValidarFalha).bloqueia).toBe(false);
-    expect(itemBloqueiaPdfNcm(azeite, ctxValidarFalha)).toBe(false);
-    expect(itemPrecisaResolucaoNcm(azeite, ctxValidarFalha)).toBe(false);
+describe("auditarItemNcmParaPdf — NCM informado aceito", () => {
+  it("whisky/chá com ncmValido false — libera PDF", () => {
+    for (const ncm of ["22083020", "09023000"]) {
+      const it = item({ ncm, ncmValido: false, compatibilidadeProduto: "revisar" });
+      expect(auditarItemNcmParaPdf(it, ctxSemCatalogo).bloqueia).toBe(false);
+    }
   });
 
-  it("compatível + catálogo ok → libera (validarNcm ignorado no gate)", () => {
-    const ok = item({ compatibilidadeProduto: "compativel", ncmConfianca: 0.97 });
-    const audit = auditarItemNcmParaPdf(ok, ctxValidarFalha);
-    expect(audit).toEqual({ bloqueia: false, precisaConfirmacao: false });
+  it("revisar/incompatível com NCM — não bloqueia", () => {
+    expect(auditarItemNcmParaPdf(item({ compatibilidadeProduto: "revisar" }), ctxSemCatalogo).bloqueia).toBe(false);
+    expect(auditarItemNcmParaPdf(item({ compatibilidadeProduto: "incompativel" }), ctxSemCatalogo).bloqueia).toBe(false);
   });
 
-  it("baixa confiança compatível não bloqueia PDF", () => {
-    const baixa = item({ compatibilidadeProduto: "compativel", ncmConfianca: 0.55 });
-    expect(itemBloqueiaPdfNcm(baixa, ctxOk)).toBe(false);
-    expect(itemPrecisaResolucaoNcm(baixa, ctxOk)).toBe(true);
+  it("NCM vazio bloqueia", () => {
+    expect(auditarItemNcmParaPdf(item({ ncm: "" }), ctxSemCatalogo).bloqueia).toBe(true);
+    expect(itemPrecisaResolucaoNcm(item({ ncm: "" }), ctxSemCatalogo)).toBe(true);
   });
 
-  it("confirmacaoNcmVigente libera revisar/incompatível confirmado", () => {
-    const confirmado = {
-      ...item({ compatibilidadeProduto: "revisar" }),
-      ...metaConfirmacaoNcm("87149490"),
-    };
-    expect(auditarItemNcmParaPdf(confirmado, ctxValidarFalha).bloqueia).toBe(false);
-  });
-
-  it("revisar, incompatível e NCM vazio bloqueiam", () => {
-    expect(auditarItemNcmParaPdf(item({ compatibilidadeProduto: "revisar" }), ctxOk).bloqueia).toBe(true);
-    expect(auditarItemNcmParaPdf(item({ compatibilidadeProduto: "incompativel" }), ctxOk).bloqueia).toBe(true);
-    expect(auditarItemNcmParaPdf(item({ ncm: "" }), ctxOk).bloqueia).toBe(true);
-  });
-
-  it("pdfNcmAudit legado não bloqueia compatível sem ctx", () => {
-    const embutido = item({
-      pdfNcmAudit: { bloqueia: true, precisaConfirmacao: true, motivo: "legado" },
-      compatibilidadeProduto: "compativel",
-    });
-    expect(auditarItemNcmParaPdf(embutido).bloqueia).toBe(false);
+  it("fora catálogo com NCM — libera", () => {
+    const it = item({ ncm: "99998877", compatibilidadeProduto: "compativel" });
+    expect(itemBloqueiaPdfNcm(it, ctxSemCatalogo)).toBe(false);
   });
 });

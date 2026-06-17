@@ -75,18 +75,13 @@ describe("confirmação humana soberana — invariante global", () => {
     expect(confirmacaoNcmVigente(itemCase)).toBe(true);
   });
 
-  it("sem confirmação + fora catálogo continua bloqueando", () => {
+  it("NCM informado fora catálogo — libera sem confirmação", () => {
     const itemCase = mk({ ncm: "99998877", compatibilidadeProduto: "compativel" });
-    expect(auditarItemNcmParaPdf(itemCase, ctxSemNcm).bloqueia).toBe(true);
+    expect(auditarItemNcmParaPdf(itemCase, ctxSemNcm).bloqueia).toBe(false);
   });
 
-  it("confirmado fora catálogo — aviso suave, não bloqueia", () => {
-    const itemCase = mk({
-      ncm: "99998877",
-      ...metaConfirmacaoNcm("99998877"),
-    });
-    const audit = auditarItemNcmParaPdf(itemCase, ctxSemNcm);
-    expect(audit.bloqueia).toBe(false);
-    expect(audit.avisos?.[0]).toMatch(/fora da base CIA/i);
+  it("confirmado com NCM — libera", () => {
+    const itemCase = mk({ ncm: "99998877", ...metaConfirmacaoNcm("99998877") });
+    expect(auditarItemNcmParaPdf(itemCase, ctxSemNcm).bloqueia).toBe(false);
   });
 });

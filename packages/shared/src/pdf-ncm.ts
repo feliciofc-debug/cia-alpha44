@@ -3,6 +3,7 @@ import { confirmacaoNcmVigente } from "./ncm-confirmacao.js";
 import { LIMIAR_CONFIANCA_NCM, ncm8Limpo } from "./ncm-utils.js";
 import {
   auditarItemNcmParaPdf,
+  ncmInformadoParaFechamento,
   type PdfNcmAuditContext,
 } from "./pdf-ncm-audit.js";
 
@@ -12,59 +13,41 @@ export {
   enriquecerItemPdfNcmAudit,
   enriquecerItensPdfNcmAudit,
   mesclarItensInvalidosPdfAudit,
+  ncmInformadoParaFechamento,
   type PdfNcmAuditContext,
   type PdfNcmAuditResult,
 } from "./pdf-ncm-audit.js";
 
-/** Item impede geração do PDF até revisão humana (Confirmar NCM). */
+/** Item impede PDF — somente NCM ausente / 00000000. */
 export function itemBloqueiaPdfNcm(it: Item, ctx?: PdfNcmAuditContext): boolean {
-  if (confirmacaoNcmVigente(it)) return false;
   return auditarItemNcmParaPdf(it, ctx).bloqueia;
 }
 
-/** Revisão opcional na barra — confiança baixa não bloqueia PDF. */
+/** Revisão opcional (informativo) — não entra na barra de bloqueio PDF. */
 export function itemRevisaoOpcionalNcm(it: Item, ctx?: PdfNcmAuditContext): boolean {
-  if (confirmacaoNcmVigente(it)) return false;
+  if (confirmacaoNcmVigente(it) || ncmInformadoParaFechamento(it)) return false;
   if (itemBloqueiaPdfNcm(it, ctx)) return false;
-  const key = ncm8Limpo(it.ncm ?? "");
-  if (!key || key === "00000000") return false;
   if (it.ncmConfianca != null && it.ncmConfianca < LIMIAR_CONFIANCA_NCM) return true;
   return false;
 }
 
-/** Item elegível para Confirmar NCM em lote (não inclui incompatível — exige override 1-a-1). */
 export function itemPodeConfirmarNcm(it: Item, ctx?: PdfNcmAuditContext): boolean {
-  if (it.compatibilidadeProduto === "incompativel") return false;
-  if (confirmacaoNcmVigente(it)) return false;
-  const key = ncm8Limpo(it.ncm ?? "");
-  if (!key || key === "00000000") return false;
-  const audit = auditarItemNcmParaPdf(it, ctx);
-  if (audit.bloqueia && audit.precisaConfirmacao) return true;
-  return itemRevisaoOpcionalNcm(it, ctx);
+  if (confirmacaoNcmVigente(it) || ncmInformadoParaFechamento(it)) return false;
+  return itemBloqueiaPdfNcm(it, ctx);
 }
 
-/** Confirmar NCM individual — analista pode forçar qualquer item bloqueado. */
 export function itemPodeConfirmarNcmIndividual(it: Item, ctx?: PdfNcmAuditContext): boolean {
-  if (confirmacaoNcmVigente(it)) return false;
-  const key = ncm8Limpo(it.ncm ?? "");
-  if (!key || key === "00000000") return false;
-  const audit = auditarItemNcmParaPdf(it, ctx);
-  if (audit.bloqueia && audit.precisaConfirmacao) return true;
-  return itemPodeConfirmarNcm(it, ctx);
+  if (confirmacaoNcmVigente(it) || ncmInformadoParaFechamento(it)) return false;
+  return itemBloqueiaPdfNcm(it, ctx);
 }
 
 export function itensPendentesConfirmacaoNcm(itens: Item[], ctx?: PdfNcmAuditContext): Item[] {
   return itens.filter((it) => itemPodeConfirmarNcm(it, ctx));
 }
 
-/**
- * Item exige ação humana na barra de resolução (confirmar e/ou editar NCM).
- * INVARIANTE: itemBloqueiaPdfNcm ⇒ true.
- */
+/** Barra de resolução — só itens SEM NCM informado (bloqueiam PDF). */
 export function itemPrecisaResolucaoNcm(it: Item, ctx?: PdfNcmAuditContext): boolean {
-  if (confirmacaoNcmVigente(it)) return false;
-  if (itemBloqueiaPdfNcm(it, ctx)) return true;
-  return itemRevisaoOpcionalNcm(it, ctx);
+  return itemBloqueiaPdfNcm(it, ctx);
 }
 
 export function itensResolucaoNcm(

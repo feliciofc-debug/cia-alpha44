@@ -38,7 +38,6 @@ import {
 import type { Prisma } from "@prisma/client";
 import { extrairResumoFinanceiro } from "../lib/financeiro.js";
 import { calcularCotacao } from "./cotacao.js";
-import { avaliarCompatibilidadeProduto } from "../siscomex/compatibilidade-produto.js";
 import { detectarFamilia } from "@cia/pipeline";
 import {
   outputConfirmacaoHumana,
@@ -937,24 +936,18 @@ export async function alterarNcmItem(cotacaoId: string, tenantSlug: string, orde
     } as Item,
     metaAtual,
   );
-  const descricao = (base.descOriginal || base.descPt || "").trim();
   const familiaId =
     base.familiaProdutoId ??
     detectarFamilia({ descOriginal: base.descOriginal, uso: base.uso })?.id;
-  const { resultado: comp } = avaliarCompatibilidadeProduto(state.ncmCatalog, {
-    descricao,
-    descricaoFamilia: base.descOriginal || base.descPt,
-    material: base.material,
+  const itemAtualizado = {
+    ...limparConfirmacaoNcm(base),
     ncm,
-    familiaId,
-  });
-  const itemAtualizado = limparConfirmacaoNcm({
-    ...base,
-    ncm,
+    ncmValido: true,
+    ncmFonte: metaAtual.ncmFonte === "pendente" ? "planilha" : (metaAtual.ncmFonte ?? "planilha"),
+    compatibilidadeProduto: "compativel" as const,
+    motivoCompatibilidade: undefined,
     ...(familiaId ? { familiaProdutoId: familiaId } : {}),
-    compatibilidadeProduto: comp.compatibilidadeProduto,
-    motivoCompatibilidade: comp.motivoCompatibilidade,
-  });
+  };
   const novoMeta = extrairItemMeta(itemAtualizado);
 
   await prisma.item.update({
