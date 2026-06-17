@@ -20,8 +20,14 @@ export interface PdfNcmAuditContext {
  * validarNcmItem NÃO bloqueia PDF; só alimenta a classificação (compatível/revisar/incompatível).
  */
 export function auditarItemNcmParaPdf(it: Item, ctx?: PdfNcmAuditContext): PdfNcmAuditResult {
+  // Confirmação humana é soberana — vence catálogo, validarNcm e compatibilidade.
   if (confirmacaoNcmVigente(it)) {
-    return { bloqueia: false, precisaConfirmacao: false };
+    const key = ncm8Limpo(it.ncm ?? "");
+    const avisos =
+      ctx && key && key !== "00000000" && !ctx.catalogExiste(key)
+        ? ["NCM fora da base CIA (confirmado pelo usuário)."]
+        : undefined;
+    return { bloqueia: false, precisaConfirmacao: false, avisos };
   }
 
   const key = ncm8Limpo(it.ncm ?? "");

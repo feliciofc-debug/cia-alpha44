@@ -18,6 +18,7 @@ export {
 
 /** Item impede geração do PDF até revisão humana (Confirmar NCM). */
 export function itemBloqueiaPdfNcm(it: Item, ctx?: PdfNcmAuditContext): boolean {
+  if (confirmacaoNcmVigente(it)) return false;
   return auditarItemNcmParaPdf(it, ctx).bloqueia;
 }
 
@@ -61,6 +62,7 @@ export function itensPendentesConfirmacaoNcm(itens: Item[], ctx?: PdfNcmAuditCon
  * INVARIANTE: itemBloqueiaPdfNcm ⇒ true.
  */
 export function itemPrecisaResolucaoNcm(it: Item, ctx?: PdfNcmAuditContext): boolean {
+  if (confirmacaoNcmVigente(it)) return false;
   if (itemBloqueiaPdfNcm(it, ctx)) return true;
   return itemRevisaoOpcionalNcm(it, ctx);
 }

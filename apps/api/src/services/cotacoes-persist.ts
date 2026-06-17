@@ -700,12 +700,13 @@ export async function confirmarNcmItemInterno(
 ): Promise<void> {
   const db = opts?.tx ?? prisma;
   const metaAtual = (itemRow.meta as import("@cia/pipeline").ItemMetaPersistido | null) ?? {};
+  const ncmNorm = ncm8Limpo(itemRow.ncm);
   const base = mesclarItemMeta(
     {
       descOriginal: itemRow.descOriginal,
       descPt: itemRow.descPt,
       descDuimp: itemRow.descDuimp,
-      ncm: itemRow.ncm,
+      ncm: ncmNorm,
       pesoLiqKg: num(itemRow.pesoLiqKg),
       fobTotalUS: num(itemRow.fobTotalUS),
     } as Item,
@@ -713,12 +714,13 @@ export async function confirmarNcmItemInterno(
   );
   const novoMeta = extrairItemMeta({
     ...base,
-    ...metaConfirmacaoNcm(itemRow.ncm, confirmadoPor),
+    ...metaConfirmacaoNcm(ncmNorm, confirmadoPor),
+    ncmValido: true,
   });
 
   await db.item.update({
     where: { id: itemRow.id },
-    data: { meta: novoMeta as Prisma.InputJsonValue },
+    data: { ncm: ncmNorm, meta: novoMeta as Prisma.InputJsonValue },
   });
 
   await salvarClassificacaoCacheHumano(
@@ -732,7 +734,7 @@ export async function confirmarNcmItemInterno(
       descOriginal: itemRow.descOriginal,
       material: metaAtual.material,
       uso: metaAtual.uso,
-      ncmConfirmado: itemRow.ncm,
+      ncmConfirmado: ncmNorm,
       descPt: itemRow.descPt,
       descDuimp: itemRow.descDuimp,
     }),

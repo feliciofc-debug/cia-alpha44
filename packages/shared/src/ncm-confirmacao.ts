@@ -1,12 +1,14 @@
 import type { Item } from "./schemas.js";
 import { ncm8Limpo } from "./ncm-utils.js";
 
-/** Confirmação humana ainda válida para o NCM atual do item. */
+/** Confirmação humana ainda válida para o NCM atual do item (comparação sempre ncm8). */
 export function confirmacaoNcmVigente(it: Item): boolean {
-  if (!it.ncmRevisadoHumano || !it.ncmConfirmado) return false;
+  if (!it.ncmRevisadoHumano) return false;
+  const confirmado = ncm8Limpo(it.ncmConfirmado ?? "");
+  if (!confirmado || confirmado === "00000000") return false;
   const atual = ncm8Limpo(it.ncm ?? "");
   if (!atual || atual === "00000000") return false;
-  return atual === ncm8Limpo(it.ncmConfirmado);
+  return atual === confirmado;
 }
 
 export function metaConfirmacaoNcm(ncm: string, confirmadoPor?: string | null): Pick<

@@ -70,6 +70,7 @@ export function nomeProdutoItem(it: Item, maxLen = 48): string {
 
 /** Severidade visual na barra de resolução (semáforo). */
 export function severidadeNcmItem(it: Item): SeveridadeNcmResolucao {
+  if (confirmacaoNcmVigente(it)) return "ok";
   if (!itemPrecisaResolucaoNcm(it)) return "ok";
   if (itemNcmBloqueiaSevero(it)) return "bloqueia";
   return "revisar";
@@ -97,7 +98,10 @@ function motivoCompatibilidadeLegivel(it: Item): string | null {
 
 /** Motivo completo na lista de resolução — português simples. */
 export function motivoResolucaoNcm(it: Item): string {
-  if (it.pdfNcmAudit?.motivo?.trim()) return it.pdfNcmAudit.motivo.trim();
+  if (confirmacaoNcmVigente(it)) {
+    return it.pdfNcmAudit?.avisos?.[0] ?? "NCM confirmado pelo analista";
+  }
+  if (it.pdfNcmAudit?.motivo?.trim() && itemBloqueiaPdfNcm(it)) return it.pdfNcmAudit.motivo.trim();
   const key = ncm8Limpo(it.ncm ?? "");
   if (!key || key === "00000000") {
     return "Classificação pendente — sem candidato válido";
@@ -142,7 +146,9 @@ export function motivoCurtoNcm(it: Item): string {
 }
 
 export function pendenciasNcmOrdenadas(itens: Item[]): PendenciaNcmItem[] {
-  const fila = itensResolucaoNcm(itens).map(({ idx, ordem, item }) => {
+  const fila = itensResolucaoNcm(itens)
+    .filter(({ item }) => !confirmacaoNcmVigente(item))
+    .map(({ idx, ordem, item }) => {
     const severidade = severidadeNcmItem(item);
     return {
       idx,
