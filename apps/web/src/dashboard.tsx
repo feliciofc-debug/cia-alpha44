@@ -25,6 +25,7 @@ import { PdfDownloadError, type ItemInvalidoPdf } from "./lib/pdf-erro.ts";
 import { avisoMoedaCotacao } from "@cia/shared";
 import { PdfDownloadBar } from "./pdf-download-bar.tsx";
 import { BarraResolucaoNcm } from "./barra-resolucao-ncm.tsx";
+import { DisclaimerConciliacaoIa, SeloConciliacaoNcm } from "./ncm-conciliacao-ui.tsx";
 import { aplicarOverrideManualAliquota, desfazerOverrideManualAliquota, type ChaveTributoRastro } from "@cia/shared";
 import { DetalheRastroAliquota } from "./lib/aliquota-rastro-ui.tsx";
 import type { ClienteResumo, DashboardKpis, DashboardSeries } from "./lib/types.ts";
@@ -386,6 +387,8 @@ function AnalisePainel({
         )}
       </div>
 
+      <DisclaimerConciliacaoIa />
+
       <div className="max-h-[28rem] overflow-auto rounded-xl border border-white/10">
         <p className="sticky top-0 z-10 border-b border-white/10 bg-ink-800/95 px-3 py-2 text-xs text-slate-400">
           Alíquotas de importação editáveis (II, IPI, PIS, COFINS, ICMS) — altere e saia do campo para recalcular.
@@ -531,6 +534,13 @@ function AnalisePainel({
                         {it.ncmRevisadoEm ? ` · ${fmtData(it.ncmRevisadoEm)}` : ""}
                       </span>
                     )}
+                    <SeloConciliacaoNcm
+                      cotacaoId={salvaId}
+                      ordem={ordem}
+                      ncmAtual={it.ncm ?? ""}
+                      onAplicarSugestao={onAlterarNcm}
+                      aplicando={alterandoNcm === ordem}
+                    />
                     </div>
                   </td>
                   {(["ii", "ipi", "pis", "cofins"] as const).map((campo) => (

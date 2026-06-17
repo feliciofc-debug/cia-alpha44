@@ -32,6 +32,7 @@ import { obterSeriesMensais } from "./services/dashboard-series.js";
 import { gerarPdfRelatorioFaturamento } from "./services/pdf-relatorio-faturamento.js";
 import { gerarPdfCotacao, gerarPdfFromPayload } from "./services/pdf-cotacao.js";
 import { NcmInvalidoPdfError } from "./services/validar-ncm-pdf.js";
+import { conciliarNcm, lookupNcm } from "./services/ncm-helper.js";
 import { conferirNcmItens } from "./services/ncm-conferencia.js";
 import { exportarConciliacao, exportarConciliacaoSalva } from "./services/conciliacao-export.js";
 import { lerFotoItem } from "./services/fotos.js";
@@ -253,13 +254,20 @@ export async function buildServer() {
     "/api/ncm/conferir",
     { config: { rateLimit: rateLimitNcmConferir() } },
     async (req, reply) => {
-    const parsed = conferirNcmBody.safeParse(req.body ?? {});
-    if (!parsed.success) {
-      return reply.status(400).send({ erro: "Body inválido", detalhe: parsed.error.flatten() });
-    }
-    return conferirNcmItens(getState().siscomex, getState().ncmCatalog, parsed.data.itens);
-  },
+      const parsed = conferirNcmBody.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return reply.status(400).send({ erro: "Body inválido", detalhe: parsed.error.flatten() });
+      }
+      return conferirNcmItens(getState().siscomex, getState().ncmCatalog, parsed.data.itens);
+    },
   );
+
+  /** Lookup NCM — referência IA + catálogo CIA (informativo). */
+  app.post("/api/ncm/lookup", async (req) => {
+    const body = z.object({ ncm: z.string().min(1) }).safeParse(req.body ?? {});
+    if (!body.success) return { ok: false, erro: "NCM obrigatório." };
+    return lookupNcm(body.data.ncm, getState().ncmCatalog);
+  });
 
   app.get("/api/cambio", async (req) => {
     const moeda = (req.query as { moeda?: string }).moeda ?? "USD";
@@ -571,6 +579,48 @@ export async function buildServer() {
       const msg = e instanceof Error ? e.message : "Falha ao alterar NCM.";
       if (msg.includes("NCM inválido")) return reply.status(400).send({ erro: msg });
       return persistenciaErro(reply, e);
+    }
+  });
+
+  /** Conciliação NCM por IA — qualidade informativa; NCM do usuário prevalece. */
+  app.post("/api/cotacoes/:id/itens/:ordem/conciliar-ncm", async (req) => {
+    try {
+      const { id, ordem } = req.params as { id: string; ordem: string };
+      const ordemNum = Number(ordem);
+      if (!Number.isFinite(ordemNum) || ordemNum < 1) {
+        return {
+          ok: false,
+          status: "sem_sugestao" as const,
+          ncmInformado: "",
+          erro: "Ordem de item inválida.",
+        };
+      }
+      const cotacao = await buscarCotacao(id, tenantSlug(req), getState().ncmCatalog);
+      if (!cotacao) {
+        return {
+          ok: false,
+          status: "sem_sugestao" as const,
+          ncmInformado: "",
+          erro: "Cotação não encontrada.",
+        };
+      }
+      const item = cotacao.itens.find((it) => (it.ordem ?? 0) === ordemNum);
+      if (!item) {
+        return {
+          ok: false,
+          status: "sem_sugestao" as const,
+          ncmInformado: "",
+          erro: "Item não encontrado.",
+        };
+      }
+      return conciliarNcm(item, getState().ncmCatalog);
+    } catch (e) {
+      return {
+        ok: false,
+        status: "sem_sugestao" as const,
+        ncmInformado: "",
+        erro: e instanceof Error ? e.message : "Falha na conciliação.",
+      };
     }
   });
 

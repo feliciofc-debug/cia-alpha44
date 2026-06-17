@@ -86,6 +86,41 @@ export interface BenchmarkPlanilhaStatus {
   prioridade?: string;
 }
 
+export type ConciliacaoNcmStatus = "coerente" | "divergente" | "sem_sugestao";
+
+export interface ConciliarNcmResult {
+  ok: boolean;
+  status: ConciliacaoNcmStatus;
+  ncmInformado: string;
+  ncmSugerido?: string;
+  descricaoSugerida?: string;
+  justificativaRGI?: string;
+  confianca?: number;
+  descricaoCiaInformado?: string | null;
+  descricaoCiaSugerido?: string | null;
+  alternativas?: Array<{ ncm: string; descricaoOficial?: string; motivo?: string; descricaoCia?: string | null }>;
+  infoQueAjuda?: string;
+  erro?: string;
+}
+
+export interface LookupNcmResult {
+  ok: boolean;
+  ncm?: string;
+  existe?: boolean;
+  descricaoOficial?: string;
+  descricaoCia?: string | null;
+  capitulo?: string;
+  posicao?: string;
+  exemplos?: string[];
+  observacoes?: string;
+  fonte?: "lovable" | "cia-catalog";
+  erro?: string;
+}
+
+async function handleJsonAlways<T>(res: Response): Promise<T> {
+  return res.json() as Promise<T>;
+}
+
 export const api = {
   meta: () => fetchComTimeout(`${BASE}/api/meta`, {}, API_TIMEOUT_MS).then(handle<Meta>),
   cambio: (moeda = "USD") =>
@@ -381,6 +416,25 @@ export const api = {
       },
       NCM_ITEM_TIMEOUT_MS,
     ).then(handle<CotacaoSalva>),
+
+  /** Conciliação IA — informativa; sempre HTTP 200. */
+  conciliarNcmItem: (cotacaoId: string, ordem: number) =>
+    fetchComTimeout(
+      `${BASE}/api/cotacoes/${cotacaoId}/itens/${ordem}/conciliar-ncm`,
+      { method: "POST", headers: { "content-type": "application/json" }, body: "{}" },
+      NCM_ITEM_TIMEOUT_MS,
+    ).then(handleJsonAlways<ConciliarNcmResult>),
+
+  lookupNcm: (ncm: string) =>
+    fetchComTimeout(
+      `${BASE}/api/ncm/lookup`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ncm }),
+      },
+      API_TIMEOUT_MS,
+    ).then(handleJsonAlways<LookupNcmResult>),
 
   /** @deprecated use atualizarCotacao */
   atualizarFiscal: (id: string, opts: Record<string, unknown>) =>

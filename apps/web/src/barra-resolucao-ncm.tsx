@@ -9,6 +9,7 @@ import {
   pendenciasNcmOrdenadas,
   type PendenciaNcmItem,
 } from "./lib/ncm.ts";
+import { LookupNcmInline } from "./ncm-conciliacao-ui.tsx";
 
 function estilosCard(severidade: "bloqueia" | "revisar", destacado: boolean): string {
   const base =
@@ -100,7 +101,8 @@ function CardPendencia({
           )}
         </div>
       </div>
-      <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-white/10 pt-3">
+      <div className="mt-3 border-t border-white/10 pt-3">
+        <div className="flex flex-wrap items-end gap-2">
         <label className="text-xs text-slate-400">
           Editar NCM
           <input
@@ -121,6 +123,8 @@ function CardPendencia({
         >
           {editando ? "Aplicando…" : "Aplicar NCM"}
         </button>
+        </div>
+        <LookupNcmInline ncmDraft={draft} />
       </div>
     </li>
   );
