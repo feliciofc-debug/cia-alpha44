@@ -31,18 +31,17 @@ export function itemRevisaoOpcionalNcm(it: Item, ctx?: PdfNcmAuditContext): bool
   return false;
 }
 
-export function itemPodeConfirmarNcm(it: Item, ctx?: PdfNcmAuditContext): boolean {
-  if (confirmacaoNcmVigente(it) || ncmInformadoParaFechamento(it)) return false;
-  return itemBloqueiaPdfNcm(it, ctx);
+export function itemPodeConfirmarNcm(_it: Item, _ctx?: PdfNcmAuditContext): boolean {
+  /** NCM informado basta — confirmação manual não é gate de fechamento. */
+  return false;
 }
 
-export function itemPodeConfirmarNcmIndividual(it: Item, ctx?: PdfNcmAuditContext): boolean {
-  if (confirmacaoNcmVigente(it) || ncmInformadoParaFechamento(it)) return false;
-  return itemBloqueiaPdfNcm(it, ctx);
+export function itemPodeConfirmarNcmIndividual(_it: Item, _ctx?: PdfNcmAuditContext): boolean {
+  return false;
 }
 
-export function itensPendentesConfirmacaoNcm(itens: Item[], ctx?: PdfNcmAuditContext): Item[] {
-  return itens.filter((it) => itemPodeConfirmarNcm(it, ctx));
+export function itensPendentesConfirmacaoNcm(_itens: Item[], _ctx?: PdfNcmAuditContext): Item[] {
+  return [];
 }
 
 /** Barra de resolução — só itens SEM NCM informado (bloqueiam PDF). */

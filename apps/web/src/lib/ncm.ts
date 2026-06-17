@@ -1,18 +1,5 @@
 import type { Item } from "./types.ts";
-import {
-  confirmacaoNcmVigente,
-  itensBloqueandoPdf,
-  itensPendentesConfirmacaoNcm,
-  LIMIAR_CONFIANCA_NCM,
-  mesclarItensInvalidosPdfAudit,
-  mesclarOrdemItensPersistidos,
-  metaConfirmacaoNcm,
-  validarConfirmacaoNcmItem,
-  limparConfirmacaoNcm,
-  idxPorOrdem,
-  ordemDoItem,
-} from "@cia/shared";
-import { ncm8Limpo } from "@cia/shared";
+import { confirmacaoNcmVigente, ncm8Limpo } from "@cia/shared";
 
 /**
  * Regra estrutural — DUPLICADA no front de propósito.
@@ -36,12 +23,16 @@ export function itemPrecisaResolucaoNcm(it: Item): boolean {
   return !ncmInformadoParaFechamento(it);
 }
 
-export function itemPodeConfirmarNcm(it: Item): boolean {
-  return itemPrecisaResolucaoNcm(it);
+export function itemPodeConfirmarNcm(_it: Item): boolean {
+  return false;
 }
 
-export function itemPodeConfirmarNcmIndividual(it: Item): boolean {
-  return itemPrecisaResolucaoNcm(it);
+export function itemPodeConfirmarNcmIndividual(_it: Item): boolean {
+  return false;
+}
+
+export function itensPendentesConfirmacaoNcm(_itens: Item[]): Item[] {
+  return [];
 }
 
 export {
@@ -50,13 +41,12 @@ export {
   confirmacaoNcmVigente,
   limparConfirmacaoNcm,
   itensBloqueandoPdf,
-  itensPendentesConfirmacaoNcm,
   mesclarItensInvalidosPdfAudit,
   LIMIAR_CONFIANCA_NCM,
   idxPorOrdem,
   ordemDoItem,
   mesclarOrdemItensPersistidos,
-};
+} from "@cia/shared";
 
 /** @deprecated use itemBloqueiaPdfNcm */
 export function itensComNcmInvalido(itens: Item[]): Item[] {

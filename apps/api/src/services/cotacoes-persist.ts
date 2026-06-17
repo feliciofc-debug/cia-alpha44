@@ -11,11 +11,10 @@ import {
 } from "@cia/pipeline";
 import {
   confirmacaoNcmVigente,
-  itemPodeConfirmarNcm,
-  itemPodeConfirmarNcmIndividual,
   itensResolucaoNcm,
   limparConfirmacaoNcm,
   metaConfirmacaoNcm,
+  ncmInformadoParaFechamento,
   validarConfirmacaoNcmItem,
   validarConfirmacaoNcmItens,
   ncm8Limpo,
@@ -806,8 +805,10 @@ export async function confirmarNcmItem(
   if (!itemRow) return null;
 
   const it = itemDominioFromRow(itemRow);
-  const ctx = catalog ? criarPdfNcmAuditCtx(catalog) : undefined;
-  if (!itemPodeConfirmarNcmIndividual(it, ctx)) return null;
+  if (!ncmInformadoParaFechamento(it)) return null;
+  if (confirmacaoNcmVigente(it)) {
+    return formatCotacaoSalva(row as CotacaoComRelacoes, provider, catalog);
+  }
 
   const versoes = await versoesClassificacaoCacheAtual();
   await confirmarNcmItemInterno(itemRow, confirmadoPor, versoes, { cacheStrict: false });
@@ -843,7 +844,7 @@ export async function confirmarNcmItensLote(
       pulados++;
       continue;
     }
-    if (!itemPodeConfirmarNcm(it, ctx)) continue;
+    if (!ncmInformadoParaFechamento(it)) continue;
     elegiveis.push(itemRow);
   }
 

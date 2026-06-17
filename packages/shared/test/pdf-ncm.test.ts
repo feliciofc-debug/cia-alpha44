@@ -76,10 +76,9 @@ describe("pdf-ncm — NCM informado aceito", () => {
     expect(itensBloqueandoPdf([item({ compatibilidadeProduto: "compativel" })])).toHaveLength(0);
   });
 
-  it("itemPodeConfirmarNcm — só sem NCM informado", () => {
-    expect(itemPodeConfirmarNcm(item({ ncm: "" }))).toBe(true);
+  it("itemPodeConfirmarNcm — confirmação não é gate (sempre false)", () => {
+    expect(itemPodeConfirmarNcm(item({ ncm: "" }))).toBe(false);
     expect(itemPodeConfirmarNcm(item({ compatibilidadeProduto: "revisar" }))).toBe(false);
-    expect(itemPodeConfirmarNcm(item({ ncmFonte: "pendente", ncm: "95030097" }))).toBe(false);
     expect(itemPodeConfirmarNcmIndividual(item({ compatibilidadeProduto: "incompativel" }))).toBe(false);
   });
 

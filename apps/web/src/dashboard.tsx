@@ -1346,12 +1346,6 @@ export function Dashboard() {
       setErro("Informe um NCM válido com 8 dígitos.");
       return;
     }
-    const ncmAtual = normalizarNcmDigitos(base.itens[idx]?.ncm ?? "");
-    const compat = base.itens[idx]?.compatibilidadeProduto;
-    if (ncm === ncmAtual && compat !== "incompativel") {
-      setErro("O NCM informado é igual ao atual. Edite para outro código ou use «Confirmar NCM».");
-      return;
-    }
     if (!iniciarOperacaoNcm()) return;
     setAlterandoNcm(ordem);
     setErro("");
