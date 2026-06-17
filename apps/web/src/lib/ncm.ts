@@ -1,30 +1,47 @@
 import type { Item } from "./types.ts";
 import {
   confirmacaoNcmVigente,
-  itemBloqueiaPdfNcm,
-  itemPrecisaResolucaoNcm,
   itensBloqueandoPdf,
   itensPendentesConfirmacaoNcm,
-  itensResolucaoNcm,
   LIMIAR_CONFIANCA_NCM,
-  ncm8Limpo,
+  mesclarItensInvalidosPdfAudit,
+  mesclarOrdemItensPersistidos,
+  metaConfirmacaoNcm,
+  validarConfirmacaoNcmItem,
+  limparConfirmacaoNcm,
+  idxPorOrdem,
+  ordemDoItem,
 } from "@cia/shared";
+import { ncm8Limpo } from "@cia/shared";
 
-/** @deprecated use itemBloqueiaPdfNcm / itensBloqueandoPdf */
-export function itensComNcmInvalido(itens: Item[]): Item[] {
-  return itensBloqueandoPdf(itens);
+/**
+ * Regra estrutural — DUPLICADA no front de propósito.
+ * NCM de 8 dígitos informado ⇒ aceito no fechamento (não depende da versão do bundle shared).
+ */
+export function ncmInformadoParaFechamento(it: Item): boolean {
+  const key = ncm8Limpo(it.ncm ?? "");
+  return Boolean(key && key !== "00000000");
 }
 
-export function itensComIncompatibilidadeProduto(itens: Item[]): Item[] {
-  return itens.filter((it) => it.compatibilidadeProduto === "incompativel");
+/** PDF bloqueado somente se algum item não tem NCM informado. */
+export function pdfBloqueadoPorNcm(itens: Item[]): boolean {
+  return itens.some((it) => !ncmInformadoParaFechamento(it));
 }
 
-export function itensEmRevisaoNcm(itens: Item[]): Item[] {
-  return itensPendentesConfirmacaoNcm(itens);
+export function itemBloqueiaPdfNcm(it: Item): boolean {
+  return !ncmInformadoParaFechamento(it);
 }
 
-export function itemPodeDesfazerNcm(it: Item): boolean {
-  return confirmacaoNcmVigente(it);
+export function itemPrecisaResolucaoNcm(it: Item): boolean {
+  return !ncmInformadoParaFechamento(it);
+}
+
+export function itemPodeConfirmarNcm(it: Item): boolean {
+  return itemPrecisaResolucaoNcm(it);
+}
+
+export function itemPodeConfirmarNcmIndividual(it: Item): boolean {
+  return itemPrecisaResolucaoNcm(it);
 }
 
 export {
@@ -32,26 +49,36 @@ export {
   validarConfirmacaoNcmItem,
   confirmacaoNcmVigente,
   limparConfirmacaoNcm,
-  itemPodeConfirmarNcm,
-  itemPodeConfirmarNcmIndividual,
-  itemBloqueiaPdfNcm,
   itensBloqueandoPdf,
   itensPendentesConfirmacaoNcm,
-  itensResolucaoNcm,
-  itemPrecisaResolucaoNcm,
   mesclarItensInvalidosPdfAudit,
   LIMIAR_CONFIANCA_NCM,
   idxPorOrdem,
   ordemDoItem,
   mesclarOrdemItensPersistidos,
-} from "@cia/shared";
+};
+
+/** @deprecated use itemBloqueiaPdfNcm */
+export function itensComNcmInvalido(itens: Item[]): Item[] {
+  return itens.filter((it) => !ncmInformadoParaFechamento(it));
+}
+
+export function itensComIncompatibilidadeProduto(itens: Item[]): Item[] {
+  return itens.filter((it) => it.compatibilidadeProduto === "incompativel");
+}
+
+export function itensEmRevisaoNcm(itens: Item[]): Item[] {
+  return itens.filter((it) => !ncmInformadoParaFechamento(it));
+}
+
+export function itemPodeDesfazerNcm(it: Item): boolean {
+  return confirmacaoNcmVigente(it);
+}
 
 export type SeveridadeNcmResolucao = "bloqueia" | "revisar" | "ok";
 
 export interface PendenciaNcmItem {
-  /** Índice no array (UI, scroll, draft). */
   idx: number;
-  /** Chave persistida — usar em rotas /itens/:ordem/*. */
   ordem: number;
   item: Item;
   nome: string;
@@ -60,79 +87,37 @@ export interface PendenciaNcmItem {
   severidade: "bloqueia" | "revisar";
 }
 
-export function pdfBloqueadoPorNcm(itens: Item[]): boolean {
-  return itens.some(itemBloqueiaPdfNcm);
-}
-
 export function nomeProdutoItem(it: Item, maxLen = 48): string {
   return (it.descPt || it.descOriginal || "Item").trim().slice(0, maxLen);
 }
 
-/** Severidade visual na barra de resolução (semáforo). */
 export function severidadeNcmItem(it: Item): SeveridadeNcmResolucao {
-  if (confirmacaoNcmVigente(it)) return "ok";
-  if (!itemPrecisaResolucaoNcm(it)) return "ok";
-  if (itemNcmBloqueiaSevero(it)) return "bloqueia";
-  return "revisar";
+  if (ncmInformadoParaFechamento(it)) return "ok";
+  return "bloqueia";
 }
 
-function itemNcmBloqueiaSevero(it: Item): boolean {
-  if (itemBloqueiaPdfNcm(it)) return true;
-  return false;
-}
-
-function motivoCompatibilidadeLegivel(it: Item): string | null {
-  const bruto = it.motivoCompatibilidade?.trim();
-  if (!bruto || bruto.length > 96) return null;
-  const lower = bruto.toLowerCase();
-  if (
-    lower.includes("familia") ||
-    lower.includes("guard-rail") ||
-    lower.includes("cache") ||
-    lower.includes("pipeline")
-  ) {
-    return null;
-  }
-  return bruto;
-}
-
-/** Motivo completo na lista de resolução — português simples. */
-export function motivoResolucaoNcm(it: Item): string {
-  const key = ncm8Limpo(it.ncm ?? "");
-  if (!key || key === "00000000") {
-    return "NCM pendente — informe o código de 8 dígitos";
-  }
+export function motivoResolucaoNcm(_it: Item): string {
   return "NCM pendente — informe o código de 8 dígitos";
 }
 
-/** Rótulo curto para toast e banner (produto-primeiro). */
-export function motivoCurtoNcm(it: Item): string {
-  const key = ncm8Limpo(it.ncm ?? "");
-  if (!key || key === "00000000") return "NCM pendente";
+export function motivoCurtoNcm(_it: Item): string {
   return "NCM pendente";
 }
 
+/** Só itens SEM NCM entram na barra — whisky/chá com NCM nunca aparecem aqui. */
 export function pendenciasNcmOrdenadas(itens: Item[]): PendenciaNcmItem[] {
-  const fila = itensResolucaoNcm(itens).map(({ idx, ordem, item }) => {
-    const severidade = severidadeNcmItem(item);
-    return {
+  return itens
+    .map((item, idx) => ({ idx, ordem: item.ordem ?? idx + 1, item }))
+    .filter(({ item }) => !ncmInformadoParaFechamento(item))
+    .map(({ idx, ordem, item }) => ({
       idx,
       ordem,
       item,
       nome: nomeProdutoItem(item),
       motivo: motivoResolucaoNcm(item),
       motivoCurto: motivoCurtoNcm(item),
-      severidade: severidade === "bloqueia" ? "bloqueia" : "revisar",
-    } satisfies PendenciaNcmItem;
-  });
-
-  fila.sort((a, b) => {
-    if (a.severidade === "bloqueia" && b.severidade !== "bloqueia") return -1;
-    if (a.severidade !== "bloqueia" && b.severidade === "bloqueia") return 1;
-    return a.idx - b.idx;
-  });
-
-  return fila;
+      severidade: "bloqueia" as const,
+    }));
 }
 
 export function contagemEstadosNcm(itens: Item[]): {
@@ -142,8 +127,8 @@ export function contagemEstadosNcm(itens: Item[]): {
 } {
   const pendencias = pendenciasNcmOrdenadas(itens);
   return {
-    bloqueando: pendencias.filter((p) => p.severidade === "bloqueia").length,
-    revisar: pendencias.filter((p) => p.severidade === "revisar").length,
+    bloqueando: pendencias.length,
+    revisar: 0,
     ok: Math.max(0, itens.length - pendencias.length),
   };
 }
@@ -157,12 +142,11 @@ function linhaPendenciaCurta(p: Pick<PendenciaNcmItem, "nome" | "motivoCurto">):
   return `${p.nome} (${p.motivoCurto})`;
 }
 
-/** Banner / tooltip — produto-primeiro, lista todos os bloqueadores de PDF. */
 export function mensagemBloqueioPdf(itens: Item[]): string {
-  const bloqueadores = pendenciasNcmOrdenadas(itens).filter(({ item }) => itemBloqueiaPdfNcm(item));
+  const bloqueadores = pendenciasNcmOrdenadas(itens);
   if (!bloqueadores.length) return "";
   const linhas = bloqueadores.map(linhaPendenciaCurta).join("; ");
-  return `PDF bloqueado: ${linhas}. Resolva na aba Detalhamento técnico.`;
+  return `PDF bloqueado: ${linhas}. Informe o NCM de 8 dígitos na aba Detalhamento técnico.`;
 }
 
 export function mensagemToastBloqueioPdf(itens: Item[]): {
@@ -181,26 +165,25 @@ export function mensagemToastDePendencias(pendencias: PendenciaNcmItem[]): {
   if (!pendencias.length) {
     return { titulo: "", visiveis: [], restantes: 0 };
   }
-
   const visiveis = pendencias.slice(0, 2);
   const restantes = pendencias.length - visiveis.length;
   let titulo = `PDF bloqueado: ${visiveis.map(linhaPendenciaCurta).join("; ")}`;
-  if (restantes > 0) {
-    titulo += ` +${restantes} → ver todos`;
-  }
-  titulo += ". Resolva na aba abaixo.";
-
+  if (restantes > 0) titulo += ` +${restantes} → ver todos`;
+  titulo += ". Informe o NCM na aba abaixo.";
   return { titulo, visiveis, restantes };
 }
 
-/** @deprecated prefer mensagemBloqueioPdf */
 export function resumoBloqueioNcm(itens: Item[]): string {
   return mensagemBloqueioPdf(itens);
 }
 
-/** Aviso não bloqueante — possível incompatibilidade semântica produto × NCM. */
+/** Informativo — não bloqueia PDF. */
 export function avisoCompatibilidadePdf(itens: Item[]): string | null {
   const qtd = itensComIncompatibilidadeProduto(itens).length;
   if (!qtd) return null;
-  return `${qtd} item(ns) com possível incompatibilidade NCM × produto — revisar antes de enviar`;
+  return `${qtd} item(ns) com possível incompatibilidade NCM × produto (informativo — não bloqueia o PDF).`;
+}
+
+export function itensResolucaoNcm(itens: Item[]): Array<{ idx: number; ordem: number; item: Item }> {
+  return pendenciasNcmOrdenadas(itens).map(({ idx, ordem, item }) => ({ idx, ordem, item }));
 }
