@@ -11,7 +11,7 @@ import {
   payloadAtualizar,
   type EditorDraft,
 } from "./lib/editor-cotacao.ts";
-import type { Aliquotas, Canal, CotacaoResumo, CotacaoSalva, Item, ResultadoCotacao } from "./lib/types.ts";
+import type { Aliquotas, Canal, CotacaoResumo, CotacaoSalva, Item, ResultadoCotacao, AvisoValoracao } from "./lib/types.ts";
 import { PainelEditorCotacao } from "./painel-editor.tsx";
 import { AppShell, type NavItem } from "./app-shell.tsx";
 import { ClientesView } from "./clientes-view.tsx";
@@ -27,6 +27,7 @@ import { PdfDownloadBar } from "./pdf-download-bar.tsx";
 import { BarraResolucaoNcm } from "./barra-resolucao-ncm.tsx";
 import { DisclaimerConciliacaoIa, SeloConciliacaoNcm } from "./ncm-conciliacao-ui.tsx";
 import { aplicarOverrideManualAliquota, desfazerOverrideManualAliquota, type ChaveTributoRastro } from "@cia/shared";
+import { InputFobKgItem } from "./fob-kg-edit.tsx";
 import { DetalheRastroAliquota } from "./lib/aliquota-rastro-ui.tsx";
 import type { ClienteResumo, DashboardKpis, DashboardSeries } from "./lib/types.ts";
 
@@ -233,6 +234,9 @@ function AnalisePainel({
   onDesfazerNcm,
   onAlterarNcm,
   alterandoNcm,
+  onAlterarFobKg,
+  alterandoFobKg,
+  avisosValoracaoFob,
   onConfirmarIcmsSaida,
   confirmandoIcms,
 }: {
@@ -263,6 +267,9 @@ function AnalisePainel({
   onDesfazerNcm?: (ordem: number) => void | Promise<void>;
   onAlterarNcm: (ordem: number, ncm: string) => void | Promise<void>;
   alterandoNcm?: number | null;
+  onAlterarFobKg?: (ordem: number, fobKgManual: number | null) => void | Promise<void>;
+  alterandoFobKg?: number | null;
+  avisosValoracaoFob?: Record<number, AvisoValoracao | null>;
   onConfirmarIcmsSaida?: () => void | Promise<void>;
   confirmandoIcms?: boolean;
 }) {
@@ -580,8 +587,17 @@ function AnalisePainel({
                     )}
                   </td>
                   <td className="p-2 whitespace-nowrap">{it.fobTotalUS > 0 ? it.fobTotalUS.toFixed(2) : "—"}</td>
-                  <td className="p-2 whitespace-nowrap">
-                    {fobKg.principal != null ? (
+                  <td className="p-2 whitespace-nowrap align-top">
+                    {onAlterarFobKg ? (
+                      <InputFobKgItem
+                        item={it}
+                        ordem={ordem}
+                        disabled={alterandoFobKg === ordem}
+                        avisoValoracao={avisosValoracaoFob?.[ordem]}
+                        onCommit={onAlterarFobKg}
+                        onLimpar={(o) => void onAlterarFobKg(o, null)}
+                      />
+                    ) : fobKg.principal != null ? (
                       <>
                         <span className={fobKg.ajustado ? "font-medium text-amber-300" : ""}>{usdKg(fobKg.principal)}</span>
                         {fobKg.ajustado && fobKg.original != null && (
@@ -599,7 +615,7 @@ function AnalisePainel({
                         ⚠ FOB pendente
                       </span>
                     )}
-                    {it.fobKgFonte && !it.fobPendente && (
+                    {it.fobKgFonte && !it.fobPendente && !onAlterarFobKg && (
                       <span className="mt-0.5 block max-w-[10rem] truncate text-[10px] text-slate-500" title={it.fobKgFonte}>
                         {it.fobKgFonte}
                       </span>
@@ -739,6 +755,9 @@ function AnalisePainel({
             resumoNcmLote={resumoNcmLote}
             onDesfazerNcm={onDesfazerNcm}
             onAlterarNcm={onAlterarNcm}
+            onAlterarFobKg={onAlterarFobKg}
+            alterandoFobKg={alterandoFobKg}
+            avisosValoracaoFob={avisosValoracaoFob}
             confirmandoNcm={confirmandoNcm}
             alterandoNcm={alterandoNcm}
             destaqueIdx={destaqueResolucaoIdx}
@@ -915,6 +934,8 @@ export function Dashboard() {
   const [resumoNcmLote, setResumoNcmLote] = useState<{ aprovados: number; pendentes: number } | null>(null);
   const [confirmandoIcms, setConfirmandoIcms] = useState(false);
   const [alterandoNcm, setAlterandoNcm] = useState<number | null>(null);
+  const [alterandoFobKg, setAlterandoFobKg] = useState<number | null>(null);
+  const [avisosValoracaoFob, setAvisosValoracaoFob] = useState<Record<number, AvisoValoracao | null>>({});
   const ncmBusyRef = useRef(false);
   const [irParaOrcamento, setIrParaOrcamento] = useState(0);
   const [solicitarResolucaoNcm, setSolicitarResolucaoNcm] = useState(0);
@@ -1395,6 +1416,53 @@ export function Dashboard() {
     }
   }
 
+  async function alterarFobKgItemHandler(ordem: number, fobKgManual: number | null) {
+    const base = cotacaoAtiva();
+    if (!base) return;
+    const idx = idxPorOrdem(base.itens, ordem);
+    if (idx < 0) return;
+    setAlterandoFobKg(ordem);
+    setErro("");
+    try {
+      const idSalvo = detalhe?.id ?? salvaId;
+      const itEditado = { ...base.itens[idx]!, fobKgManual, ordem };
+      const itensLocal = base.itens.map((it, i) => (i === idx ? itEditado : it));
+      const draft = editorDraft ?? editorFromCotacao(base.cotacao, "cliente" in base ? base.cotacao.cliente : cliente);
+      const cotacao = { ...aplicarEditorNaCotacao(base.cotacao, draft), itens: itensLocal };
+
+      if (idSalvo) {
+        const atualizada = await api.alterarFobKgItem(idSalvo, ordem, fobKgManual);
+        setAvisosValoracaoFob((prev) => ({ ...prev, [ordem]: atualizada.avisoValoracao }));
+        sincronizarCotacaoSalva(atualizada);
+        return;
+      }
+
+      const { resultado, itens } = await api.calcular(cotacao);
+      const itemCalc = itens.find((it) => (it.ordem ?? -1) === ordem);
+      if (fobKgManual != null && fobKgManual > 0 && itemCalc?.benchmark?.pisoDefensavel) {
+        const piso = itemCalc.benchmark.pisoDefensavel;
+        setAvisosValoracaoFob((prev) => ({
+          ...prev,
+          [ordem]:
+            piso > 0 && fobKgManual < piso
+              ? {
+                  abaixoDoDefensavel: true,
+                  pisoDefensavel: piso,
+                  percentualAbaixo: ((piso - fobKgManual) / piso) * 100,
+                }
+              : null,
+        }));
+      } else {
+        setAvisosValoracaoFob((prev) => ({ ...prev, [ordem]: null }));
+      }
+      if (analise) setAnalise({ ...analise, cotacao, resultado, itens });
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao alterar FOB/kg.");
+    } finally {
+      setAlterandoFobKg(null);
+    }
+  }
+
   async function baixarPdfClienteOrcamento() {
     const idSalvo = detalhe?.id ?? salvaId;
     await baixarPdfComTratamentoNcm(async () => {
@@ -1840,6 +1908,9 @@ export function Dashboard() {
                 onDesfazerNcm={desfazerNcmItem}
                 onAlterarNcm={alterarNcmItem}
                 alterandoNcm={alterandoNcm}
+                onAlterarFobKg={alterarFobKgItemHandler}
+                alterandoFobKg={alterandoFobKg}
+                avisosValoracaoFob={avisosValoracaoFob}
                 onConfirmarIcmsSaida={() => void confirmarIcmsSaida()}
                 confirmandoIcms={confirmandoIcms}
               />
@@ -1944,6 +2015,9 @@ export function Dashboard() {
                   onDesfazerNcm={desfazerNcmItem}
                   onAlterarNcm={alterarNcmItem}
                   alterandoNcm={alterandoNcm}
+                  onAlterarFobKg={alterarFobKgItemHandler}
+                  alterandoFobKg={alterandoFobKg}
+                  avisosValoracaoFob={avisosValoracaoFob}
                   onConfirmarIcmsSaida={() => void confirmarIcmsSaida()}
                   confirmandoIcms={confirmandoIcms}
                 />

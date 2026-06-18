@@ -46,6 +46,12 @@ export interface Risco {
   flags: string[];
 }
 
+export interface AvisoValoracao {
+  abaixoDoDefensavel: true;
+  pisoDefensavel: number;
+  percentualAbaixo: number;
+}
+
 export interface Item {
   id?: string;
   /** Posição persistida na cotação (Prisma Item.ordem). Ausente antes de salvar. */
@@ -60,6 +66,8 @@ export interface Item {
   qtd: number | null;
   fobUnitarioUS: number | null;
   fobTotalUS: number;
+  /** Override manual US$/kg — soberano sobre planilha e calibragem. */
+  fobKgManual?: number | null;
   aliquotas: Aliquotas;
   aliquotasOverride: boolean;
   benchmark?: Benchmark;

@@ -174,7 +174,7 @@ describe("avisoCompatibilidadePdf", () => {
       { compatibilidadeProduto: "incompativel" } as Item,
     ]);
     expect(msg).toBe(
-      "2 item(ns) com possível incompatibilidade NCM × produto — revisar antes de enviar",
+      "2 item(ns) com possível incompatibilidade NCM × produto (informativo — não bloqueia o PDF).",
     );
   });
 });

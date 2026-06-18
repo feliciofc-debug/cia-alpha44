@@ -29,7 +29,7 @@ describe("auditarNcmsParaPdf", () => {
     ).not.toThrow();
   });
 
-  it("bloqueia NCM marcado inválido ou incoerente", () => {
+  it("não bloqueia NCM informado (8 dígitos) mesmo se ncmValido=false", () => {
     expect(() =>
       auditarNcmsParaPdf(
         [
@@ -42,7 +42,7 @@ describe("auditarNcmsParaPdf", () => {
         ],
         catalog,
       ),
-    ).toThrow(NcmInvalidoPdfError);
+    ).not.toThrow();
   });
 
   it("bloqueia NCM pendente ou ausente no catálogo", () => {
@@ -93,7 +93,7 @@ describe("auditarNcmsParaPdf", () => {
     ).not.toThrow();
   });
 
-  it("re-bloqueia se NCM mudou após confirmação", () => {
+  it("libera NCM informado mesmo se confirmação humana divergir do código atual", () => {
     expect(() =>
       auditarNcmsParaPdf(
         [
@@ -109,6 +109,6 @@ describe("auditarNcmsParaPdf", () => {
         ],
         catalog,
       ),
-    ).toThrow(NcmInvalidoPdfError);
+    ).not.toThrow();
   });
 });

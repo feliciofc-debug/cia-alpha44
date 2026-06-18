@@ -108,6 +108,8 @@ model Item {
   qtd               Decimal? @db.Decimal(14, 4)
   fobUnitarioUS     Decimal? @db.Decimal(14, 4)
   fobTotalUS        Decimal  @db.Decimal(14, 4)
+  /// Override manual US$/kg — prevalece sobre planilha e calibragem.
+  fobKgManual       Decimal? @db.Decimal(14, 6)
   aliquotas         Json
   aliquotasOverride Boolean  @default(false)
   benchmark         Json?

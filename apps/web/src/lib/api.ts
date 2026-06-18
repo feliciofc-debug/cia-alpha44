@@ -15,6 +15,7 @@ import type {
   ParsedSheet,
   ResultadoCotacao,
   IcmsCotacaoMeta,
+  AvisoValoracao,
 } from "./types";
 
 export interface AnaliseCompleta {
@@ -416,6 +417,25 @@ export const api = {
       },
       NCM_ITEM_TIMEOUT_MS,
     ).then(handle<CotacaoSalva>),
+
+  alterarFobKgItem: (cotacaoId: string, ordem: number, fobKgManual: number | null) =>
+    fetchComTimeout(
+      `${BASE}/api/cotacoes/${cotacaoId}/itens/${ordem}/fob-kg`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ fobKgManual }),
+      },
+      NCM_ITEM_TIMEOUT_MS,
+    ).then(
+      handle<
+        CotacaoSalva & {
+          ordem: number;
+          fobKgFinal: number | null;
+          avisoValoracao: AvisoValoracao | null;
+        }
+      >,
+    ),
 
   /** Conciliação IA — informativa; sempre HTTP 200. */
   conciliarNcmItem: (cotacaoId: string, ordem: number) =>

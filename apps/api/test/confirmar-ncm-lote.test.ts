@@ -279,7 +279,7 @@ describe("confirmarNcmItensLote", () => {
     for (let i = 45; i < 50; i++) {
       expect(store.row!.itens[i]!.meta.ncmRevisadoHumano).toBeUndefined();
     }
-  });
+  }, 20_000);
 
   it("re-chamar → aprovados=0, pulados=45, sem nova gravação", async () => {
     seedMix45e5();

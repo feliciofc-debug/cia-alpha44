@@ -14,7 +14,6 @@ import {
   lookupBenchmark,
   preencherFobKgPlanilha,
   resolveNcm,
-  resolvePesoLiqRateio,
   pesoLiqReal,
   textoClassificacaoIa,
   validarNcmItem,
@@ -33,6 +32,12 @@ import {
   versoesClassificacaoCache,
   type ClassificacaoCacheStats,
 } from "./classificacao-cache.js";
+import {
+  fobKgFinalItem,
+  fobKgReferenciaItem,
+  fobUsadoNoEngine,
+  pesoEngineItem,
+} from "./fob-kg-manual.js";
 import { converterLinhasEurParaUsd } from "./conversao-moeda-ingest.js";
 import { normalizarMoedaCodigo } from "@cia/shared";
 
@@ -408,7 +413,9 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
     const risco = analisarRisco({
       benchmark,
       calibracao,
-      fobKgFinal: it.fobPendente ? null : (fobKg ?? calibracao.fobKgCalibrado),
+      fobKgFinal: it.fobPendente
+        ? null
+        : (it.fobKgManual ?? fobKg ?? calibracao.fobKgCalibrado),
       anuencia: it.anuencia,
       antidumping: it.antidumping,
     });
@@ -457,19 +464,4 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
   return { resultado, itens: validarConfirmacaoNcmItens(itensEnriquecidos), icms, params: paramsIcms };
 }
 
-function pesoEngineItem(it: Item): number {
-  return resolvePesoLiqRateio({ pesoLiqKg: it.pesoLiqKg, pesoBrutoKg: it.pesoBrutoKg });
-}
-
-function fobUsadoNoEngine(it: Item, calibracao: ReturnType<typeof calibrarFobKg>): number {
-  if (it.fobPendente) return 0;
-  const pesoRateio = pesoEngineItem(it);
-  // FOB explícito na planilha prevalece — ComexStat só eleva se faltava preço ou calibragem defensiva (ajustado).
-  if (it.fobTotalUS > 0 && calibracao.fobKgOriginal && calibracao.fobKgOriginal > 0 && !calibracao.ajustado) {
-    return it.fobTotalUS;
-  }
-  if (calibracao.fobKgCalibrado > 0 && pesoRateio > 0) {
-    return calibracao.fobKgCalibrado * pesoRateio;
-  }
-  return it.fobTotalUS;
-}
+export { fobKgFinalItem, fobKgReferenciaItem, fobUsadoNoEngine, pesoEngineItem };

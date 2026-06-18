@@ -34,10 +34,12 @@ import {
   type Item,
   type ParamsSaida,
   type RegimeIcmsPersistido,
+  type AvisoValoracao,
 } from "@cia/shared";
 import type { Prisma } from "@prisma/client";
 import { extrairResumoFinanceiro } from "../lib/financeiro.js";
-import { calcularCotacao } from "./cotacao.js";
+import { calcularCotacao, fobKgFinalItem } from "./cotacao.js";
+import { calcAvisoValoracaoFobKg } from "./fob-kg-manual.js";
 import { detectarFamilia } from "@cia/pipeline";
 import {
   outputConfirmacaoHumana,
@@ -108,6 +110,7 @@ type CotacaoComRelacoes = CotacaoRow & {
     qtd: Prisma.Decimal | null;
     fobUnitarioUS: Prisma.Decimal | null;
     fobTotalUS: Prisma.Decimal;
+    fobKgManual: Prisma.Decimal | null;
     aliquotas: unknown;
     aliquotasOverride: boolean;
     benchmark: unknown;
@@ -179,6 +182,7 @@ export function mapRowParaDominio(row: CotacaoComRelacoes): {
           qtd: numOrNull(it.qtd),
           fobUnitarioUS: numOrNull(it.fobUnitarioUS),
           fobTotalUS: num(it.fobTotalUS),
+          fobKgManual: numOrNull(it.fobKgManual),
           aliquotas: it.aliquotas as Item["aliquotas"],
           aliquotasOverride: it.aliquotasOverride,
           benchmark: (it.benchmark as Item["benchmark"]) ?? undefined,
@@ -303,6 +307,7 @@ export async function salvarCotacao(input: SalvarCotacaoInput) {
           qtd: it.qtd,
           fobUnitarioUS: it.fobUnitarioUS,
           fobTotalUS: it.fobTotalUS ?? 0,
+          fobKgManual: it.fobKgManual ?? null,
           aliquotas: it.aliquotas,
           aliquotasOverride: it.aliquotasOverride ?? false,
           benchmark: it.benchmark ?? undefined,
@@ -685,6 +690,7 @@ function itemDominioFromRow(itemRow: ItemRowPersist): Item {
         ncm: itemRow.ncm,
         pesoLiqKg: num(itemRow.pesoLiqKg),
         fobTotalUS: num(itemRow.fobTotalUS),
+        fobKgManual: numOrNull(itemRow.fobKgManual) ?? undefined,
       } as Item,
       metaAtual,
     ),
@@ -962,6 +968,49 @@ export async function alterarNcmItem(cotacaoId: string, tenantSlug: string, orde
   if (!recalculada) return null;
 
   return recalculada;
+}
+
+/** Override manual FOB/kg — recalcula cotação inteira; aviso informativo se abaixo do piso. */
+export async function alterarFobKgItem(
+  cotacaoId: string,
+  tenantSlug: string,
+  ordem: number,
+  fobKgManual: number | null,
+  state: AppState,
+) {
+  if (!dbAtivo()) throw new PersistenciaIndisponivelError();
+
+  if (fobKgManual !== null && (!Number.isFinite(fobKgManual) || fobKgManual < 0)) {
+    throw new Error("fobKgManual inválido.");
+  }
+
+  const row = await buscarCotacaoRow(cotacaoId, tenantSlug);
+  if (!row) return null;
+
+  const itemRow = row.itens.find((i) => i.ordem === ordem);
+  if (!itemRow) return null;
+
+  const valor =
+    fobKgManual === null || fobKgManual === 0 ? null : Number(fobKgManual.toFixed(6));
+
+  await prisma.item.update({
+    where: { id: itemRow.id },
+    data: { fobKgManual: valor },
+  });
+
+  const recalculada = await recalcularCotacaoPersistida(cotacaoId, tenantSlug, state, row);
+  if (!recalculada) return null;
+
+  const itemAtualizado = recalculada.itens.find((it) => (it.ordem ?? -1) === ordem);
+  const calibracao = itemAtualizado?.calibracao;
+  const fobKgFinal =
+    itemAtualizado && calibracao ? fobKgFinalItem(itemAtualizado, calibracao) : null;
+  const avisoValoracao: AvisoValoracao | null =
+    valor != null && valor > 0 && itemAtualizado
+      ? calcAvisoValoracaoFobKg(valor, itemAtualizado.benchmark)
+      : null;
+
+  return { ...recalculada, ordem, fobKgFinal, avisoValoracao };
 }
 
 export async function excluirCotacao(id: string, tenantSlug: string): Promise<boolean> {

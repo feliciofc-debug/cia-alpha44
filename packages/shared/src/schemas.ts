@@ -67,6 +67,14 @@ export const calibracaoSchema = z.object({
 });
 export type Calibracao = z.infer<typeof calibracaoSchema>;
 
+/** Aviso informativo quando FOB/kg manual fica abaixo do piso defensável. */
+export const avisoValoracaoSchema = z.object({
+  abaixoDoDefensavel: z.literal(true),
+  pisoDefensavel: z.number(),
+  percentualAbaixo: z.number(),
+});
+export type AvisoValoracao = z.infer<typeof avisoValoracaoSchema>;
+
 /** Análise de risco / canal por item. */
 export const riscoSchema = z.object({
   canal: z.enum(CANAIS),
@@ -98,6 +106,8 @@ export const itemSchema = z.object({
   qtd: z.number().nonnegative().nullable().default(null),
   fobUnitarioUS: z.number().nonnegative().nullable().default(null),
   fobTotalUS: z.number().nonnegative(),
+  /** Override manual US$/kg — soberano sobre planilha e calibragem. */
+  fobKgManual: z.number().positive().nullable().optional(),
   aliquotas: aliquotasSchema,
   aliquotasOverride: z.boolean().default(false),
   benchmark: benchmarkSchema.optional(),

@@ -10,6 +10,8 @@ import {
   type PendenciaNcmItem,
 } from "./lib/ncm.ts";
 import { LookupNcmInline } from "./ncm-conciliacao-ui.tsx";
+import { InputFobKgItem } from "./fob-kg-edit.tsx";
+import type { AvisoValoracao } from "./lib/types.ts";
 
 function estilosCard(severidade: "bloqueia" | "revisar", destacado: boolean): string {
   const base =
@@ -33,6 +35,9 @@ function CardPendencia({
   onConfirmarNcm,
   onDesfazerNcm,
   onAlterarNcm,
+  onAlterarFobKg,
+  alterandoFobKg,
+  avisosValoracaoFob,
 }: {
   pendencia: PendenciaNcmItem;
   destacado: boolean;
@@ -46,6 +51,9 @@ function CardPendencia({
   onConfirmarNcm: (ordem: number) => void | Promise<void>;
   onDesfazerNcm?: (ordem: number) => void | Promise<void>;
   onAlterarNcm: (ordem: number, ncm: string) => void | Promise<void>;
+  onAlterarFobKg?: (ordem: number, fobKgManual: number | null) => void | Promise<void>;
+  alterandoFobKg?: number | null;
+  avisosValoracaoFob?: Record<number, AvisoValoracao | null>;
 }) {
   const { idx, ordem, item: it, nome, motivo, severidade } = pendencia;
   const badge =
@@ -126,6 +134,19 @@ function CardPendencia({
         </div>
         <LookupNcmInline ncmDraft={draft} />
       </div>
+      {onAlterarFobKg && (
+        <div className="mt-3 border-t border-white/10 pt-3">
+          <p className="mb-1 text-xs text-slate-400">FOB/kg US$ (override manual)</p>
+          <InputFobKgItem
+            item={it}
+            ordem={ordem}
+            disabled={operacaoBloqueada || alterandoFobKg === ordem}
+            avisoValoracao={avisosValoracaoFob?.[ordem]}
+            onCommit={onAlterarFobKg}
+            onLimpar={(o) => void onAlterarFobKg(o, null)}
+          />
+        </div>
+      )}
     </li>
   );
 }
@@ -140,6 +161,9 @@ export function BarraResolucaoNcm({
   resumoNcmLote,
   onDesfazerNcm,
   onAlterarNcm,
+  onAlterarFobKg,
+  alterandoFobKg,
+  avisosValoracaoFob,
   confirmandoNcm,
   alterandoNcm,
   destaqueIdx,
@@ -153,6 +177,9 @@ export function BarraResolucaoNcm({
   resumoNcmLote?: { aprovados: number; pendentes: number } | null;
   onDesfazerNcm?: (ordem: number) => void | Promise<void>;
   onAlterarNcm: (ordem: number, ncm: string) => void | Promise<void>;
+  onAlterarFobKg?: (ordem: number, fobKgManual: number | null) => void | Promise<void>;
+  alterandoFobKg?: number | null;
+  avisosValoracaoFob?: Record<number, AvisoValoracao | null>;
   confirmandoNcm?: number | null;
   alterandoNcm?: number | null;
   destaqueIdx?: number | null;
@@ -163,7 +190,7 @@ export function BarraResolucaoNcm({
   const contagem = useMemo(() => contagemEstadosNcm(itens), [itens]);
   const elegiveis = useMemo(() => itensPendentesConfirmacaoNcm(itens).length, [itens]);
   const operacaoBloqueada = Boolean(
-    confirmandoTodosNcm || confirmandoNcm != null || alterandoNcm != null,
+    confirmandoTodosNcm || confirmandoNcm != null || alterandoNcm != null || alterandoFobKg != null,
   );
 
   const [draftNcm, setDraftNcm] = useState<Record<number, string>>({});
@@ -201,6 +228,9 @@ export function BarraResolucaoNcm({
         onConfirmarNcm={onConfirmarNcm}
         onDesfazerNcm={onDesfazerNcm}
         onAlterarNcm={onAlterarNcm}
+        onAlterarFobKg={onAlterarFobKg}
+        alterandoFobKg={alterandoFobKg}
+        avisosValoracaoFob={avisosValoracaoFob}
       />
     );
   }
