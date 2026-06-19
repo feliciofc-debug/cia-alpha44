@@ -85,6 +85,7 @@ export async function buildServer() {
 
   app.get("/api/meta", async () => {
     const s = getState();
+    const planilha = statusBenchmarkPlanilha();
     return {
       provider: s.provider.nome,
       llmDisponivel: s.provider.disponivel,
@@ -97,6 +98,13 @@ export async function buildServer() {
       ncmVigenteTotal: s.ncmCatalog.total,
       ncmVigenteAtualizado: s.ncmCatalog.dataUltimaAtualizacao,
       benefFiscal: "ALAGOAS",
+      planilhaFobKg: {
+        carregado: planilha.carregado,
+        total: planilha.total,
+        arquivo: planilha.arquivo,
+        atualizadoEm: planilha.atualizadoEm,
+        prioridade: "Fonte principal FOB/kg — prevalece sobre ComexStat",
+      },
     };
   });
 
@@ -211,7 +219,7 @@ export async function buildServer() {
         arquivo: seed.arquivo,
         atualizadoEm: seed.atualizadoEm,
         contexto: seed.contexto,
-        mensagem: `Planilha FOB/kg atualizada — ${seed.total} NCMs em referência operacional.`,
+        mensagem: `Planilha FOB/kg atualizada — ${seed.total} NCMs. Recalcule cotações abertas para aplicar os novos valores.`,
       };
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Falha ao importar planilha.";

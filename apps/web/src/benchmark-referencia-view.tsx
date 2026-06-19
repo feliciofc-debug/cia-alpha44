@@ -49,9 +49,10 @@ export function BenchmarkReferenciaView() {
       <div>
         <h2 className="text-xl font-bold text-white">Planilha FOB/kg — referência mensal</h2>
         <p className="mt-2 text-sm text-slate-400">
-          Anexe a planilha que vocês recebem todo mês (ex.: IMPORTAÇÕES DA CHINA / Comex Plus). Os valores
-          passam a valer como <strong className="text-slate-300">Histórico próprio</strong> e têm prioridade
-          sobre o ComexStat nas cotações.
+          Esta planilha é a <strong className="text-emerald-300">fonte principal do FOB/kg</strong> em
+          todas as cotações (coluna <strong className="text-slate-300">PREÇO FOB/KG</strong>). Quando
+          receberem a planilha atualizada do mês, façam upload aqui — ela substitui a anterior. Só
+          NCMs ausentes usam ComexStat (API) como fallback.
         </p>
       </div>
 

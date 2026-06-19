@@ -48,4 +48,26 @@ describe("hierarquia FOB/kg — planilha INNOVE antes de ComexStat", () => {
     expect(fobKgParaPreenchimento(b)).toBeCloseTo(MEDIO_DI, 4);
     expect(b.nota).toMatch(/via|9405/i);
   });
+
+  it("84238900 usa PREÇO FOB/KG da planilha (4,5155 — não confundir com 84233090)", () => {
+    const fs = require("node:fs");
+    const seed = JSON.parse(
+      fs.readFileSync("src/data/benchmark-fob-kg-innove.json", "utf8"),
+    );
+    substituirHistoricoBenchmark(
+      seed.itens.map((e: { ncm: string; fobKgMedioDI: number; fobKgPonderado: number | null; amostra: number }) => ({
+        ncm: e.ncm,
+        fobKgMedioDI: e.fobKgMedioDI,
+        fobKgPonderado: e.fobKgPonderado,
+        fobKg: e.fobKgMedioDI,
+        amostra: e.amostra,
+      })),
+    );
+    const index = buildBenchmarkIndex([], "ref");
+    const b = lookupBenchmark(index, "84238900");
+    expect(b.fonte).toBe("Histórico próprio");
+    expect(fobKgParaPreenchimento(b)).toBeCloseTo(4.51547605, 4);
+    const viz = seed.itens.find((e: { ncm: string }) => e.ncm === "84233090");
+    expect(viz?.fobKgMedioDI).toBeCloseTo(2.89417593, 4);
+  });
 });

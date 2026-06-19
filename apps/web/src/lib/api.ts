@@ -66,6 +66,13 @@ export interface Meta {
   ncmVigenteTotal?: number;
   ncmVigenteAtualizado?: string | null;
   benefFiscal: string;
+  planilhaFobKg?: {
+    carregado: boolean;
+    total: number;
+    arquivo: string | null;
+    atualizadoEm: string | null;
+    prioridade?: string;
+  };
 }
 
 export interface Cambio {

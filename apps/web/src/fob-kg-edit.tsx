@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { AvisoValoracao, Item } from "./lib/types.ts";
-import { fobKgItem, fobKgReferencia, usdKg } from "./lib/fob-kg.ts";
+import { fobKgItem, fobKgReferencia, fobKgFonteLabel, usdKg } from "./lib/fob-kg.ts";
 
 export function AvisoValoracaoFob({ aviso }: { aviso: AvisoValoracao }) {
   return (
@@ -28,6 +28,7 @@ export function InputFobKgItem({
 }) {
   const fob = fobKgItem(item);
   const sugestao = fobKgReferencia(item);
+  const fonte = fobKgFonteLabel(item);
   const [local, setLocal] = useState(
     fob.manual != null ? String(fob.manual) : sugestao != null ? String(sugestao) : "",
   );
@@ -87,8 +88,10 @@ export function InputFobKgItem({
       {fob.manualAtivo && fob.referencia != null && (
         <span className="mt-0.5 block text-[10px] text-slate-500">ref. {usdKg(fob.referencia)}</span>
       )}
-      {!fob.manualAtivo && fob.ajustado && fob.original != null && (
-        <span className="mt-0.5 block text-[10px] text-slate-500">orig. {usdKg(fob.original)}</span>
+      {!fob.manualAtivo && fonte && (
+        <span className="mt-0.5 block max-w-[12rem] truncate text-[10px] text-emerald-400/90" title={fonte}>
+          {fonte}
+        </span>
       )}
       {avisoValoracao && <AvisoValoracaoFob aviso={avisoValoracao} />}
     </div>

@@ -5,6 +5,11 @@
 import type { Benchmark, Item } from "@cia/shared";
 import type { BenchmarkIndex } from "./benchmark.js";
 import { lookupBenchmark, normalizarNcm } from "./benchmark.js";
+
+function fonteSubstituivelPorPlanilha(fonte?: string): boolean {
+  if (!fonte || fonte === FOB_KG_FONTE_PENDENTE || fonte === FOB_KG_FONTE_LINHA) return false;
+  return fonte.startsWith("comexstat") || fonte.startsWith("ncm-irmao(");
+}
 import { fobKgParaPreenchimento } from "./benchmark-metrics.js";
 import {
   detectarBasePesoFob,
@@ -252,15 +257,18 @@ function resolverItemInterno(
   }
 
   if (it.fobTotalUS > 0 && it.fobKgFonte && it.fobKgFonte !== FOB_KG_FONTE_PENDENTE) {
-    return {
-      item: it,
-      meta: {
-        fobKgFonte: it.fobKgFonte,
-        fobPendente: it.fobPendente,
-        fobKgBase: it.fobKgBase,
-        fobKgAvisos: it.fobKgAvisos,
-      },
-    };
+    const benchPlanilha = lookupBenchmark(benchmarkIndex, it.ncm ?? "");
+    if (benchPlanilha.fonte !== "Histórico próprio" || !fonteSubstituivelPorPlanilha(it.fobKgFonte)) {
+      return {
+        item: it,
+        meta: {
+          fobKgFonte: it.fobKgFonte,
+          fobPendente: it.fobPendente,
+          fobKgBase: it.fobKgBase,
+          fobKgAvisos: it.fobKgAvisos,
+        },
+      };
+    }
   }
 
   if (it.fobTotalUS > 0 && !it.fobKgFonte) {

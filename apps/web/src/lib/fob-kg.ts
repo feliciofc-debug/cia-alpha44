@@ -43,3 +43,18 @@ export function fobKgItem(it: Item) {
 export function usdKg(n: number) {
   return `$ ${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}/kg`;
 }
+
+/** Rótulo da fonte FOB/kg efetiva na cotação. */
+export function fobKgFonteLabel(it: Item): string | null {
+  if (it.fobPendente) return null;
+  if (it.benchmark?.fonte === "Histórico próprio") {
+    return "Planilha China (PREÇO FOB/KG)";
+  }
+  if (it.benchmark?.fonte === "ComexStat") {
+    return "ComexStat (NCM não encontrado na planilha)";
+  }
+  if (it.fobKgFonte?.includes("planilha-mensal")) return "Planilha China";
+  if (it.fobKgFonte?.includes("comexstat")) return "ComexStat";
+  if (it.fobKgFonte === "linha") return "Planilha embarque";
+  return it.fobKgFonte ?? null;
+}

@@ -2045,7 +2045,19 @@ export function Dashboard() {
             )}
 
             <p className="mt-6 text-xs text-slate-500">
-              Upload → IA → salvar → histórico · {meta?.ncmVigenteTotal?.toLocaleString("pt-BR") ?? "—"} NCMs Siscomex · {meta?.comexTotal.toLocaleString("pt-BR")} no benchmark
+              Upload → IA → salvar → histórico ·{" "}
+              {meta?.planilhaFobKg?.carregado ? (
+                <>
+                  <span className="text-emerald-400">
+                    {meta.planilhaFobKg.total.toLocaleString("pt-BR")} NCMs planilha FOB/kg
+                  </span>
+                  {" · "}
+                </>
+              ) : (
+                <span className="text-amber-400">planilha FOB/kg não carregada · </span>
+              )}
+              {meta?.ncmVigenteTotal?.toLocaleString("pt-BR") ?? "—"} NCMs Siscomex ·{" "}
+              {meta?.comexTotal.toLocaleString("pt-BR")} ComexStat (fallback)
             </p>
           </div>
         )}

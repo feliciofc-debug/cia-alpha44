@@ -390,12 +390,17 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
   const { params: paramsIcms, meta: icms } = aplicarIcmsCotacao(cotacao);
   const cotacaoIcms = { ...cotacao, params: paramsIcms };
 
-  const itensComFob = aplicarRegrasFobItens(cotacaoIcms.itens, state.benchmarkIndex);
+  const itensComFob = cotacaoIcms.itens.map((it) => {
+    const precisaPreencher = Boolean(it.fobPendente) || (it.fobTotalUS ?? 0) <= 0;
+    if (!precisaPreencher) return it;
+    return aplicarRegrasFobItens([it], state.benchmarkIndex)[0]!;
+  });
 
   const itensEnriquecidos: Item[] = itensComFob.map((it) => {
     const pesoRateio = pesoEngineItem(it);
     const fobKg = pesoRateio > 0 && it.fobTotalUS > 0 ? it.fobTotalUS / pesoRateio : null;
     const benchmark = lookupBenchmark(state.benchmarkIndex, it.ncm || "00000000");
+    const fobKgPlanilha = fobKgReferenciaItem({ ...it, benchmark, fobPendente: it.fobPendente });
     const calibracao = it.fobPendente
       ? {
           fobKgOriginal: null,
@@ -416,16 +421,23 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
       calibracao,
       fobKgFinal: it.fobPendente
         ? null
-        : (it.fobKgManual ?? fobKg ?? calibracao.fobKgCalibrado),
+        : (it.fobKgManual ?? fobKgPlanilha ?? fobKg ?? calibracao.fobKgCalibrado),
       anuencia: it.anuencia,
       antidumping: it.antidumping,
     });
     const flags = it.fobPendente ? [...(risco.flags ?? []), "FOB_PENDENTE"] : risco.flags;
+    const fobKgFonteEfetiva =
+      benchmark.fonte === "Histórico próprio"
+        ? (benchmark.rastroFonte ?? "planilha-operacional")
+        : benchmark.fonte === "ComexStat"
+          ? (benchmark.rastroFonte ?? "comexstat")
+          : it.fobKgFonte;
     return {
       ...it,
       fobTotalUS: it.fobTotalUS,
       benchmark,
       calibracao,
+      fobKgFonte: fobKgFonteEfetiva,
       risco: it.fobPendente ? { ...risco, flags, score: Math.max(risco.score, 40) } : risco,
       fotoBase64: it.fotoBase64,
       fotoMime: it.fotoMime,
