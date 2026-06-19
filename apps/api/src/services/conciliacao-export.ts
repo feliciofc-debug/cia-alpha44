@@ -4,6 +4,7 @@ import type { Cotacao, Item } from "@cia/shared";
 import type { ResultadoCotacao } from "@cia/fiscal-engine";
 import {
   gerarConciliacaoBuffer,
+  getHistoricoBenchmarkStats,
   mesclarItemMeta,
   nomeArquivoConciliacao,
   type RelatorioConciliacaoInput,
@@ -71,7 +72,7 @@ export async function exportarConciliacaoSalva(
   formato: "xlsx" | "csv",
   state: AppState,
 ) {
-  const row = await buscarCotacao(id, tenantSlug);
+  const row = await buscarCotacao(id, tenantSlug, state);
   if (!row) return null;
   return exportarConciliacao(
     {

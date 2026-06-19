@@ -11,6 +11,7 @@ import {
 } from "./lib/ncm.ts";
 import { LookupNcmInline } from "./ncm-conciliacao-ui.tsx";
 import { InputFobKgItem } from "./fob-kg-edit.tsx";
+import { FobKgLinhaNcm } from "./fob-kg-linha-ncm.tsx";
 import type { AvisoValoracao } from "./lib/types.ts";
 
 function estilosCard(severidade: "bloqueia" | "revisar", destacado: boolean): string {
@@ -76,6 +77,9 @@ function CardPendencia({
           <p className="mt-0.5 text-xs text-slate-400">
             NCM atual: <span className="font-mono text-emerald-300">{fmtNcm(it.ncm || "00000000")}</span>
           </p>
+          <div className="mt-1 text-xs">
+            <FobKgLinhaNcm item={it} />
+          </div>
           {podeDesfazer && (
             <p className="mt-1 text-xs font-medium text-emerald-400">
               Confirmado{it.ncmConfirmadoPor ? ` · ${it.ncmConfirmadoPor}` : ""}

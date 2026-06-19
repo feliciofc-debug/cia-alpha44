@@ -226,7 +226,7 @@ export const despesaSchema = z.object({
 export type Despesa = z.infer<typeof despesaSchema>;
 
 export const paramsSaidaSchema = z.object({
-  markupPct: z.number().min(0).default(0.06),
+  markupPct: z.number().min(0).default(0.04),
   pisSaida: z.number().min(0).default(0.0165),
   cofinsSaida: z.number().min(0).default(0.076),
   icmsSaida: z.number().min(0).default(0.04),
@@ -234,6 +234,8 @@ export const paramsSaidaSchema = z.object({
   irrfAliq: z.number().min(0).default(0.25),
   irrfBaseNotaPct: z.number().min(0).default(0.027),
   ipiTetoAliqMedia: z.number().min(0).default(0.15),
+  /** 0 = crédito integral IPI (Comex Plus). Omitido = média FOB (planilha 66). */
+  ipiAliqSaida: z.number().min(0).max(1).optional(),
   icmsEntrada: z.number().min(0).default(0),
 });
 export type ParamsSaida = z.infer<typeof paramsSaidaSchema>;

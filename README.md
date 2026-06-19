@@ -45,7 +45,7 @@ venda_liquida = base_saida / (1 - PIS_s - COFINS_s - ICMS_s)     // /0,8675
 ICMS_saida    = (venda_liquida / (1-ICMS_s)) * ICMS_s - ICMS_entrada
 DIF_PIS       = (venda_liquida - ICMS_saida) * 1,65% - PIS_entrada
 DIF_COFINS    = (venda_liquida - ICMS_saida) * 7,6%  - COFINS_entrada
-DIF_IPI       = aliq_media_IPI * base_saida - IPI_entrada
+DIF_IPI       = aliq_IPI_saida * base_saida - IPI_entrada   (negativo = crédito; Comex Plus usa ipiAliqSaida 0)
 CSLL          = markup * 9%
 IRRF          = (markup + base_nota * 2,7%) * 25%
 ```

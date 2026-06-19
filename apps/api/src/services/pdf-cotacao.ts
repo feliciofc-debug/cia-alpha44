@@ -6,6 +6,7 @@ import type { Cotacao, Item } from "@cia/shared";
 import { avisoMoedaCotacao, aplicarIcmsCotacao, formatNcm } from "@cia/shared";
 import { extrairResumoFinanceiro } from "../lib/financeiro.js";
 import type { NcmCatalog } from "@cia/pipeline";
+import { fobKgRelatorioItem } from "@cia/pipeline";
 import { auditarNcmsParaPdf } from "./validar-ncm-pdf.js";
 import { gerarPdfOrcamentoClienteModelo } from "./pdf-orcamento-cliente.js";
 import { itensComFotosCarregadas } from "./fotos.js";
@@ -66,9 +67,7 @@ function linha(doc: PdfDoc, label: string, valor: string, bold = false) {
 }
 
 function fobKgValor(it: Item): number | null {
-  if (it.calibracao?.fobKgCalibrado) return it.calibracao.fobKgCalibrado;
-  if (it.pesoLiqKg > 0 && it.fobTotalUS > 0) return it.fobTotalUS / it.pesoLiqKg;
-  return null;
+  return fobKgRelatorioItem(it);
 }
 
 function usdKg(n: number | null): string {

@@ -15,7 +15,7 @@ export interface ResumoFinanceiro {
 
 export function extrairResumoFinanceiro(
   resultado: ResultadoCotacao | null | undefined,
-  markupPct = 0.06,
+  markupPct = 0.04,
 ): ResumoFinanceiro | null {
   if (!resultado) return null;
 

@@ -50,7 +50,7 @@ export async function listarClientesDashboard(tenantSlug: string, q?: string) {
 
   for (const r of rows) {
     const nome = r.cliente?.trim() || "Sem cliente";
-    const markupPct = (r.params as Cotacao["params"]).markupPct ?? 0.06;
+    const markupPct = (r.params as Cotacao["params"]).markupPct ?? 0.04;
     const resultado = r.resultadoCalculo as ResultadoCotacao | null;
     const fin = extrairResumoFinanceiro(resultado, markupPct);
     const total = numOrNull(r.totalBRL) ?? 0;

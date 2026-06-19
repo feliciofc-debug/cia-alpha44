@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { AvisoValoracao, Item } from "./lib/types.ts";
-import { fobKgItem, fobKgReferencia, fobKgFonteLabel, usdKg } from "./lib/fob-kg.ts";
+import { fobKgItem, fobKgReferencia, fobKgFonteLabel, fmtFobKgPlanilha, usdKg } from "./lib/fob-kg.ts";
 
 export function AvisoValoracaoFob({ aviso }: { aviso: AvisoValoracao }) {
   return (
@@ -30,14 +30,18 @@ export function InputFobKgItem({
   const sugestao = fobKgReferencia(item);
   const fonte = fobKgFonteLabel(item);
   const [local, setLocal] = useState(
-    fob.manual != null ? String(fob.manual) : sugestao != null ? String(sugestao) : "",
+    fob.manual != null
+      ? String(fob.manual)
+      : sugestao != null
+        ? fmtFobKgPlanilha(sugestao)
+        : "",
   );
   const [editando, setEditando] = useState(false);
 
   useEffect(() => {
     if (editando) return;
     const v = fob.manual ?? sugestao;
-    setLocal(v != null ? String(v) : "");
+    setLocal(v != null ? (fob.manual != null ? String(v) : fmtFobKgPlanilha(v)) : "");
   }, [fob.manual, sugestao, editando]);
 
   function parseValor(): number | null {

@@ -62,7 +62,7 @@ export async function obterDashboardKpis(tenantSlug: string) {
   const destinoMap = new Map<string, { qtd: number; volumeBRL: number }>();
 
   for (const r of rows) {
-    const markupPct = (r.params as Cotacao["params"]).markupPct ?? 0.06;
+    const markupPct = (r.params as Cotacao["params"]).markupPct ?? 0.04;
     const resultado = r.resultadoCalculo as ResultadoCotacao | null;
     const financeiro = extrairResumoFinanceiro(resultado, markupPct);
     const total = numOrNull(r.totalBRL) ?? 0;
@@ -88,7 +88,7 @@ export async function obterDashboardKpis(tenantSlug: string) {
     .slice(0, 8);
 
   const recentes = rows.slice(0, 5).map((r) => {
-    const markupPct = (r.params as Cotacao["params"]).markupPct ?? 0.06;
+    const markupPct = (r.params as Cotacao["params"]).markupPct ?? 0.04;
     const resultado = r.resultadoCalculo as ResultadoCotacao | null;
     const financeiro = extrairResumoFinanceiro(resultado, markupPct);
     const params = r.params as Cotacao["params"];

@@ -13,7 +13,8 @@
  *   CSLL          = markup * 9%                                                        // Plan1 C39
  *   IRRF          = (markup + base_nota * 2,7%) * 25%                                  // Plan1 C40
  *
- * Os DIFs e ICMS de saída têm piso 0 (a planilha usa IF(...>0, ..., "")).
+ * DIF PIS/COFINS e ICMS de saída têm piso 0 (planilha IF(...>0, ..., "")).
+ * DIF IPI pode ser negativo (crédito) — layout Comex Plus / orçamento cliente.
  */
 
 import type {
@@ -49,6 +50,7 @@ export function calcSaida(
   const taxasLocaisTotalBRL = cotacao.despesas.reduce((acc, d) => acc + d.valorBRL, 0);
 
   const aliqMediaIPI = calcAliqMediaIPI(itens);
+  const aliqIpiDif = params.ipiAliqSaida !== undefined ? params.ipiAliqSaida : aliqMediaIPI;
 
   // Markup sobre o custo nacionalizado (CIF + impostos entrada + outras despesas base).
   const markup = (cifBRL + impostosEntrada + outrasDespesasBaseBRL) * params.markupPct;
@@ -73,9 +75,8 @@ export function calcSaida(
     (impostosEntrada - entrada.ipiTotal - entrada.pisTotal - entrada.cofinsTotal) +
     outrasDespesasBaseBRL +
     markup;
-  const baseDifIPI = aliqMediaIPI > params.ipiTetoAliqMedia ? baseIpiAlta : baseSaida;
-  const difIPIBruto = aliqMediaIPI * baseDifIPI - entrada.ipiTotal;
-  const difIPI = Math.max(0, difIPIBruto);
+  const baseDifIPI = aliqIpiDif > params.ipiTetoAliqMedia ? baseIpiAlta : baseSaida;
+  const difIPI = aliqIpiDif * baseDifIPI - entrada.ipiTotal;
 
   const csll = markup * params.csllSobreMarkup;
 

@@ -38,9 +38,10 @@ import {
 } from "@cia/shared";
 import type { Prisma } from "@prisma/client";
 import { extrairResumoFinanceiro } from "../lib/financeiro.js";
-import { calcularCotacao, fobKgFinalItem } from "./cotacao.js";
+import { calcularCotacao, fobKgFinalItem, type ResultadoCompleto } from "./cotacao.js";
 import { calcAvisoValoracaoFobKg } from "./fob-kg-manual.js";
 import { detectarFamilia } from "@cia/pipeline";
+import type { AppState } from "../state.js";
 import {
   outputConfirmacaoHumana,
   salvarClassificacaoCacheHumano,
@@ -382,6 +383,68 @@ function formatCotacaoSalva(row: CotacaoComRelacoes, provider?: string, catalog?
   };
 }
 
+type CotacaoSalvaFormatada = ReturnType<typeof formatCotacaoSalva>;
+
+function montarRespostaCotacaoCalc(
+  row: CotacaoComRelacoes,
+  calc: ResultadoCompleto,
+  catalog?: NcmCatalog,
+  provider?: string,
+): CotacaoSalvaFormatada {
+  const base = formatCotacaoSalva(row, provider, catalog);
+  const itensFinal = catalog
+    ? enriquecerItensPdfNcmAudit(calc.itens, criarPdfNcmAuditCtx(catalog))
+    : calc.itens;
+  return {
+    ...base,
+    cotacao: { ...base.cotacao, params: calc.params, itens: itensFinal },
+    itens: itensFinal,
+    resultado: calc.resultado,
+    icms: calc.icms,
+    financeiro: extrairResumoFinanceiro(calc.resultado, calc.params.markupPct),
+    calculadoEm: calc.resultado ? new Date().toISOString() : base.calculadoEm,
+  };
+}
+
+/** Recalcula com planilha China vigente — usado ao abrir cotação, PDF e exportação. */
+export function cotacaoRecalculadaFromRow(
+  row: CotacaoComRelacoes,
+  state: AppState,
+  provider?: string,
+): CotacaoSalvaFormatada {
+  const { cotacao, itens: itensDb } = mapRowParaDominio(row);
+  const calc = calcularCotacao(cotacao, state);
+  const itensValidados = validarConfirmacaoNcmItens(mesclarOrdemItensPersistidos(calc.itens, itensDb));
+  return montarRespostaCotacaoCalc(row, { ...calc, itens: itensValidados }, state.ncmCatalog, provider);
+}
+
+type ItemRowPersist = CotacaoComRelacoes["itens"][number];
+
+async function persistirItensPosCalculo(
+  itemRows: ItemRowPersist[],
+  itensCalc: Item[],
+  tx: Prisma.TransactionClient,
+) {
+  for (const it of itensCalc) {
+    const ordem = it.ordem ?? -1;
+    const itemRow = itemRows.find((r) => r.ordem === ordem);
+    if (!itemRow) continue;
+    const metaAtual = (itemRow.meta as import("@cia/pipeline").ItemMetaPersistido | null) ?? {};
+    const metaNovo = { ...metaAtual, ...extrairItemMeta(it) };
+    await tx.item.update({
+      where: { id: itemRow.id },
+      data: {
+        fobTotalUS: it.fobTotalUS ?? 0,
+        fobUnitarioUS: it.fobUnitarioUS ?? null,
+        benchmark: (it.benchmark ?? undefined) as Prisma.InputJsonValue | undefined,
+        calibracao: (it.calibracao ?? undefined) as Prisma.InputJsonValue | undefined,
+        risco: (it.risco ?? undefined) as Prisma.InputJsonValue | undefined,
+        meta: metaNovo as Prisma.InputJsonValue,
+      },
+    });
+  }
+}
+
 export async function listarCotacoes(tenantSlug: string, opts?: { cliente?: string; limite?: number }) {
   if (!dbAtivo()) throw new PersistenciaIndisponivelError();
 
@@ -407,7 +470,7 @@ export async function listarCotacoes(tenantSlug: string, opts?: { cliente?: stri
   return {
     totalHoje,
     cotacoes: rows.map((r) => {
-      const markupPct = (r.params as Cotacao["params"]).markupPct ?? 0.06;
+      const markupPct = (r.params as Cotacao["params"]).markupPct ?? 0.04;
       const resultado = r.resultadoCalculo as ResultadoCotacao | null;
       const financeiro = extrairResumoFinanceiro(resultado, markupPct);
       const params = r.params as Cotacao["params"];
@@ -433,12 +496,12 @@ export async function listarCotacoes(tenantSlug: string, opts?: { cliente?: stri
   };
 }
 
-export async function buscarCotacao(id: string, tenantSlug: string, catalog?: NcmCatalog) {
+export async function buscarCotacao(id: string, tenantSlug: string, state: AppState) {
   if (!dbAtivo()) throw new PersistenciaIndisponivelError();
 
   const row = await buscarCotacaoRow(id, tenantSlug);
   if (!row) return null;
-  return formatCotacaoSalva(row as CotacaoComRelacoes, undefined, catalog);
+  return cotacaoRecalculadaFromRow(row as CotacaoComRelacoes, state);
 }
 
 export async function duplicarCotacao(
@@ -630,6 +693,7 @@ export async function atualizarCotacao(id: string, tenantSlug: string, state: Ap
         });
       }
     }
+    await persistirItensPosCalculo(row.itens, itensValidados, tx);
     return tx.cotacao.update({
       where: { id },
       data: {
@@ -669,7 +733,7 @@ export async function atualizarCotacao(id: string, tenantSlug: string, state: Ap
     });
   });
 
-  return formatCotacaoSalva(updated as CotacaoComRelacoes, undefined, state.ncmCatalog);
+  return cotacaoRecalculadaFromRow(updated as CotacaoComRelacoes, state);
 }
 
 /** @deprecated use atualizarCotacao */
@@ -677,7 +741,6 @@ export async function atualizarFiscalCotacao(id: string, tenantSlug: string, sta
   return atualizarCotacao(id, tenantSlug, state, opts);
 }
 
-type ItemRowPersist = CotacaoComRelacoes["itens"][number];
 
 function itemDominioFromRow(itemRow: ItemRowPersist): Item {
   const metaAtual = (itemRow.meta as import("@cia/pipeline").ItemMetaPersistido | null) ?? {};
@@ -764,35 +827,29 @@ async function recalcularCotacaoPersistida(
   if (!refreshed) return null;
 
   const { cotacao, itens: itensDb } = mapRowParaDominio(refreshed);
-  const { resultado, itens } = calcularCotacao(cotacao, state);
-  const itensValidados = validarConfirmacaoNcmItens(mesclarOrdemItensPersistidos(itens, itensDb));
-  const itensEnriquecidos = enriquecerItensPdfNcmAudit(
-    itensValidados,
-    criarPdfNcmAuditCtx(state.ncmCatalog),
-  );
-  const canal = canalPredominante(itensEnriquecidos);
+  const calc = calcularCotacao(cotacao, state);
+  const itensValidados = validarConfirmacaoNcmItens(mesclarOrdemItensPersistidos(calc.itens, itensDb));
+  const canal = canalPredominante(itensValidados);
 
-  await prisma.cotacao.update({
-    where: { id: cotacaoId },
-    data: {
-      status: resultado ? "CALCULADA" : rowAntes.status,
-      totalBRL: resultado?.totalBRL ?? null,
-      totalUS: resultado?.totalUS ?? null,
-      canalPredominante: canal,
-      resultadoCalculo: (resultado ?? undefined) as unknown as Prisma.InputJsonValue | undefined,
-      calculadoEm: resultado ? new Date() : rowAntes.calculadoEm,
-    },
+  await prisma.$transaction(async (tx) => {
+    await persistirItensPosCalculo(refreshed.itens, itensValidados, tx);
+    await tx.cotacao.update({
+      where: { id: cotacaoId },
+      data: {
+        status: calc.resultado ? "CALCULADA" : rowAntes.status,
+        totalBRL: calc.resultado?.totalBRL ?? null,
+        totalUS: calc.resultado?.totalUS ?? null,
+        canalPredominante: canal,
+        params: calc.params as Prisma.InputJsonValue,
+        resultadoCalculo: (calc.resultado ?? undefined) as unknown as Prisma.InputJsonValue | undefined,
+        calculadoEm: calc.resultado ? new Date() : rowAntes.calculadoEm,
+      },
+    });
   });
 
-  const salva = formatCotacaoSalva(refreshed as CotacaoComRelacoes, undefined, state.ncmCatalog);
-  return {
-    ...salva,
-    id: cotacaoId,
-    itens: itensEnriquecidos,
-    resultado,
-    criadoEm: refreshed.criadoEm.toISOString(),
-    calculadoEm: resultado ? new Date().toISOString() : salva.calculadoEm,
-  };
+  const rowAtualizado = await buscarCotacaoRow(cotacaoId, tenantSlug);
+  if (!rowAtualizado) return null;
+  return cotacaoRecalculadaFromRow(rowAtualizado as CotacaoComRelacoes, state);
 }
 
 /** Marca item com revisão humana do NCM (persiste em Item.meta). */

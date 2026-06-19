@@ -35,8 +35,9 @@ function fmtBrl(n: number) {
   return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function fmtUsd(n: number) {
-  return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function fmtBrlMoeda(n: number) {
+  if (n < 0) return `R$ -${fmtBrl(Math.abs(n))}`;
+  return `R$ ${fmtBrl(n)}`;
 }
 
 function despesaValor(despesas: Despesa[], ...chaves: string[]) {
@@ -268,7 +269,6 @@ export function PreviewOrcamentoCliente({
               <Linha label={`TRANSPORTE ${cotacao.destino}:`} valor={`R$ ${fmtBrl(despesaValor(despesas, "transporte"))}`} />
               <Linha label={`ESCOLTA ${cotacao.destino}:`} valor={`R$ ${fmtBrl(despesaValor(despesas, "escolta"))}`} />
               <Linha label="DESPACHO HON:" valor={`R$ ${fmtBrl(despesaValor(despesas, "despacho", "honor"))}`} />
-              <Linha label="PROVEITO ECONÔMICO:" valor={`R$ ${fmtBrl(s.markup)}`} />
             </>
           }
           right={
@@ -284,7 +284,7 @@ export function PreviewOrcamentoCliente({
           title="IMPOSTOS DE SAIDA|OUTRAS INFORMAÇÕES"
           left={
             <>
-              <Linha label="DIF IPI:" valor={`R$ ${fmtBrl(s.difIPI)}`} />
+              <Linha label="DIF IPI:" valor={fmtBrlMoeda(s.difIPI)} />
               <Linha label="DIF PIS:" valor={`R$ ${fmtBrl(s.difPIS)}`} />
               <Linha label="DIF COFINS:" valor={`R$ ${fmtBrl(s.difCOFINS)}`} />
               <Linha label="ICMS SAIDA:" valor={`R$ ${fmtBrl(s.icmsSaida)}`} />
@@ -308,7 +308,7 @@ export function PreviewOrcamentoCliente({
         />
 
         {[
-          [totalIntegral, "VALOR DAS DESPESAS + IMPOSTOS REGIME INTEGRAL"],
+          [totalIntegral, "TOTAL"],
           [totalEntreposto, "VALOR DAS DESPESAS - ENTREPOSTO ADUANEIRO SUSPENSOS"],
           [proveitoEconomico, "VALOR DO PROVEITO ECONÔMICO C/ENTREPOSTO ADUANEIRO"],
         ].map(([val, leg], i) => (

@@ -20,7 +20,7 @@ export {
 export { calcSaida, calcAliqMediaIPI } from "./saida.js";
 
 export function calcCotacao(cotacao: CotacaoFiscalInput): ResultadoCotacao {
-  const params = cotacao.params ?? PARAMS_SAIDA_PADRAO;
+  const params = { ...PARAMS_SAIDA_PADRAO, ...cotacao.params };
   const { itens, totais } = calcEntrada(cotacao);
   const saida = calcSaida(cotacao, itens, totais, params);
 

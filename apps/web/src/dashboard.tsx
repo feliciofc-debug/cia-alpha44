@@ -28,6 +28,7 @@ import { BarraResolucaoNcm } from "./barra-resolucao-ncm.tsx";
 import { DisclaimerConciliacaoIa, SeloConciliacaoNcm } from "./ncm-conciliacao-ui.tsx";
 import { aplicarOverrideManualAliquota, desfazerOverrideManualAliquota, type ChaveTributoRastro } from "@cia/shared";
 import { InputFobKgItem } from "./fob-kg-edit.tsx";
+import { FobKgLinhaNcm } from "./fob-kg-linha-ncm.tsx";
 import { DetalheRastroAliquota } from "./lib/aliquota-rastro-ui.tsx";
 import type { ClienteResumo, DashboardKpis, DashboardSeries } from "./lib/types.ts";
 
@@ -414,7 +415,7 @@ function AnalisePainel({
               <th className="p-2">ICMS imp. %</th>
               <th className="p-2">FOB US$</th>
               <th className="p-2">FOB US$/kg</th>
-              <th className="p-2">Ref ComexStat</th>
+              <th className="p-2">Ref FOB/kg</th>
               <th className="p-2">Desvio ref</th>
               <th className="p-2">Canal</th>
             </tr>
@@ -451,6 +452,7 @@ function AnalisePainel({
                     >
                       {fmtNcm(it.ncm || "00000000")}
                     </span>
+                    <FobKgLinhaNcm item={it} />
                     {!ncmInformadoParaFechamento(it) && it.compatibilidadeProduto === "incompativel" && (
                       <span
                         className="mt-0.5 block text-[10px] font-semibold text-orange-400"

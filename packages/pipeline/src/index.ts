@@ -78,6 +78,8 @@ export {
   aplicarPlanilhaChinaCotacao,
   ncmNaPlanilhaChina,
   ncmNaPlanilhaChinaIndex,
+  rotuloFonteFobKgItem,
+  fobKgRelatorioItem,
 } from "./planilha-china-fob.js";
 export { analisarRisco, type RiscoInput } from "./risco.js";
 export {

@@ -47,7 +47,7 @@ export interface Despesa {
 
 /** Parâmetros tributários da cascata de saída (defaults = planilha 66 / regime atual). */
 export interface ParamsSaida {
-  /** Percentual de markup sobre o custo nacionalizado. Default 0.06 (6%). */
+  /** Percentual de markup sobre o custo nacionalizado. Default 0.04 (4%). */
   markupPct: number;
   /** PIS na venda. Default 0.0165 (1,65%). */
   pisSaida: number;
@@ -63,6 +63,12 @@ export interface ParamsSaida {
   irrfBaseNotaPct: number;
   /** Teto da alíquota média de IPI que muda a base do DIF IPI. Default 0.15 (15%). */
   ipiTetoAliqMedia: number;
+  /**
+   * Alíquota IPI na formação de preço (DIF IPI).
+   * undefined = média ponderada FOB (planilha 66 / gabarito).
+   * 0 = crédito integral do IPI de entrada (orçamento Comex Plus).
+   */
+  ipiAliqSaida?: number;
   /** ICMS de entrada (crédito) — diferido em Alagoas. Default 0. */
   icmsEntrada: number;
 }
@@ -166,7 +172,7 @@ export interface ResultadoCotacao {
 
 /** Defaults dos parâmetros de saída (regime CIA/Alagoas). Markup default 6%. */
 export const PARAMS_SAIDA_PADRAO: ParamsSaida = {
-  markupPct: 0.06,
+  markupPct: 0.04,
   pisSaida: 0.0165,
   cofinsSaida: 0.076,
   icmsSaida: 0.04,

@@ -65,7 +65,7 @@ export async function obterSeriesMensais(tenantSlug: string, meses = 12) {
     const chave = chaveMes(r.criadoEm);
     if (!buckets.has(chave)) continue;
     const b = buckets.get(chave)!;
-    const markupPct = (r.params as Cotacao["params"]).markupPct ?? 0.06;
+    const markupPct = (r.params as Cotacao["params"]).markupPct ?? 0.04;
     const resultado = r.resultadoCalculo as ResultadoCotacao | null;
     const fin = extrairResumoFinanceiro(resultado, markupPct);
     const total = numOrNull(r.totalBRL) ?? 0;

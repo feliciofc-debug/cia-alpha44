@@ -29,6 +29,11 @@ function fmtBrl(n: number): string {
   return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function fmtBrlMoeda(n: number): string {
+  if (n < 0) return `R$ -${fmtBrl(Math.abs(n))}`;
+  return `R$ ${fmtBrl(n)}`;
+}
+
 function fmtUsd(n: number): string {
   return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -295,7 +300,6 @@ export async function gerarPdfOrcamentoClienteModelo(payload: PayloadOrcamentoCl
     [`TRANSPORTE ${cotacao.destino}`, despesaValor(despesas, "transporte")],
     [`ESCOLTA ${cotacao.destino}`, despesaValor(despesas, "escolta")],
     ["DESPACHO HON", despesaValor(despesas, "despacho", "honor")],
-    ["PROVEITO ECONÔMICO", s.markup],
   ];
   for (const [lab, val] of taxasLocais) {
     rowPar(doc, `${lab}:`, `R$ ${fmtBrl(val)}`, lx, ly, 100, lv - lx - 4);
@@ -328,7 +332,8 @@ export async function gerarPdfOrcamentoClienteModelo(payload: PayloadOrcamentoCl
     ["MARKUP", s.markup],
   ];
   for (const [lab, val] of impostosSaida) {
-    rowPar(doc, `${lab}:`, `R$ ${fmtBrl(val)}`, lx, ly, 72, lv - lx);
+    const valor = lab === "DIF IPI" ? fmtBrlMoeda(val) : `R$ ${fmtBrl(val)}`;
+    rowPar(doc, `${lab}:`, valor, lx, ly, 72, lv - lx);
     ly += 11;
   }
   doc.fontSize(7.5).font("Helvetica-Bold").text(`GROSS WEIGHT: ${fmtBrl(pesoBruto)}`, rx, y + 22);
@@ -345,7 +350,7 @@ export async function gerarPdfOrcamentoClienteModelo(payload: PayloadOrcamentoCl
   y += b4h + 8;
 
   const totais: [number, string][] = [
-    [totalIntegral, "VALOR DAS DESPESAS + IMPOSTOS REGIME INTEGRAL"],
+    [totalIntegral, "TOTAL"],
     [totalEntreposto, "VALOR DAS DESPESAS - ENTREPOSTO ADUANEIRO SUSPENSOS"],
     [proveitoEconomico, "VALOR DO PROVEITO ECONÔMICO C/ENTREPOSTO ADUANEIRO"],
   ];

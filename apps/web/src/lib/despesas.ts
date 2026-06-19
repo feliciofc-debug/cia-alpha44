@@ -17,7 +17,7 @@ export const DESPESAS_PADRAO = DESPESAS_POR_CONTAINER;
 const OUTRAS_DESPESAS_BASE_POR_CONTAINER = 14_040;
 
 /** Defaults operacionais da planilha 66. */
-export const DEFAULT_FRETE_US = 3500;
+export const DEFAULT_FRETE_US = 4000;
 export const DEFAULT_SISCOMEX_BRL = 154.23;
 
 export function despesasParaContainers(qtdContainers: number): Despesa[] {

@@ -44,6 +44,34 @@ export function usdKg(n: number) {
   return `$ ${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}/kg`;
 }
 
+/** Valor FOB/kg da planilha operacional (PREÇO FOB/KG) para exibir junto ao NCM. */
+export function fobKgPlanilhaNcmInfo(it: Item): {
+  valor: number;
+  naPlanilhaChina: boolean;
+  fonte: string;
+} | null {
+  const fob = fobKgItem(it);
+  if (fob.planilhaOperacional != null && it.benchmark?.fonte === "Histórico próprio") {
+    return {
+      valor: fob.planilhaOperacional,
+      naPlanilhaChina: true,
+      fonte: "Planilha China (PREÇO FOB/KG)",
+    };
+  }
+  if (fob.referencia != null) {
+    return {
+      valor: fob.referencia,
+      naPlanilhaChina: false,
+      fonte: fobKgFonteLabel(it) ?? "referência",
+    };
+  }
+  return null;
+}
+
+export function fmtFobKgPlanilha(n: number): string {
+  return n.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+}
+
 /** Rótulo da fonte FOB/kg efetiva na cotação. */
 export function fobKgFonteLabel(it: Item): string | null {
   if (it.fobPendente) return null;

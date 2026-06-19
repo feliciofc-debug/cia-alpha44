@@ -388,7 +388,11 @@ export interface ResultadoCompleto {
 /** Enriquece itens (benchmark/calibragem/risco) e roda o engine fiscal. */
 export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCompleto {
   const { params: paramsIcms, meta: icms } = aplicarIcmsCotacao(cotacao);
-  const cotacaoIcms = { ...cotacao, params: paramsIcms };
+  const paramsEngine = {
+    ...paramsIcms,
+    ipiAliqSaida: paramsIcms.ipiAliqSaida ?? 0,
+  };
+  const cotacaoIcms = { ...cotacao, params: paramsEngine };
 
   /** Regra global: planilha China (PREÇO FOB/KG) em todos os itens — exceto override manual. */
   const itensComFob = aplicarPlanilhaChinaCotacao(cotacaoIcms.itens, state.benchmarkIndex);
@@ -467,11 +471,11 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
       entraBaseNota: d.entraBaseNota,
     })),
     outrasDespesasBaseBRL: cotacaoIcms.outrasDespesasBaseBRL,
-    params: paramsIcms,
+    params: paramsEngine,
   };
 
   const resultado = calcCotacao(engineInput);
-  return { resultado, itens: validarConfirmacaoNcmItens(itensEnriquecidos), icms, params: paramsIcms };
+  return { resultado, itens: validarConfirmacaoNcmItens(itensEnriquecidos), icms, params: paramsEngine };
 }
 
 export { fobKgFinalItem, fobKgReferenciaItem, fobUsadoNoEngine, pesoEngineItem };

@@ -243,7 +243,7 @@ export const api = {
       despesas: despesasParaContainers(qtdContainers),
       outrasDespesasBaseBRL: outrasDespesasBaseParaContainers(qtdContainers),
       params: {
-        markupPct: 0.06,
+        markupPct: 0.04,
         pisSaida: 0.0165,
         cofinsSaida: 0.076,
         icmsSaida: icmsSaidaParaDestino(destino, benefFiscal),
@@ -251,6 +251,7 @@ export const api = {
         irrfAliq: 0.25,
         irrfBaseNotaPct: 0.027,
         ipiTetoAliqMedia: 0.15,
+        ipiAliqSaida: 0,
         icmsEntrada: 0,
       },
     });

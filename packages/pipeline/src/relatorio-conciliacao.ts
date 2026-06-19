@@ -12,6 +12,7 @@ import {
 } from "@cia/shared";
 import type { ResultadoCotacao } from "@cia/fiscal-engine";
 import { pesoParaBaseFob } from "./detectar-base-peso-fob.js";
+import { fobKgRelatorioItem, rotuloFonteFobKgItem } from "./planilha-china-fob.js";
 
 /** @deprecated T7 — use rastros por tributo (fonteII…fonteCOFINS). */
 export const FONTE_ALIQUOTA_TEC_PADRAO =
@@ -217,7 +218,7 @@ export function montarLinhasConciliacao(itens: Item[]): LinhaConciliacao[] {
     const liqUnit = qtd && liqTot ? liqTot / qtd : null;
     const brutoUnit = qtd && brutoTot ? brutoTot / qtd : null;
     const pesoFob = pesoParaBaseFob(it.fobKgBase ?? "liquido", it.pesoBrutoKg, it.pesoLiqKg);
-    const fobKg = pesoFob > 0 && it.fobTotalUS > 0 ? it.fobTotalUS / pesoFob : null;
+    const fobKg = fobKgRelatorioItem(it);
     const datas = colunasConsultadoEmExport(rastrosEfetivosItem(it));
 
     return {
@@ -246,7 +247,7 @@ export function montarLinhasConciliacao(itens: Item[]): LinhaConciliacao[] {
       fobUnitUS: it.fobUnitarioUS != null ? numFmt(it.fobUnitarioUS, 4) : "—",
       fobTotalUS: it.fobTotalUS > 0 ? numFmt(it.fobTotalUS, 2) : "—",
       fobKg: fobKg != null ? numFmt(fobKg, 4) : "—",
-      fobKgFonte: it.fobKgFonte ?? "—",
+      fobKgFonte: rotuloFonteFobKgItem(it),
       fobKgBase: it.fobKgBase ?? "—",
       avisos: avisosItem(it),
     };
