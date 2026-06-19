@@ -48,7 +48,6 @@ import {
   versoesClassificacaoCacheAtual,
 } from "./classificacao-cache.js";
 import { excluirFotosCotacao, fotoUrlApi, lerFotoItem, salvarFotoItem } from "./fotos.js";
-import type { AppState } from "../state.js";
 import { ensureTenant } from "../auth/tenant.js";
 
 export class PersistenciaIndisponivelError extends Error {
