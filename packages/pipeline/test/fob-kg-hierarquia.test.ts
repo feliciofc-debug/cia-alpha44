@@ -33,10 +33,15 @@ describe("hierarquia FOB/kg — planilha INNOVE antes de ComexStat", () => {
     expect(fobKgParaPreenchimento(b)).toBeCloseTo(MEDIO_DI, 4);
   });
 
-  it("calibrador fixa FOB/kg na média DI da planilha operacional", () => {
+  it("calibrador usa planilha China mesmo com FOB da planilha de embarque", () => {
     const index = buildBenchmarkIndex([], "ref");
     const benchmark = lookupBenchmark(index, NCM_LUSTRE);
-    const cal = calibrarFobKg({ fobKgOriginal: 2.15, pesoLiqKg: 100, benchmark });
+    const cal = calibrarFobKg({
+      fobKgOriginal: 2.15,
+      pesoLiqKg: 100,
+      benchmark,
+      fobKgFonte: "linha",
+    });
     expect(cal.fobKgCalibrado).toBeCloseTo(MEDIO_DI, 4);
     expect(cal.ajustado).toBe(false);
   });

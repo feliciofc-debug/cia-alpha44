@@ -94,7 +94,21 @@ function detectarColunas(header: unknown[]): {
 }
 
 function localizarHeader(rows: unknown[][]): number {
-  const idx = rows.findIndex(
+  const temFobKg = (h: string[]) =>
+    h.some(
+      (x) =>
+        /PRECO\s*FOB|FOB\s*\/?\s*KG|FOB\/KG/.test(x) &&
+        !/IMP|DOLAR\s|PONDER|CIF|VOLUME/.test(x),
+    );
+  const idxCompleto = rows.findIndex((r) => {
+    if (!Array.isArray(r)) return false;
+    const h = r.map(normHeader);
+    const temNcm = h.some((x) => x.includes("NCM") || x.includes("SUBITEM"));
+    return temNcm && temFobKg(h);
+  });
+  if (idxCompleto >= 0) return idxCompleto;
+
+  const idxNcm = rows.findIndex(
     (r) =>
       Array.isArray(r) &&
       r.some((c) => {
@@ -102,7 +116,7 @@ function localizarHeader(rows: unknown[][]): number {
         return n.includes("NCM") || n.includes("SUBITEM");
       }),
   );
-  return idx >= 0 ? idx : 3;
+  return idxNcm >= 0 ? idxNcm : 3;
 }
 
 /** Extrai período do cabeçalho (linha ~3: 2023-S1 / China / marítima). */

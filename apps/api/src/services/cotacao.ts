@@ -5,7 +5,7 @@ import { validarConfirmacaoNcmItens, aplicarIcmsCotacao, ncmInformadoParaFechame
 import {
   analisarRisco,
   anexarMetaFobItem,
-  aplicarRegrasFobItens,
+  aplicarPlanilhaChinaCotacao,
   calibrarFobKg,
   confiancaNcmFinal,
   criarNcmCatalog,
@@ -390,11 +390,8 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
   const { params: paramsIcms, meta: icms } = aplicarIcmsCotacao(cotacao);
   const cotacaoIcms = { ...cotacao, params: paramsIcms };
 
-  const itensComFob = cotacaoIcms.itens.map((it) => {
-    const precisaPreencher = Boolean(it.fobPendente) || (it.fobTotalUS ?? 0) <= 0;
-    if (!precisaPreencher) return it;
-    return aplicarRegrasFobItens([it], state.benchmarkIndex)[0]!;
-  });
+  /** Regra global: planilha China (PREÇO FOB/KG) em todos os itens — exceto override manual. */
+  const itensComFob = aplicarPlanilhaChinaCotacao(cotacaoIcms.itens, state.benchmarkIndex);
 
   const itensEnriquecidos: Item[] = itensComFob.map((it) => {
     const pesoRateio = pesoEngineItem(it);

@@ -187,6 +187,8 @@ describe("resolver FOB/kg — trava e rastro", () => {
 });
 
 describe("fatura 16 — 27/27 base bruta", () => {
+  beforeEach(() => substituirHistoricoBenchmark([]));
+
   it("todas as linhas reconciliam fobKg × pesoBruto", () => {
     const linhas: LinhaCrua[] = fatura16.itens.map((it) => ({
       descOriginal: it.descricao,

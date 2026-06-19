@@ -51,20 +51,7 @@ export function calibrarFobKg(input: CalibradorInput): Calibracao {
   const soPonderada = benchmarkSoPonderado(benchmark);
   const avisoPond = benchmark.avisoBenchmark ?? (soPonderada ? AVISO_BENCHMARK_SO_PONDERADA : "");
 
-  /** FOB informado na planilha do fornecedor / mesma carga — não elevar ao piso DI. */
-  if (fobVeioDaPlanilhaEmbarque(fobKgFonte) && fobKgOriginal > 0) {
-    const desvioBenchmarkPct =
-      refPrim && refPrim > 0 ? ((fobKgOriginal - refPrim) / refPrim) * 100 : null;
-    return {
-      fobKgOriginal,
-      fobKgCalibrado: fobKgOriginal,
-      desvioBenchmarkPct,
-      ajustado: false,
-      justificativa: `FOB/KG US$ ${fobKgOriginal.toFixed(4)}/kg da planilha de embarque`,
-    };
-  }
-
-  /** Planilha operacional INNOVE (IMPORTAÇÕES DA CHINA) — média DI soberana. */
+  /** Planilha operacional INNOVE (IMPORTAÇÕES DA CHINA) — média DI soberana sobre embarque. */
   if (benchmark.fonte === "Histórico próprio" && refPrim != null && refPrim > 0) {
     const desvioBenchmarkPct =
       fobKgOriginal > 0 ? ((fobKgOriginal - refPrim) / refPrim) * 100 : null;
@@ -74,6 +61,19 @@ export function calibrarFobKg(input: CalibradorInput): Calibracao {
       desvioBenchmarkPct,
       ajustado: false,
       justificativa: `FOB/KG US$ ${refPrim.toFixed(4)}/kg (${benchmark.rastroFonte ?? "planilha operacional"})`,
+    };
+  }
+
+  /** FOB da planilha de embarque — só quando o NCM não está na planilha China. */
+  if (fobVeioDaPlanilhaEmbarque(fobKgFonte) && fobKgOriginal > 0) {
+    const desvioBenchmarkPct =
+      refPrim && refPrim > 0 ? ((fobKgOriginal - refPrim) / refPrim) * 100 : null;
+    return {
+      fobKgOriginal,
+      fobKgCalibrado: fobKgOriginal,
+      desvioBenchmarkPct,
+      ajustado: false,
+      justificativa: `FOB/KG US$ ${fobKgOriginal.toFixed(4)}/kg da planilha de embarque`,
     };
   }
 

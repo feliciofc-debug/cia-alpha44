@@ -74,6 +74,11 @@ export {
   type FobKgMeta,
 } from "./resolver-fob-kg.js";
 export { calibrarFobKg, calcFobKg, type CalibradorInput } from "./calibrador.js";
+export {
+  aplicarPlanilhaChinaCotacao,
+  ncmNaPlanilhaChina,
+  ncmNaPlanilhaChinaIndex,
+} from "./planilha-china-fob.js";
 export { analisarRisco, type RiscoInput } from "./risco.js";
 export {
   parsePlanilhaBuffer,

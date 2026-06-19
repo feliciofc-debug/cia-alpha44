@@ -7,8 +7,13 @@ import type { BenchmarkIndex } from "./benchmark.js";
 import { lookupBenchmark, normalizarNcm } from "./benchmark.js";
 
 function fonteSubstituivelPorPlanilha(fonte?: string): boolean {
-  if (!fonte || fonte === FOB_KG_FONTE_PENDENTE || fonte === FOB_KG_FONTE_LINHA) return false;
+  if (!fonte || fonte === FOB_KG_FONTE_PENDENTE) return false;
+  if (fonte === FOB_KG_FONTE_LINHA) return true;
   return fonte.startsWith("comexstat") || fonte.startsWith("ncm-irmao(");
+}
+
+function planilhaChinaTemNcm(index: BenchmarkIndex, ncm: string): boolean {
+  return lookupBenchmark(index, ncm).fonte === "Histórico próprio";
 }
 import { fobKgParaPreenchimento } from "./benchmark-metrics.js";
 import {
@@ -188,23 +193,36 @@ export function resolverFobKgPlanilha(
     }
 
     const fobKgCol = fobKgColPorIndice?.get(i);
+    const baseDetLinha = detectarMetaLinha(l, fobKgCol);
+    const pesoBaseLinha = pesoParaBaseFob(baseDetLinha.fobKgBase, l.pesoBrutoKg, l.pesoLiqKg);
+    const pesoLiq = l.pesoLiqKg ?? 0;
+
+    /** 1) Planilha China (PREÇO FOB/KG) · 2) embarque · 3) ComexStat · 4) NCM irmão. */
+    if (planilhaChinaTemNcm(benchmarkIndex, l.ncm ?? "")) {
+      const benchChina = resolverBenchmark(l.ncm ?? "", pesoLiq, l.qtd, l.fobUnitarioUS, benchmarkIndex);
+      if (benchChina) {
+        metas.push(benchChina.meta);
+        return {
+          ...l,
+          fobTotalUS: benchChina.fobTotalUS,
+          fobUnitarioUS: benchChina.fobUnitarioUS,
+        };
+      }
+    }
+
     if (linhaTemFobExplicito(l)) {
-      const det = detectarMetaLinha(l, fobKgCol);
-      const avisos = [...det.avisos];
+      const avisos = [...baseDetLinha.avisos];
       if (l.avisosQtd?.length) avisos.push(...l.avisosQtd);
       metas.push({
         fobKgFonte: FOB_KG_FONTE_LINHA,
-        fobKgBase: det.fobKgBase,
+        fobKgBase: baseDetLinha.fobKgBase,
         fobKgAvisos: avisos.length ? avisos : undefined,
       });
       return l;
     }
 
-    const baseDet = detectarMetaLinha(l, fobKgCol);
-    const pesoBase = pesoParaBaseFob(baseDet.fobKgBase, l.pesoBrutoKg, l.pesoLiqKg);
-    const pesoLiq = l.pesoLiqKg ?? 0;
+    const pesoBase = pesoBaseLinha;
 
-    /** 1) Planilha operacional INNOVE / ComexStat · 2) NCM irmão na mesma carga. */
     const bench = resolverBenchmark(l.ncm ?? "", pesoLiq, l.qtd, l.fobUnitarioUS, benchmarkIndex);
     if (bench) {
       metas.push(bench.meta);
@@ -254,6 +272,35 @@ function resolverItemInterno(
       item: { ...it, qtd, fobUnitarioUS: unit, fobTotalUS: unit * qtd },
       meta: metaPrecoCusto(tipo),
     };
+  }
+
+  if (it.fobKgManual != null && it.fobKgManual > 0) {
+    return {
+      item: it,
+      meta: {
+        fobKgFonte: it.fobKgFonte ?? FOB_KG_FONTE_LINHA,
+        fobPendente: it.fobPendente,
+        fobKgBase: it.fobKgBase,
+        fobKgAvisos: it.fobKgAvisos,
+      },
+    };
+  }
+
+  if (planilhaChinaTemNcm(benchmarkIndex, it.ncm ?? "")) {
+    const pesoLiqChina = it.pesoLiqKg ?? 0;
+    const benchChina = resolverBenchmark(
+      it.ncm ?? "",
+      pesoLiqChina,
+      it.qtd,
+      it.fobUnitarioUS,
+      benchmarkIndex,
+    );
+    if (benchChina) {
+      return {
+        item: { ...it, fobTotalUS: benchChina.fobTotalUS, fobUnitarioUS: benchChina.fobUnitarioUS },
+        meta: benchChina.meta,
+      };
+    }
   }
 
   if (it.fobTotalUS > 0 && it.fobKgFonte && it.fobKgFonte !== FOB_KG_FONTE_PENDENTE) {

@@ -136,10 +136,13 @@ export function BenchmarkReferenciaView() {
       <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-slate-500">
         <p className="font-medium text-slate-400">Ordem de prioridade do FOB/kg na cotação</p>
         <ol className="mt-2 list-inside list-decimal space-y-1">
-          <li>FOB da planilha do fornecedor (embarque)</li>
-          <li>FOB/kg de NCM próximo na mesma carga</li>
-          <li>Esta planilha mensal de referência (Histórico próprio)</li>
-          <li>ComexStat MDIC (benchmark / canal de risco)</li>
+          <li>Override manual do operador (se editado na tela)</li>
+          <li>
+            <strong className="text-slate-300">Esta planilha China</strong> — coluna PREÇO FOB/KG (média DI) para{" "}
+            <strong className="text-slate-300">todos os NCMs</strong> encontrados
+          </li>
+          <li>ComexStat (NCM mais próximo) — só quando o código não está na planilha China</li>
+          <li>FOB da planilha de embarque do fornecedor — só se não houver referência acima</li>
         </ol>
       </div>
     </div>
