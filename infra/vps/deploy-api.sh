@@ -27,6 +27,12 @@ else
   cd "$APP_DIR"
 fi
 
+# Reexecuta após pull para aplicar alterações deste script (ex.: sync benchmark).
+if [[ "${DEPLOY_API_RERUN:-}" != "1" ]]; then
+  export DEPLOY_API_RERUN=1
+  exec bash "$APP_DIR/infra/vps/deploy-api.sh"
+fi
+
 if [[ -n "$VPS_ENV_BACKUP" && -f "$VPS_ENV_BACKUP" ]]; then
   mkdir -p "$APP_DIR/infra/vps"
   cp "$VPS_ENV_BACKUP" "$APP_DIR/infra/vps/.env"
