@@ -14,6 +14,8 @@ export interface LinhaCrua {
   pesoLiqKg: number | null;
   fobUnitarioUS: number | null;
   fobTotalUS: number | null;
+  /** Coluna VALOR FOB/kg da planilha do fornecedor (quando detectada). */
+  fobKgReferencia?: number | null;
   dimensoes?: string | null;
   /** Material (材质) — coluna fornecedor. */
   material?: string | null;

@@ -409,6 +409,7 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
           benchmark,
           fobTotalUS: it.fobTotalUS,
           pesoLiqKg: pesoRateio,
+          fobKgFonte: it.fobKgFonte,
         });
     const risco = analisarRisco({
       benchmark,

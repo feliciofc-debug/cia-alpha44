@@ -4,6 +4,7 @@ import {
   buildBenchmarkIndex,
   criarNcmCatalog,
   criarTecSource,
+  getHistoricoBenchmarkStats,
   historicoFromPlanilhaSeed,
   loadBenchmarkPlanilha,
   loadComexSeed,
@@ -49,6 +50,17 @@ function carregarHistoricoPlanilha(): void {
   }
 }
 
+function avisoHistoricoAusente(): void {
+  const stats = getHistoricoBenchmarkStats();
+  if (stats.total === 0) {
+    console.warn(
+      "[cia] Planilha FOB/kg operacional (IMPORTAÇÕES DA CHINA) não carregada — " +
+        "cotações usarão ComexStat (~2–3× acima da média DI). " +
+        "Faça upload em /api/benchmark/planilha/upload ou rode tools/import-benchmark-china.cjs",
+    );
+  }
+}
+
 function buildIndexComPlanilha(comexItens: ComexEntry[]): BenchmarkIndex {
   let planilhaPeriodo: string | null = null;
   try {
@@ -68,6 +80,7 @@ export function getState(): AppState {
   if (state) return state;
   const comex = loadComexSeed();
   carregarHistoricoPlanilha();
+  avisoHistoricoAusente();
   const tec = loadTecCache();
   const benchmarkIndex = buildIndexComPlanilha(comex.itens);
   const siscomex = escolherSiscomexProvider();

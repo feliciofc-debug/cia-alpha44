@@ -68,6 +68,13 @@ else
 fi
 
 mkdir -p /var/lib/cia-alpha44
+BENCH_DST="/var/lib/cia-alpha44/benchmark-fob-kg.json"
+BENCH_SRC="$APP_DIR/packages/pipeline/dist/data/benchmark-fob-kg-innove.json"
+if [[ -f "$BENCH_SRC" ]]; then
+  cp "$BENCH_SRC" "$BENCH_DST"
+  chmod 644 "$BENCH_DST"
+  echo "   Planilha FOB/kg operacional: $BENCH_DST ($(wc -c < "$BENCH_DST") bytes)"
+fi
 if ! grep -q '^BENCHMARK_PLANILHA_PATH=' "$ENV_API" 2>/dev/null; then
   echo "BENCHMARK_PLANILHA_PATH=/var/lib/cia-alpha44/benchmark-fob-kg.json" >> "$ENV_API"
   echo "   (+ BENCHMARK_PLANILHA_PATH em $ENV_API)"

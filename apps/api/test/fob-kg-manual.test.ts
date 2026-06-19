@@ -49,6 +49,26 @@ describe("fobKgManual — override soberano", () => {
     expect(fobKgFinalItem(it, calibracao)).toBeCloseTo(2.5, 4);
   });
 
+  it("fobUsadoNoEngine prioriza planilha operacional INNOVE sobre FOB embarque", () => {
+    const benchInnove = {
+      ...benchmark,
+      fonte: "Histórico próprio" as const,
+      fobKgMedioDI: 1.9072,
+      mediaFobKg: 1.9072,
+      fobKgPonderado: 4.5163,
+      rastroFonte: "planilha-mensal(2023-S1):media-DI",
+    };
+    const calibracao = calibrarFobKg({
+      fobKgOriginal: 2.15,
+      benchmark: benchInnove,
+      fobTotalUS: 215,
+      pesoLiqKg: 100,
+      fobKgFonte: "linha",
+    });
+    const it = itemBase({ fobTotalUS: 215, pesoLiqKg: 100, benchmark: benchInnove, fobKgFonte: "linha" });
+    expect(fobUsadoNoEngine(it, calibracao)).toBeCloseTo(190.72, 1);
+  });
+
   it("fobKgManual null mantém hierarquia planilha/calibragem", () => {
     const calibracao = calibrarFobKg({
       fobKgOriginal: 0.5,

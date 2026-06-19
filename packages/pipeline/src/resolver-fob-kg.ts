@@ -199,16 +199,7 @@ export function resolverFobKgPlanilha(
     const pesoBase = pesoParaBaseFob(baseDet.fobKgBase, l.pesoBrutoKg, l.pesoLiqKg);
     const pesoLiq = l.pesoLiqKg ?? 0;
 
-    const irmao = resolverIrmao(l.ncm ?? "", indice, pesoBase, l.qtd, l.fobUnitarioUS);
-    if (irmao) {
-      metas.push(irmao.meta);
-      return {
-        ...l,
-        fobTotalUS: irmao.fobTotalUS,
-        fobUnitarioUS: irmao.fobUnitarioUS,
-      };
-    }
-
+    /** 1) Planilha operacional INNOVE / ComexStat · 2) NCM irmão na mesma carga. */
     const bench = resolverBenchmark(l.ncm ?? "", pesoLiq, l.qtd, l.fobUnitarioUS, benchmarkIndex);
     if (bench) {
       metas.push(bench.meta);
@@ -216,6 +207,16 @@ export function resolverFobKgPlanilha(
         ...l,
         fobTotalUS: bench.fobTotalUS,
         fobUnitarioUS: bench.fobUnitarioUS,
+      };
+    }
+
+    const irmao = resolverIrmao(l.ncm ?? "", indice, pesoBase, l.qtd, l.fobUnitarioUS);
+    if (irmao) {
+      metas.push(irmao.meta);
+      return {
+        ...l,
+        fobTotalUS: irmao.fobTotalUS,
+        fobUnitarioUS: irmao.fobUnitarioUS,
       };
     }
 
@@ -286,19 +287,19 @@ function resolverItemInterno(
   const pesoBase = pesoParaBaseFob(baseDet.fobKgBase, it.pesoBrutoKg, it.pesoLiqKg);
   const pesoLiq = it.pesoLiqKg ?? 0;
 
-  const irmao = resolverIrmao(it.ncm ?? "", indice, pesoBase, it.qtd, it.fobUnitarioUS);
-  if (irmao) {
-    return {
-      item: { ...it, fobTotalUS: irmao.fobTotalUS, fobUnitarioUS: irmao.fobUnitarioUS },
-      meta: irmao.meta,
-    };
-  }
-
   const bench = resolverBenchmark(it.ncm ?? "", pesoLiq, it.qtd, it.fobUnitarioUS, benchmarkIndex);
   if (bench) {
     return {
       item: { ...it, fobTotalUS: bench.fobTotalUS, fobUnitarioUS: bench.fobUnitarioUS },
       meta: bench.meta,
+    };
+  }
+
+  const irmao = resolverIrmao(it.ncm ?? "", indice, pesoBase, it.qtd, it.fobUnitarioUS);
+  if (irmao) {
+    return {
+      item: { ...it, fobTotalUS: irmao.fobTotalUS, fobUnitarioUS: irmao.fobUnitarioUS },
+      meta: irmao.meta,
     };
   }
 

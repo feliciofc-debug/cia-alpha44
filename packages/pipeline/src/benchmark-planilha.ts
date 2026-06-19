@@ -58,17 +58,30 @@ function detectarColunas(header: unknown[]): {
   const iNcmFallback = h.findIndex((x) => x.includes("NCM"));
   const idxNcm = iNcm >= 0 ? iNcm : iNcmFallback >= 0 ? iNcmFallback : 0;
 
-  let iFobKgMedioDI = h.findIndex((x) => /FOB\s*\/?\s*KG|FOB\/KG|US\$\/KG|USD\/KG|FOB KG/.test(x));
+  /** Coluna soberana: "PREÇO FOB/KG" (média DI) — nunca "PRECO DOLAR/Kg IMP" (ponderada). */
+  let iFobKgMedioDI = h.findIndex(
+    (x) =>
+      (/PRECO\s*FOB|FOB\s*\/?\s*KG/.test(x) || /US\$?\s*\/?\s*KG/.test(x)) &&
+      !/IMP|DOLAR\s|PONDER|CIF|VOLUME/.test(x),
+  );
+  if (iFobKgMedioDI < 0) {
+    iFobKgMedioDI = h.findIndex(
+      (x) => /FOB\s*\/?\s*KG|FOB\/KG|FOB KG/.test(x) && !/IMP|DOLAR|PONDER/.test(x),
+    );
+  }
   if (iFobKgMedioDI < 0) iFobKgMedioDI = 3;
 
   let iFobKgPonderado = h.findIndex(
-    (x, i) => i !== iFobKgMedioDI && /PONDER|VOLUME|FOB.*2|FOB\s*\/?\s*KG/.test(x),
+    (x, i) =>
+      i !== iFobKgMedioDI &&
+      (/PONDER|VOLUME|DOLAR.*KG.*IMP|PRECO DOLAR/.test(x) ||
+        (/FOB\s*\/?\s*KG|FOB\/KG/.test(x) && /IMP|DOLAR/.test(x))),
   );
   if (iFobKgPonderado < 0) iFobKgPonderado = iFobKgMedioDI >= 0 ? iFobKgMedioDI + 1 : 4;
 
   const iDesc = h.findIndex((x) => /DESC|PRODUTO|NOME/.test(x));
   const iCifKg = h.findIndex((x) => /CIF\s*\/?\s*KG|CIF\/KG/.test(x));
-  const iAmostra = h.findIndex((x) => /AMOSTRA|QTD|DI|CONTAGEM/.test(x));
+  const iAmostra = h.findIndex((x) => /QTDE\s*DI|AMOSTRA|CONTAGEM/.test(x));
 
   return {
     iNcm: idxNcm,

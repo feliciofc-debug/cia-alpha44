@@ -16,7 +16,7 @@
     "src"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/copy-data.cjs",
     "test": "vitest run"
   },
   "dependencies": {

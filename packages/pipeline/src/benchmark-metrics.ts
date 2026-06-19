@@ -14,9 +14,20 @@ export function benchmarkSoPonderado(b: Benchmark): boolean {
   return b.fonte === "ComexStat" && !b.fobKgMedioDI && (b.fobKgPonderado ?? 0) > 0;
 }
 
-/** FOB/kg para preenchimento de lacuna (pode usar ponderada com aviso). */
+/** FOB/kg operacional — sempre média DI; ponderada só exibição secundária. */
+export function fobKgOperacionalBenchmark(b: Benchmark): number | null {
+  if (b.fonte === "Histórico próprio") {
+    return b.fobKgMedioDI ?? b.mediaFobKg ?? null;
+  }
+  return referenciaPrimariaBenchmark(b) ?? null;
+}
+
+/** FOB/kg para preenchimento de lacuna — planilha INNOVE primeiro; ComexStat só fallback. */
 export function fobKgParaPreenchimento(b: Benchmark): number | null {
-  return referenciaPrimariaBenchmark(b) ?? b.fobKgPonderado ?? b.mediaFobKg ?? null;
+  const operacional = fobKgOperacionalBenchmark(b);
+  if (operacional != null && operacional > 0) return operacional;
+  if (b.fonte === "ComexStat") return b.fobKgPonderado ?? null;
+  return b.mediaFobKg ?? null;
 }
 
 /** Rótulo de período real dos dados (ex.: 2023-S1, 2024-07..2025-06). */

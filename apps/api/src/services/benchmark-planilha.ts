@@ -29,7 +29,10 @@ export function statusBenchmarkPlanilha() {
 
 function aplicarSeed(state: AppState, seed: BenchmarkPlanilhaSeed) {
   substituirHistoricoBenchmark(historicoFromPlanilhaSeed(seed));
-  state.benchmarkIndex = buildBenchmarkIndex(state.comexSeed);
+  state.benchmarkIndex = buildBenchmarkIndex(state.comexSeed, state.benchmarkIndex?.contexto, {
+    planilhaPeriodo: seed.periodoReferencia ?? null,
+    comexstatPeriodo: state.benchmarkIndex?.comexstatPeriodo ?? null,
+  });
 }
 
 export function recarregarBenchmarkPlanilha(state: AppState): BenchmarkPlanilhaSeed | null {

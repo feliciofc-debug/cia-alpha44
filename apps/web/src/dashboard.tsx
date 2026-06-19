@@ -622,14 +622,29 @@ function AnalisePainel({
                     )}
                   </td>
                   <td className="p-2 whitespace-nowrap">
-                    {it.benchmark?.mediaFobKg != null ? (
-                      <>
-                        <span className="text-emerald-300">{usdKg(it.benchmark.mediaFobKg)}</span>
-                        <span className="block text-[10px] text-slate-500">{it.benchmark.fonte}</span>
-                      </>
-                    ) : (
-                      <span className="text-slate-500">sem ref</span>
-                    )}
+                    {(() => {
+                      const refDi = it.benchmark?.fobKgMedioDI ?? it.benchmark?.mediaFobKg;
+                      const refPond = it.benchmark?.fobKgPonderado;
+                      if (refDi != null) {
+                        return (
+                          <>
+                            <span className="text-emerald-300">{usdKg(refDi)}</span>
+                            <span className="block text-[10px] text-slate-500">
+                              {it.benchmark?.fonte === "Histórico próprio" ? "planilha China" : it.benchmark?.fonte}
+                            </span>
+                          </>
+                        );
+                      }
+                      if (refPond != null) {
+                        return (
+                          <>
+                            <span className="text-amber-300">{usdKg(refPond)}</span>
+                            <span className="block text-[10px] text-amber-500/90">ComexStat (fallback)</span>
+                          </>
+                        );
+                      }
+                      return <span className="text-slate-500">sem ref</span>;
+                    })()}
                   </td>
                   <td className="p-2 whitespace-nowrap">
                     {it.benchmark?.mediaFobKg != null ? (

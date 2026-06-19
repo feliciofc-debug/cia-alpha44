@@ -57,6 +57,7 @@ export interface LinhaFornecedor {
   pesoBrutoKg: number | null;
   precoUnitario: number | null;
   fobTotalUS: number | null;
+  fobKgReferencia?: number | null;
   ncm: string | null;
   material?: string | null;
   uso?: string | null;
@@ -210,6 +211,7 @@ function extrairLinhasComColunas(
       pesoBrutoKg,
       precoUnitario,
       fobTotalUS,
+      fobKgReferencia: fobKgRef,
       ncm: ncm && ncm.length === 8 ? ncm : null,
       material,
       uso,
@@ -790,6 +792,7 @@ function resultadoParaSupplier(parsed: ResultadoParse): ParsedSupplierFile {
       pesoLiqKg: l.pesoLiqKg,
       fobUnitarioUS: l.precoUnitario,
       fobTotalUS,
+      fobKgReferencia: l.fobKgReferencia ?? null,
       dimensoes: null,
       material: l.material ?? null,
       uso: l.uso ?? null,

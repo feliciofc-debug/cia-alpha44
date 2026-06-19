@@ -5,6 +5,7 @@
 
 import type { Item } from "@cia/shared";
 import { normalizarNcm } from "./benchmark.js";
+import { distanciaNcm, DISTANCIA_MAX_NCM_PROXIMO } from "./ncm-distancia.js";
 import {
   detectarBasePesoFob,
   pesoParaBaseFob,
@@ -31,7 +32,7 @@ export interface PreenchimentoFobKgPlanilha {
 }
 
 /** Herança NCM irmão — no máximo mesma posição (4 díg.). */
-export const DISTANCIA_MAX_NCM_IRMAO = 4;
+export const DISTANCIA_MAX_NCM_IRMAO = DISTANCIA_MAX_NCM_PROXIMO;
 
 /** FOB/kg calculado da própria linha (total ÷ peso base detectado). */
 export function fobKgDaLinha(l: LinhaCrua, fobKgCol?: number | null): number | null {
@@ -101,14 +102,7 @@ export function indiceFobKgItens(itens: Item[]): Map<string, ReferenciaFobKgPlan
   return map;
 }
 
-/** Distância entre NCMs — quanto menor, mais próximo (prioriza prefixos 8→6→4→2 dígitos). */
-export function distanciaNcm(a: string, b: string): number {
-  if (a === b) return 0;
-  for (const len of [8, 6, 4, 2] as const) {
-    if (a.slice(0, len) === b.slice(0, len)) return 8 - len;
-  }
-  return 9;
-}
+export { distanciaNcm } from "./ncm-distancia.js";
 
 /** NCM com FOB/kg na planilha mais próximo do alvo (exato primeiro). */
 export function fobKgNcmMaisProximo(

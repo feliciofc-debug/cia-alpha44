@@ -8,6 +8,7 @@ import type { Benchmark, FonteBenchmark } from "@cia/shared";
 import { formatNcm } from "@cia/shared";
 import comexstatData from "./data/comexstat-china-2023s1.json" with { type: "json" };
 import { AVISO_BENCHMARK_SO_PONDERADA, periodoLabel } from "./benchmark-metrics.js";
+import { ncmMaisProximoNoMap } from "./ncm-distancia.js";
 
 export interface ComexStatEntry {
   ncm: string;
@@ -165,6 +166,12 @@ export function buildBenchmarkIndex(
   };
 }
 
+function rotuloNcmProximo(ncmAlvo: string, ncmRef: string, dist: number): string {
+  if (dist <= 0) return formatNcm(ncmAlvo);
+  const prefixo = 8 - dist;
+  return `${formatNcm(ncmAlvo)} via ${formatNcm(ncmRef)} (prefixo ${prefixo}d)`;
+}
+
 function lookupFromMaps(
   key: string,
   comex: Map<string, ComexStatEntry>,
@@ -172,21 +179,28 @@ function lookupFromMaps(
   contexto: string,
   meta: BenchmarkMeta = {},
 ): Benchmark {
-  const hist = historico.get(key);
-  const cs = comex.get(key);
   const periodoPlanilha = meta.planilhaPeriodo ?? "referencia";
   const periodoComex = meta.comexstatPeriodo ?? DEFAULT_COMEX_PERIODO;
+
+  const histHit = ncmMaisProximoNoMap(key, historico);
+  const hist = histHit?.entry;
+  const histProx = histHit && histHit.dist > 0;
 
   if (hist) {
     const medioDI = entryMedioDI(hist);
     if (medioDI) {
-      const ponderado = hist.fobKgPonderado ?? cs?.fobKg ?? null;
+      const csExato = comex.get(key);
+      const ponderado = hist.fobKgPonderado ?? csExato?.fobKg ?? null;
       const piso = calcPisoDefensavel(medioDI, hist.amostra);
       const teto = calcTetoHeuristico(medioDI, hist.amostra);
       const notaPond =
         ponderado != null
           ? ` · ponderado US$ ${ponderado.toFixed(4)}/kg`
           : "";
+      const rotulo = rotuloNcmProximo(key, hist.ncm, histHit!.dist);
+      const rastro = histProx
+        ? `planilha-mensal(${periodoPlanilha}):media-DI-proximo`
+        : `planilha-mensal(${periodoPlanilha}):media-DI`;
       return {
         fonte: "Histórico próprio",
         fobKgMedioDI: medioDI,
@@ -196,13 +210,21 @@ function lookupFromMaps(
         teto,
         amostra: hist.amostra,
         amostraDIs: hist.amostra,
-        rastroFonte: `planilha-mensal(${periodoPlanilha}):media-DI`,
-        nota: `Média DI US$ ${medioDI.toFixed(4)}/kg (${hist.amostra} ref.)${notaPond} · NCM ${formatNcm(key)}`,
+        rastroFonte: rastro,
+        nota: `Média DI US$ ${medioDI.toFixed(4)}/kg (${hist.amostra} ref.)${notaPond} · ${rotulo}`,
       };
     }
   }
 
+  const csHit = ncmMaisProximoNoMap(key, comex);
+  const cs = csHit?.entry;
+  const csProx = csHit && csHit.dist > 0;
+
   if (cs && cs.fobKg > 0) {
+    const rotulo = rotuloNcmProximo(key, cs.ncm, csHit!.dist);
+    const rastro = csProx
+      ? `comexstat(${periodoComex}):ponderada-proximo`
+      : `comexstat(${periodoComex}):ponderada`;
     return {
       fonte: "ComexStat",
       fobKgMedioDI: null,
@@ -211,9 +233,9 @@ function lookupFromMaps(
       pisoDefensavel: null,
       teto: null,
       amostra: cs.amostra,
-      rastroFonte: `comexstat(${periodoComex}):ponderada`,
+      rastroFonte: rastro,
       avisoBenchmark: AVISO_BENCHMARK_SO_PONDERADA,
-      nota: `ComexStat ponderado US$ ${cs.fobKg.toFixed(4)}/kg · ${contexto} · NCM ${formatNcm(key)}`,
+      nota: `ComexStat ponderado US$ ${cs.fobKg.toFixed(4)}/kg · ${contexto} · ${rotulo}`,
     };
   }
 
