@@ -57,22 +57,30 @@ for (const it of itens) {
 }
 
 const exp = await fetch(`${API}/api/cotacoes/${COT_ID}/conciliacao?formato=csv`, { headers: h });
+if (!exp.ok) {
+  console.error("export falhou", exp.status, await exp.text().then((t) => t.slice(0, 200)));
+  process.exit(1);
+}
 const csvBuf = Buffer.from(await exp.arrayBuffer());
 const csv = csvBuf.toString("utf8");
 const lines = csv.split(/\r?\n/).filter(Boolean);
-const header = lines[1]?.split(";") ?? [];
-const ncmIdx = header.indexOf("NCM");
-const fonteIdx = header.indexOf("Fonte NCM");
+const headerLine = lines.find((l) => l.includes("NCM") && l.includes("Fonte NCM")) ?? lines[0] ?? "";
+const header = headerLine.split(";");
+const ncmIdx = header.findIndex((h) => h.replace(/\uFEFF/g, "") === "NCM");
+const fonteIdx = header.findIndex((h) => h === "Fonte NCM");
+const dataStart = lines.indexOf(headerLine) + 1;
 
 console.log("\n--- Export CSV ---");
 console.log(`Linhas dados: ${Math.max(0, lines.length - 3)} | col NCM idx=${ncmIdx} | Fonte NCM idx=${fonteIdx}`);
 
 let csvBad = 0;
-for (let i = 2; i < lines.length - 1; i++) {
-  const cols = lines[i].split(";");
+for (let i = dataStart; i < lines.length; i++) {
+  const line = lines[i];
+  if (line.startsWith("TOTAIS") || !line.trim()) continue;
+  const cols = line.split(";");
   const ncmCsv = cols[ncmIdx]?.replace(/\D/g, "").slice(0, 8);
   const fonteCsv = cols[fonteIdx];
-  const it = itens[i - 2];
+  const it = itens[i - dataStart];
   if (!it) continue;
   const hit = resolverNcmConciliacaoPlanilhaChina(it, planilha, benchmarkIndex);
   if (!hit || ncmCsv !== hit.ncm || fonteCsv !== "planilha China") {

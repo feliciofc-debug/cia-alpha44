@@ -5,8 +5,7 @@
 
 import type { Item } from "@cia/shared";
 import type { BenchmarkPlanilhaEntry } from "./benchmark-planilha.js";
-import { lookupBenchmark, normalizarNcm, type BenchmarkIndex } from "./benchmark.js";
-import { fobKgParaPreenchimento } from "./benchmark-metrics.js";
+import { normalizarNcm, type BenchmarkIndex } from "./benchmark.js";
 import { detectarFamilia, prefixoBuscaPrincipal } from "./classificar-ncm.js";
 import { ncmNaPlanilhaChinaIndex } from "./planilha-china-fob.js";
 
@@ -101,50 +100,31 @@ export function resolverNcmConciliacaoPlanilhaChina(
 ): PlanilhaChinaNcmHit | null {
   if (!planilhaItens.length) return null;
 
+  const rowFromNcm = (ncm: string): PlanilhaChinaNcmHit | null => {
+    const key = normalizarNcm(ncm);
+    if (!key || key === "00000000") return null;
+    const row = planilhaItens.find((r) => normalizarNcm(r.ncm) === key);
+    const fobKg = row?.fobKgMedioDI ?? row?.fobKg ?? 0;
+    if (!row || fobKg <= 0) return null;
+    if (benchmarkIndex && !ncmNaPlanilhaChinaIndex(benchmarkIndex, key)) return null;
+    return { ncm: key, desc: row.desc, fobKgMedioDI: fobKg, score: 1 };
+  };
+
+  // 1. Candidatos IA/classificação presentes na planilha China (identificação por produto).
+  for (const c of it.ncmCandidatos ?? []) {
+    const hit = rowFromNcm(c.ncm);
+    if (hit) return hit;
+  }
+
+  // 2. Busca textual na planilha China pela descrição traduzida do produto.
   const cap = capBuscaItem(it);
   const texto = textoBuscaItem(it);
   const hits = buscarNcmPlanilhaChinaPorDescricao(texto, planilhaItens, { capitulo4: cap, limite: 8 });
+  if (hits.length) return hits[0]!;
 
-  if (hits.length) {
-    const candidatos = new Set((it.ncmCandidatos ?? []).map((c) => normalizarNcm(c.ncm)));
-    const boost = hits.find((h) => candidatos.has(h.ncm));
-    if (boost) return boost;
-    return hits[0]!;
-  }
-
-  if (benchmarkIndex) {
-    for (const c of it.ncmCandidatos ?? []) {
-      const ncm = normalizarNcm(c.ncm);
-      if (ncmNaPlanilhaChinaIndex(benchmarkIndex, ncm)) {
-        const bench = lookupBenchmark(benchmarkIndex, ncm);
-        const fobKg = fobKgParaPreenchimento(bench);
-        if (fobKg != null && fobKg > 0) {
-          const row = planilhaItens.find((r) => normalizarNcm(r.ncm) === ncm);
-          return {
-            ncm,
-            desc: row?.desc ?? bench.nota ?? "",
-            fobKgMedioDI: fobKg,
-            score: 1,
-          };
-        }
-      }
-    }
-
-    const ncmOp = normalizarNcm(it.ncm ?? "");
-    if (ncmOp && ncmNaPlanilhaChinaIndex(benchmarkIndex, ncmOp)) {
-      const bench = lookupBenchmark(benchmarkIndex, ncmOp);
-      const fobKg = fobKgParaPreenchimento(bench);
-      if (fobKg != null && fobKg > 0) {
-        const row = planilhaItens.find((r) => normalizarNcm(r.ncm) === ncmOp);
-        return {
-          ncm: ncmOp,
-          desc: row?.desc ?? bench.nota ?? "",
-          fobKgMedioDI: fobKg,
-          score: 0.5,
-        };
-      }
-    }
-  }
+  // 3. NCM operacional do item, se existir na planilha China (ex.: confirmação humana).
+  const op = rowFromNcm(it.ncm ?? "");
+  if (op) return op;
 
   return null;
 }
