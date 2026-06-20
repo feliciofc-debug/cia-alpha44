@@ -1028,6 +1028,11 @@ export async function alterarNcmItem(cotacaoId: string, tenantSlug: string, orde
   const familiaId =
     base.familiaProdutoId ??
     detectarFamilia({ descOriginal: base.descOriginal, uso: base.uso })?.id;
+  const tec =
+    !itemRow.aliquotasOverride
+      ? await (state.tecSource.buscarAsync?.(ncm) ??
+          Promise.resolve(state.tecSource.buscar(ncm)))
+      : null;
   const itemAtualizado = {
     ...limparConfirmacaoNcm(base),
     ncm,
@@ -1036,12 +1041,17 @@ export async function alterarNcmItem(cotacaoId: string, tenantSlug: string, orde
     compatibilidadeProduto: "compativel" as const,
     motivoCompatibilidade: undefined,
     ...(familiaId ? { familiaProdutoId: familiaId } : {}),
+    ...(tec?.aliquotas ? { aliquotas: tec.aliquotas, aliquotasRastro: tec.rastros } : {}),
   };
   const novoMeta = extrairItemMeta(itemAtualizado);
 
   await prisma.item.update({
     where: { id: itemRow.id },
-    data: { ncm, meta: novoMeta as Prisma.InputJsonValue },
+    data: {
+      ncm,
+      meta: novoMeta as Prisma.InputJsonValue,
+      ...(tec?.aliquotas ? { aliquotas: tec.aliquotas as Prisma.InputJsonValue } : {}),
+    },
   });
 
   const recalculada = await recalcularCotacaoPersistida(cotacaoId, tenantSlug, state, row);
