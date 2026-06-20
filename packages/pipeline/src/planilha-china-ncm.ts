@@ -116,17 +116,22 @@ export function resolverNcmConciliacaoPlanilhaChina(
     if (hit) return hit;
   }
 
-  // 1. Candidatos IA/classificação presentes na planilha China (identificação por produto).
+  // 1. Busca textual na planilha China pela descrição traduzida do produto.
+  const cap = capBuscaItem(it);
+  const texto = textoBuscaItem(it);
+  const hits = buscarNcmPlanilhaChinaPorDescricao(texto, planilhaItens, { capitulo4: cap, limite: 8 });
+  if (hits.length) {
+    const candidatos = new Set((it.ncmCandidatos ?? []).map((c) => normalizarNcm(c.ncm)));
+    const boost = hits.find((h) => candidatos.has(h.ncm));
+    if (boost) return boost;
+    return hits[0]!;
+  }
+
+  // 2. Candidatos IA/classificação presentes na planilha China.
   for (const c of it.ncmCandidatos ?? []) {
     const hit = rowFromNcm(c.ncm);
     if (hit) return hit;
   }
-
-  // 2. Busca textual na planilha China pela descrição traduzida do produto.
-  const cap = capBuscaItem(it);
-  const texto = textoBuscaItem(it);
-  const hits = buscarNcmPlanilhaChinaPorDescricao(texto, planilhaItens, { capitulo4: cap, limite: 8 });
-  if (hits.length) return hits[0]!;
 
   // 3. NCM operacional do item na planilha China.
   const op = rowFromNcm(it.ncm ?? "");
