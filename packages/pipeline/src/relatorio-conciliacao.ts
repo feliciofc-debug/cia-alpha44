@@ -11,8 +11,11 @@ import {
   rastrosEfetivosItem,
 } from "@cia/shared";
 import type { ResultadoCotacao } from "@cia/fiscal-engine";
-import { pesoParaBaseFob } from "./detectar-base-peso-fob.js";
+import type { BenchmarkPlanilhaEntry } from "./benchmark-planilha.js";
+import type { BenchmarkIndex } from "./benchmark.js";
+import { defaultBenchmarkPlanilhaPath, loadBenchmarkPlanilha } from "./benchmark-historico-store.js";
 import { fobKgRelatorioItem, rotuloFonteFobKgItem } from "./planilha-china-fob.js";
+import { resolverNcmConciliacaoPlanilhaChina } from "./planilha-china-ncm.js";
 
 /** @deprecated T7 — use rastros por tributo (fonteII…fonteCOFINS). */
 export const FONTE_ALIQUOTA_TEC_PADRAO =
@@ -25,6 +28,9 @@ export interface RelatorioConciliacaoInput {
   provider?: string | null;
   cotacaoId?: string | null;
   geradoEm?: Date;
+  /** Linhas da planilha IMPORTAÇÕES DA CHINA (NCM + desc + FOB/kg). Carrega padrão se omitido. */
+  planilhaChina?: BenchmarkPlanilhaEntry[] | null;
+  benchmarkIndex?: BenchmarkIndex | null;
 }
 
 export interface LinhaConciliacao {
@@ -210,15 +216,33 @@ function fontesLinha(it: Item): Pick<LinhaConciliacao, "fonteII" | "fonteIPI" | 
   };
 }
 
-export function montarLinhasConciliacao(itens: Item[]): LinhaConciliacao[] {
+function planilhaChinaConciliacao(
+  ctx?: Pick<RelatorioConciliacaoInput, "planilhaChina" | "benchmarkIndex">,
+): BenchmarkPlanilhaEntry[] {
+  if (ctx && ctx.planilhaChina !== undefined) return ctx.planilhaChina ?? [];
+  const seed = loadBenchmarkPlanilha(defaultBenchmarkPlanilhaPath());
+  return seed?.itens ?? [];
+}
+
+export function montarLinhasConciliacao(
+  itens: Item[],
+  ctx?: Pick<RelatorioConciliacaoInput, "planilhaChina" | "benchmarkIndex">,
+): LinhaConciliacao[] {
+  const planilhaRows = planilhaChinaConciliacao(ctx);
+  const benchmarkIndex = ctx?.benchmarkIndex ?? null;
+
   return itens.map((it, i) => {
     const qtd = it.qtd != null && it.qtd > 0 ? it.qtd : null;
     const liqTot = it.pesoLiqKg > 0 ? it.pesoLiqKg : null;
     const brutoTot = it.pesoBrutoKg != null && it.pesoBrutoKg > 0 ? it.pesoBrutoKg : null;
     const liqUnit = qtd && liqTot ? liqTot / qtd : null;
     const brutoUnit = qtd && brutoTot ? brutoTot / qtd : null;
-    const pesoFob = pesoParaBaseFob(it.fobKgBase ?? "liquido", it.pesoBrutoKg, it.pesoLiqKg);
-    const fobKg = fobKgRelatorioItem(it);
+    const planilhaHit =
+      planilhaRows.length > 0
+        ? resolverNcmConciliacaoPlanilhaChina(it, planilhaRows, benchmarkIndex)
+        : null;
+    const fobKgPlanilha = planilhaHit?.fobKgMedioDI ?? null;
+    const fobKg = fobKgPlanilha ?? fobKgRelatorioItem(it);
     const datas = colunasConsultadoEmExport(rastrosEfetivosItem(it));
 
     return {
@@ -228,8 +252,8 @@ export function montarLinhasConciliacao(itens: Item[]): LinhaConciliacao[] {
       descPt: it.descPt || "—",
       material: it.material?.trim() || "—",
       uso: it.uso?.trim() || "—",
-      ncm: it.ncm || "—",
-      ncmFonte: it.ncmFonte ?? "—",
+      ncm: planilhaHit?.ncm ?? it.ncm ?? "—",
+      ncmFonte: planilhaHit ? "planilha China" : (it.ncmFonte ?? "—"),
       ncmConfianca: it.ncmConfianca != null ? it.ncmConfianca.toFixed(2) : "—",
       compatibilidade: it.compatibilidadeProduto ?? "—",
       motivoCompatibilidade: it.motivoCompatibilidade ?? "—",
@@ -247,7 +271,7 @@ export function montarLinhasConciliacao(itens: Item[]): LinhaConciliacao[] {
       fobUnitUS: it.fobUnitarioUS != null ? numFmt(it.fobUnitarioUS, 4) : "—",
       fobTotalUS: it.fobTotalUS > 0 ? numFmt(it.fobTotalUS, 2) : "—",
       fobKg: fobKg != null ? numFmt(fobKg, 4) : "—",
-      fobKgFonte: rotuloFonteFobKgItem(it),
+      fobKgFonte: planilhaHit ? "Planilha China (PREÇO FOB/KG)" : rotuloFonteFobKgItem(it),
       fobKgBase: it.fobKgBase ?? "—",
       avisos: avisosItem(it),
     };
@@ -331,7 +355,7 @@ function montarFooterTotais(
 }
 
 export function gerarCsvConciliacao(input: RelatorioConciliacaoInput): Buffer {
-  const linhas = montarLinhasConciliacao(input.itens);
+  const linhas = montarLinhasConciliacao(input.itens, input);
   const colunas = colunasConciliacao(input.itens);
   const tot = totaisConciliacao(input.itens, input.resultado);
   const header = colunas.map((k) => csvEscape(ROTULOS[k]));
@@ -384,7 +408,7 @@ export async function gerarXlsxConciliacao(input: RelatorioConciliacaoInput): Pr
   const colunas = colunasConciliacao(input.itens);
   const sh = wb.addWorksheet("Conciliacao");
   sh.addRow(colunas.map((k) => ROTULOS[k]));
-  const linhas = montarLinhasConciliacao(input.itens);
+  const linhas = montarLinhasConciliacao(input.itens, input);
   for (const l of linhas) {
     sh.addRow(colunas.map((k) => l[k] ?? ""));
   }

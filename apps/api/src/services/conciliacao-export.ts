@@ -4,7 +4,7 @@ import type { Cotacao, Item } from "@cia/shared";
 import type { ResultadoCotacao } from "@cia/fiscal-engine";
 import {
   gerarConciliacaoBuffer,
-  getHistoricoBenchmarkStats,
+  loadBenchmarkPlanilha,
   mesclarItemMeta,
   nomeArquivoConciliacao,
   type RelatorioConciliacaoInput,
@@ -12,6 +12,7 @@ import {
 import type { AppState } from "../state.js";
 import { calcularCotacao } from "./cotacao.js";
 import { buscarCotacao } from "./cotacoes-persist.js";
+import { benchmarkPlanilhaPath } from "./benchmark-planilha.js";
 
 export interface ConciliacaoExportInput {
   cotacao: Cotacao;
@@ -52,6 +53,8 @@ export async function exportarConciliacao(
     resultado,
     provider: input.provider,
     cotacaoId: input.cotacaoId,
+    planilhaChina: loadBenchmarkPlanilha(benchmarkPlanilhaPath())?.itens ?? [],
+    benchmarkIndex: state.benchmarkIndex,
   };
   const buffer = await gerarConciliacaoBuffer(rel, formato);
   const base = nomeArquivoConciliacao(

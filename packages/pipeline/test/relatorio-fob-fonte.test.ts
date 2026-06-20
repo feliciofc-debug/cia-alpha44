@@ -35,21 +35,36 @@ describe("relatório conciliação — fonte FOB/kg", () => {
   it("coluna fobKgFonte indica Planilha China quando benchmark é Histórico próprio", () => {
     const index = buildBenchmarkIndex([], "ref");
     const bench = lookupBenchmark(index, "84238900");
-    const linhas = montarLinhasConciliacao([
-      item("84238900", {
-        benchmark: bench,
-        fobKgFonte: bench.rastroFonte ?? "planilha-mensal",
-        calibracao: {
-          fobKgOriginal: 2.89,
-          fobKgCalibrado: 4.5155,
-          desvioBenchmarkPct: -36,
-          ajustado: false,
-          justificativa: "planilha",
-        },
-      }),
-    ]);
+    const planilhaChina = [
+      {
+        ncm: "84238900",
+        desc: "Produto teste balanças",
+        fobKgMedioDI: 4.5155,
+        fobKgPonderado: null,
+        cifKg: null,
+        amostra: 9,
+        fobKg: 4.5155,
+      },
+    ];
+    const linhas = montarLinhasConciliacao(
+      [
+        item("84238900", {
+          benchmark: bench,
+          fobKgFonte: bench.rastroFonte ?? "planilha-mensal",
+          calibracao: {
+            fobKgOriginal: 2.89,
+            fobKgCalibrado: 4.5155,
+            desvioBenchmarkPct: -36,
+            ajustado: false,
+            justificativa: "planilha",
+          },
+        }),
+      ],
+      { planilhaChina, benchmarkIndex: index },
+    );
     expect(linhas[0]!.fobKgFonte).toContain("Planilha China");
     expect(linhas[0]!.fobKg).toBe("4,5155");
+    expect(linhas[0]!.ncmFonte).toBe("planilha China");
   });
 
   it("coluna fobKgFonte indica ComexStat quando NCM fora da planilha", () => {
@@ -58,9 +73,10 @@ describe("relatório conciliação — fonte FOB/kg", () => {
       "ref",
     );
     const bench = lookupBenchmark(index, "99999999");
-    const linhas = montarLinhasConciliacao([
-      item("99999999", { benchmark: bench, fobKgFonte: bench.rastroFonte ?? "comexstat" }),
-    ]);
+    const linhas = montarLinhasConciliacao(
+      [item("99999999", { benchmark: bench, fobKgFonte: bench.rastroFonte ?? "comexstat" })],
+      { planilhaChina: [], benchmarkIndex: index },
+    );
     expect(linhas[0]!.fobKgFonte).toContain("ComexStat");
   });
 });

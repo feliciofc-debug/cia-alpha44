@@ -207,6 +207,12 @@ export {
   type ClassificacaoCacheKeyInput,
 } from "./classificacao-cache-key.js";
 export {
+  buscarNcmPlanilhaChinaPorDescricao,
+  resolverNcmConciliacaoPlanilhaChina,
+  MIN_SCORE_BUSCA_PLANILHA_CHINA,
+  type PlanilhaChinaNcmHit,
+} from "./planilha-china-ncm.js";
+export {
   FONTE_ALIQUOTA_TEC_PADRAO,
   gerarConciliacaoBuffer,
   gerarCsvConciliacao,
