@@ -186,6 +186,20 @@ export {
 export { confiancaNcmFinal } from "./confianca-ncm.js";
 export { extrairItemMeta, mesclarItemMeta, type ItemMetaPersistido } from "./item-meta.js";
 export {
+  PESO_MAX_LINHA_KG,
+  RATIO_CORRUPCAO_GROSS,
+  analisarEscalaFob,
+  analisarEscalaFobItem,
+  bloquearPersistenciaFobCorrupto,
+  fobKgBenchmark,
+  fobTotalPlanilhaPeso,
+  linhaPesoAbsurdo,
+  ncmSuspeitoLixo,
+  pesoRateioLinha,
+  type AnaliseEscalaFob,
+  type FlagAnomaliaFob,
+} from "./fob-escala.js";
+export {
   catalogVersionKey,
   chaveClassificacaoCache,
   normalizarCampoCache,

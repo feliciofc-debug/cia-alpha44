@@ -25,6 +25,7 @@ import {
   type MapeamentoColunasIA,
 } from "./parser-sinonimos.js";
 import { extrairMetadadosWorkbook, avisoMoedaPlanilha } from "./parser-metadados.js";
+import { linhaPesoAbsurdo, ncmSuspeitoLixo } from "./fob-escala.js";
 import { associarFotosLinhas, extrairFotosXlsx, type FotoPlanilha } from "./xlsx-images.js";
 import { extrairImagensWpsOle, isOleXls, isZipXlsx, mapDispimgLinhas } from "./wps-images.js";
 
@@ -61,6 +62,7 @@ export interface LinhaFornecedor {
   ncm: string | null;
   material?: string | null;
   uso?: string | null;
+  avisosEscala?: string[];
   raw: Record<string, unknown>;
   fotoBase64?: string;
   fotoMime?: string;
@@ -192,7 +194,14 @@ function extrairLinhasComColunas(
       fobTotalUS = fobKgRef * pesoBrutoKg;
     }
     const ncmRaw = iNcm !== undefined ? String(row[iNcm] ?? "").trim() : "";
-    const ncm = ncmRaw ? ncmRaw.replace(/\D/g, "").padStart(8, "0").slice(0, 8) : null;
+    let ncm = ncmRaw ? ncmRaw.replace(/\D/g, "").padStart(8, "0").slice(0, 8) : null;
+    if (ncm && (ncm.length !== 8 || ncmSuspeitoLixo(ncm))) ncm = null;
+    const avisosEscala: string[] = [];
+    if (linhaPesoAbsurdo({ pesoLiqKg, pesoBrutoKg })) {
+      avisosEscala.push(
+        `Peso da linha acima do limite (${Math.max(pesoLiqKg ?? 0, pesoBrutoKg ?? 0).toLocaleString("en-US")} kg) — revisar coluna de peso.`,
+      );
+    }
     const material = iMaterial !== undefined ? String(row[iMaterial] ?? "").trim() || null : null;
     const uso = iUso !== undefined ? String(row[iUso] ?? "").trim() || null : null;
 
@@ -215,6 +224,7 @@ function extrairLinhasComColunas(
       ncm: ncm && ncm.length === 8 ? ncm : null,
       material,
       uso,
+      avisosEscala: avisosEscala.length ? avisosEscala : undefined,
       raw,
     });
   }

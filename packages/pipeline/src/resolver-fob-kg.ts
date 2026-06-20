@@ -31,6 +31,8 @@ import {
   type ReferenciaFobKgPlanilha,
 } from "./fob-kg-planilha.js";
 import type { LinhaCrua } from "./linha.js";
+import { resolvePesoLiqRateio } from "./linha.js";
+import { linhaPesoAbsurdo, ncmSuspeitoLixo } from "./fob-escala.js";
 import {
   detectarPrecoCusto,
   precoCustoUnitarioUSD,
@@ -48,6 +50,8 @@ export interface FobKgMeta {
   fobPendente?: boolean;
   fobKgBase?: FobKgBase;
   fobKgAvisos?: string[];
+  /** FOB US$ original da invoice embarque — congelado na 1ª importação. */
+  fobEmbarqueUS?: number;
 }
 
 export interface ResultadoResolverFobLinha {
@@ -151,9 +155,19 @@ function resolverIrmao(
   };
 }
 
+function pesoRateioItem(it: Pick<Item, "pesoLiqKg" | "pesoBrutoKg">): number {
+  return resolvePesoLiqRateio({ pesoLiqKg: it.pesoLiqKg, pesoBrutoKg: it.pesoBrutoKg });
+}
+
+function fobEmbarqueItem(it: Item): number {
+  if (it.fobEmbarqueUS != null && it.fobEmbarqueUS > 0) return it.fobEmbarqueUS;
+  if (it.fobTotalUS > 0) return it.fobTotalUS;
+  return 0;
+}
+
 function resolverBenchmark(
   ncm: string,
-  pesoLiqKg: number,
+  pesoKg: number,
   qtd: number | null,
   fobUnitarioUS: number | null,
   index: BenchmarkIndex,
@@ -161,10 +175,10 @@ function resolverBenchmark(
   const bench = lookupBenchmark(index, ncm);
   const fobKg = fobKgParaPreenchimento(bench);
   const fonte = formatarFobKgFonteBenchmark(bench, index);
-  if (!fonte || !fobKg || pesoLiqKg <= 0) return null;
-  const avisos = ["FOB/kg de benchmark externo aplicado sobre peso líquido (base CIF)."];
+  if (!fonte || !fobKg || pesoKg <= 0) return null;
+  const avisos = ["FOB/kg de benchmark externo aplicado sobre peso de rateio (base CIF)."];
   if (bench.avisoBenchmark) avisos.unshift(bench.avisoBenchmark);
-  const fobTotal = fobKg * pesoLiqKg;
+  const fobTotal = fobKg * pesoKg;
   return {
     fobTotalUS: fobTotal,
     fobUnitarioUS: qtd && qtd > 0 ? fobTotal / qtd : fobUnitarioUS,
@@ -186,6 +200,15 @@ export function resolverFobKgPlanilha(
   const metas: FobKgMeta[] = [];
 
   const out = linhas.map((l, i) => {
+    if (linhaPesoAbsurdo(l) || ncmSuspeitoLixo(l.ncm ?? "")) {
+      metas.push(
+        metaPendente(
+          `Linha com peso/NCM inválido — não aplicar planilha×peso (NCM ${l.ncm ?? "—"}).`,
+        ),
+      );
+      return l;
+    }
+
     const preco = aplicarPrecoCustoLinhaComMeta(l);
     if (preco) {
       metas.push(preco.meta);
@@ -195,18 +218,32 @@ export function resolverFobKgPlanilha(
     const fobKgCol = fobKgColPorIndice?.get(i);
     const baseDetLinha = detectarMetaLinha(l, fobKgCol);
     const pesoBaseLinha = pesoParaBaseFob(baseDetLinha.fobKgBase, l.pesoBrutoKg, l.pesoLiqKg);
-    const pesoLiq = l.pesoLiqKg ?? 0;
+    const pesoRateio = resolvePesoLiqRateio(l);
 
-    /** 1) Planilha China (PREÇO FOB/KG) · 2) embarque · 3) ComexStat · 4) NCM irmão. */
+    /** 1) Planilha China (PREÇO FOB/KG ref.) · 2) embarque · 3) ComexStat · 4) NCM irmão. */
     if (planilhaChinaTemNcm(benchmarkIndex, l.ncm ?? "")) {
-      const benchChina = resolverBenchmark(l.ncm ?? "", pesoLiq, l.qtd, l.fobUnitarioUS, benchmarkIndex);
+      if (linhaPesoAbsurdo(l) || ncmSuspeitoLixo(l.ncm ?? "")) {
+        metas.push(
+          metaPendente(
+            `Linha com peso/NCM inválido — não aplicar planilha×peso (peso ${pesoRateio.toLocaleString("en-US")} kg).`,
+          ),
+        );
+        return l;
+      }
+      const benchChina = resolverBenchmark(
+        l.ncm ?? "",
+        pesoRateio,
+        l.qtd,
+        l.fobUnitarioUS,
+        benchmarkIndex,
+      );
       if (benchChina) {
-        metas.push(benchChina.meta);
-        return {
-          ...l,
-          fobTotalUS: benchChina.fobTotalUS,
-          fobUnitarioUS: benchChina.fobUnitarioUS,
-        };
+        if (linhaTemFobExplicito(l)) {
+          metas.push({ ...benchChina.meta, fobEmbarqueUS: l.fobTotalUS! });
+          return l;
+        }
+        metas.push({ ...benchChina.meta, fobPendente: true });
+        return l;
       }
     }
 
@@ -223,7 +260,7 @@ export function resolverFobKgPlanilha(
 
     const pesoBase = pesoBaseLinha;
 
-    const bench = resolverBenchmark(l.ncm ?? "", pesoLiq, l.qtd, l.fobUnitarioUS, benchmarkIndex);
+    const bench = resolverBenchmark(l.ncm ?? "", pesoRateio, l.qtd, l.fobUnitarioUS, benchmarkIndex);
     if (bench) {
       metas.push(bench.meta);
       return {
@@ -257,6 +294,16 @@ function resolverItemInterno(
   indice: Map<string, ReferenciaFobKgPlanilha>,
   benchmarkIndex: BenchmarkIndex,
 ): ResultadoResolverFobItem {
+  if (linhaPesoAbsurdo(it) || ncmSuspeitoLixo(it.ncm ?? "")) {
+    const pesoRateio = pesoRateioItem(it);
+    return {
+      item: { ...it, fobPendente: true, fobTotalUS: 0 },
+      meta: metaPendente(
+        `Linha com escala inválida (peso ${pesoRateio.toLocaleString("en-US")} kg ou NCM suspeito ${it.ncm}) — revisar embarque.`,
+      ),
+    };
+  }
+
   const tipo = detectarPrecoCusto({
     descOriginal: it.descOriginal,
     ncm: it.ncm,
@@ -287,18 +334,29 @@ function resolverItemInterno(
   }
 
   if (planilhaChinaTemNcm(benchmarkIndex, it.ncm ?? "")) {
-    const pesoLiqChina = it.pesoLiqKg ?? 0;
+    const pesoRateio = pesoRateioItem(it);
     const benchChina = resolverBenchmark(
       it.ncm ?? "",
-      pesoLiqChina,
+      pesoRateio,
       it.qtd,
       it.fobUnitarioUS,
       benchmarkIndex,
     );
     if (benchChina) {
+      const embarque = it.fobEmbarqueUS ?? (fobEmbarqueItem(it) > 0 ? fobEmbarqueItem(it) : undefined);
+      if (embarque != null && embarque > 0) {
+        return {
+          item: {
+            ...it,
+            fobEmbarqueUS: embarque,
+            fobTotalUS: embarque,
+          },
+          meta: { ...benchChina.meta, fobEmbarqueUS: embarque },
+        };
+      }
       return {
-        item: { ...it, fobTotalUS: benchChina.fobTotalUS, fobUnitarioUS: benchChina.fobUnitarioUS },
-        meta: benchChina.meta,
+        item: { ...it, fobPendente: true, fobTotalUS: 0 },
+        meta: { ...benchChina.meta, fobPendente: true },
       };
     }
   }
@@ -340,9 +398,9 @@ function resolverItemInterno(
     pesoLiqKg: it.pesoLiqKg,
   });
   const pesoBase = pesoParaBaseFob(baseDet.fobKgBase, it.pesoBrutoKg, it.pesoLiqKg);
-  const pesoLiq = it.pesoLiqKg ?? 0;
+  const pesoRateio = pesoRateioItem(it);
 
-  const bench = resolverBenchmark(it.ncm ?? "", pesoLiq, it.qtd, it.fobUnitarioUS, benchmarkIndex);
+  const bench = resolverBenchmark(it.ncm ?? "", pesoRateio, it.qtd, it.fobUnitarioUS, benchmarkIndex);
   if (bench) {
     return {
       item: { ...it, fobTotalUS: bench.fobTotalUS, fobUnitarioUS: bench.fobUnitarioUS },
@@ -368,6 +426,7 @@ function aplicarMeta(it: Item, meta: FobKgMeta): Item {
   return {
     ...it,
     fobKgFonte: meta.fobKgFonte,
+    fobEmbarqueUS: meta.fobEmbarqueUS ?? it.fobEmbarqueUS,
     fobPendente: meta.fobPendente,
     fobKgBase: meta.fobKgBase,
     fobKgAvisos: meta.fobKgAvisos,

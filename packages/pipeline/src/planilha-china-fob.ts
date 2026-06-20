@@ -2,15 +2,17 @@
  * Regra global FOB/kg — planilha operacional IMPORTAÇÕES DA CHINA.
  *
  * Para **cada item** de uma cotação:
- * 1. NCM na planilha China → PREÇO FOB/KG (média DI) — prevalece sobre embarque
- * 2. NCM ausente na planilha → ComexStat (NCM mais próximo)
- * 3. Override manual do operador → soberano
+ * 1. NCM na planilha China → PREÇO FOB/KG (média DI) para REFERÊNCIA / alerta de desvio
+ * 2. FOB total US$ da invoice embarque (fobEmbarqueUS) → base fiscal no motor
+ * 3. NCM ausente na planilha → ComexStat só como referência; lacuna sem invoice → pendente
+ * 4. Override manual do operador → soberano no motor
  */
 
 import type { Benchmark, Item } from "@cia/shared";
 import type { BenchmarkIndex } from "./benchmark.js";
 import { lookupBenchmark } from "./benchmark.js";
 import { fobKgParaPreenchimento } from "./benchmark-metrics.js";
+import { pesoParaBaseFob } from "./detectar-base-peso-fob.js";
 import { aplicarRegrasFobItens } from "./resolver-fob-kg.js";
 
 /** NCM tem referência na planilha China carregada (Histórico próprio). */
@@ -56,7 +58,7 @@ export function fobKgRelatorioItem(it: Item): number | null {
   if (it.calibracao?.fobKgCalibrado != null && it.calibracao.fobKgCalibrado > 0) {
     return it.calibracao.fobKgCalibrado;
   }
-  const peso = it.pesoLiqKg ?? 0;
+  const peso = pesoParaBaseFob(it.fobKgBase ?? "liquido", it.pesoBrutoKg, it.pesoLiqKg);
   if (peso > 0 && it.fobTotalUS > 0) return it.fobTotalUS / peso;
   return null;
 }
