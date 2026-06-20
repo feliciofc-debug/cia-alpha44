@@ -19,11 +19,13 @@ import type { NcmCatalog } from "./ncm-catalog.js";
 import { normNcm8 } from "./ncm-catalog.js";
 import { aplicarDesempateOutros } from "./desempate-outros.js";
 
-export type NcmFonte = "planilha" | "ia" | "siscomex" | "pendente";
+export type NcmFonte = "planilha" | "gemini" | "ia" | "siscomex" | "pendente";
 
 export interface ResolveNcmInput {
   ncmPlanilha?: string | null;
   candidatosIa?: NcmCandidato[];
+  /** Classificador primário — Gemini prevalece sobre coluna embarque quando validado. */
+  fonteClassificacao?: "gemini" | "ia" | null;
   /** Texto enriquecido para busca Siscomex (pode incluir material/uso). */
   descricao?: string | null;
   /** Descrição da planilha — fonte de verdade para família e fallback Siscomex. */
@@ -162,7 +164,7 @@ function escolherSubstituto(
         `IA sugeriu NCM fora dos prefixos ${familia.prefixos.join("/")} (${familia.id}) — mantido candidato IA ${escolhaIa.ncm} (uso geral / Nota 2).`,
       );
     }
-    return { ncm: escolhaIa.ncm, fonte: "ia", candidatos: validosRaw };
+    return { ncm: escolhaIa.ncm, fonte: input.fonteClassificacao === "gemini" ? "gemini" : "ia", candidatos: validosRaw };
   }
 
   const textoBusca = textoBuscaSiscomexFallback(input);
@@ -194,12 +196,46 @@ export function resolveNcm(catalog: NcmCatalog, input: ResolveNcmInput): Resolve
   });
   if (invalidosIa.length) {
     const ex = normNcm8(invalidosIa[0]!.ncm);
+    const rotulo = input.fonteClassificacao === "gemini" ? "Gemini" : "IA";
     avisos.push(
-      `IA sugeriu NCM inválido (${ex ?? "?"}) — rejeitado pela tabela Siscomex (${catalog.total} códigos vigentes).`,
+      `${rotulo} sugeriu NCM inválido (${ex ?? "?"}) — rejeitado pela tabela Siscomex (${catalog.total} códigos vigentes).`,
     );
   }
 
-  if (planilha && catalog.existe(planilha)) {
+  let pularPlanilhaPorGeminiFalho = false;
+
+  // Gemini/Lovable — trava fiscal obrigatória (catalog.existe); prevalece sobre coluna embarque.
+  if (input.fonteClassificacao === "gemini") {
+    const geminiCandidatos = filtrarCandidatosValidos(catalog, input.candidatosIa ?? []);
+    const geminiTop = geminiCandidatos[0];
+    if (geminiTop && catalog.existe(geminiTop.ncm)) {
+      const conf = geminiTop.confianca ?? 0.5;
+      if (conf < CONFIANCA_IA_MINIMA) {
+        avisos.push(
+          `${AVISO_CLASSIFICACAO_PENDENTE} (confiança Gemini ${conf.toFixed(2)} < ${CONFIANCA_IA_MINIMA}).`,
+        );
+      }
+      if (planilha && planilha !== geminiTop.ncm) {
+        avisos.push(
+          `NCM coluna embarque (${planilha}) substituído por classificação Gemini (${geminiTop.ncm}), validado Siscomex.`,
+        );
+      }
+      avisos.push(`NCM sugerido pelo Gemini (validado Siscomex): ${geminiTop.ncm}.`);
+      return {
+        ncm: geminiTop.ncm,
+        fonte: "gemini",
+        valido: true,
+        descricaoOficial: catalog.descricao(geminiTop.ncm),
+        avisos,
+        ncmCandidatos: geminiCandidatos,
+        ...(planilha && planilha !== geminiTop.ncm ? { ncmPlanilhaOriginal: planilha } : {}),
+      };
+    }
+    pularPlanilhaPorGeminiFalho = true;
+    avisos.push("Classificação Gemini sem NCM válido na TEC vigente — fallback fluxo legado.");
+  }
+
+  if (planilha && catalog.existe(planilha) && !pularPlanilhaPorGeminiFalho) {
     if (familia && !ncmCoerenteComFamilia(planilha, familia)) {
       avisos.push(
         `NCM da planilha (${planilha}) incoerente com ${familia.id} (prefixos ${familia.prefixos.join("/")}) — buscando substituto Siscomex.`,

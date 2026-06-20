@@ -15,6 +15,7 @@ import type { BenchmarkPlanilhaEntry } from "./benchmark-planilha.js";
 import type { BenchmarkIndex } from "./benchmark.js";
 import { defaultBenchmarkPlanilhaPath, loadBenchmarkPlanilha } from "./benchmark-historico-store.js";
 import { fobKgRelatorioItem, rotuloFonteFobKgItem } from "./planilha-china-fob.js";
+import { lookupBenchmark } from "./benchmark.js";
 import { resolverNcmConciliacaoPlanilhaChina } from "./planilha-china-ncm.js";
 
 /** @deprecated T7 — use rastros por tributo (fonteII…fonteCOFINS). */
@@ -241,8 +242,13 @@ export function montarLinhasConciliacao(
       planilhaRows.length > 0
         ? resolverNcmConciliacaoPlanilhaChina(it, planilhaRows, benchmarkIndex)
         : null;
+    const geminiOp = it.ncmFonte === "gemini";
     const fobKgPlanilha = planilhaHit?.fobKgMedioDI ?? null;
-    const fobKg = fobKgPlanilha ?? fobKgRelatorioItem(it);
+    const fobKgGemini =
+      geminiOp && benchmarkIndex && it.ncm
+        ? (lookupBenchmark(benchmarkIndex, it.ncm)?.fobKgMedioDI ?? null)
+        : null;
+    const fobKg = fobKgGemini ?? fobKgPlanilha ?? fobKgRelatorioItem(it);
     const datas = colunasConsultadoEmExport(rastrosEfetivosItem(it));
 
     return {
@@ -252,8 +258,12 @@ export function montarLinhasConciliacao(
       descPt: it.descPt || "—",
       material: it.material?.trim() || "—",
       uso: it.uso?.trim() || "—",
-      ncm: planilhaHit?.ncm ?? it.ncm ?? "—",
-      ncmFonte: planilhaHit ? "planilha China" : (it.ncmFonte ?? "—"),
+      ncm: geminiOp ? (it.ncm ?? "—") : (planilhaHit?.ncm ?? it.ncm ?? "—"),
+      ncmFonte: geminiOp
+        ? "Gemini (validado Siscomex)"
+        : planilhaHit
+          ? "planilha China"
+          : (it.ncmFonte ?? "—"),
       ncmConfianca: it.ncmConfianca != null ? it.ncmConfianca.toFixed(2) : "—",
       compatibilidade: it.compatibilidadeProduto ?? "—",
       motivoCompatibilidade: it.motivoCompatibilidade ?? "—",
@@ -271,7 +281,11 @@ export function montarLinhasConciliacao(
       fobUnitUS: it.fobUnitarioUS != null ? numFmt(it.fobUnitarioUS, 4) : "—",
       fobTotalUS: it.fobTotalUS > 0 ? numFmt(it.fobTotalUS, 2) : "—",
       fobKg: fobKg != null ? numFmt(fobKg, 4) : "—",
-      fobKgFonte: planilhaHit ? "Planilha China (PREÇO FOB/KG)" : rotuloFonteFobKgItem(it),
+      fobKgFonte: geminiOp && fobKgGemini != null
+        ? "Planilha China (PREÇO FOB/KG)"
+        : planilhaHit
+          ? "Planilha China (PREÇO FOB/KG)"
+          : rotuloFonteFobKgItem(it),
       fobKgBase: it.fobKgBase ?? "—",
       avisos: avisosItem(it),
     };

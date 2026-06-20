@@ -481,7 +481,11 @@ function AnalisePainel({
                     )}
                     {it.ncmFonte && (
                       <span className="block text-[10px] text-slate-500">
-                        {it.ncmFonte === "siscomex" ? "Siscomex vigente" : it.ncmFonte}
+                        {it.ncmFonte === "siscomex"
+                          ? "Siscomex vigente"
+                          : it.ncmFonte === "gemini"
+                            ? "Gemini (validado Siscomex)"
+                            : it.ncmFonte}
                       </span>
                     )}
                     {it.ncmClassificacaoCache === "humano" && !it.ncmRevisadoHumano && (

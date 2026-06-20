@@ -140,8 +140,10 @@ export function validarNcmItem(
     return { ok: false, avisos, familia, familiasDetectadas, conflitoFamilias: deteccao.conflito };
   }
 
-  if (fonte === "ia" && familia) {
-    avisos.push(`Classificado via IA — confira prefixos ${familia.prefixos.join("/")} (Siscomex).`);
+  if (fonte === "ia" || fonte === "gemini") {
+    if (familia) {
+      avisos.push(`Classificado via ${fonte === "gemini" ? "Gemini" : "IA"} — confira prefixos ${familia.prefixos.join("/")} (Siscomex).`);
+    }
   }
 
   return { ok: true, avisos, familia, familiasDetectadas, conflitoFamilias: deteccao.conflito };

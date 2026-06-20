@@ -126,7 +126,7 @@ export const itemSchema = z.object({
   fotoUrl: z.string().optional(),
   /** NCM validado na tabela vigente Siscomex (Classif). */
   ncmValido: z.boolean().optional(),
-  ncmFonte: z.enum(["planilha", "ia", "siscomex", "pendente"]).optional(),
+  ncmFonte: z.enum(["planilha", "gemini", "ia", "siscomex", "pendente"]).optional(),
   /** Origem do cache P3b quando a classificação veio do Postgres (humano prevalece sobre LLM). */
   ncmClassificacaoCache: z.enum(["humano", "llm"]).optional(),
   ncmPlanilhaOriginal: z.string().optional(),

@@ -140,15 +140,54 @@ async function classificarEmLotes(
     return { classificados: resultados, cache: stats };
   }
 
+  const { geminiClassificacaoHabilitada, classificarItensGeminiLote } = await import(
+    "../llm/classificar-gemini-lovable.js"
+  );
+
+  let indicesFallback = indicesLlm;
+
+  if (geminiClassificacaoHabilitada()) {
+    const inputsGemini = indicesLlm.map((i) => inputs[i]!);
+    const geminiOut = await classificarItensGeminiLote(
+      inputsGemini,
+      state.ncmCatalog,
+      CLASSIFY_CONCORRENCIA,
+    );
+
+    indicesFallback = [];
+    for (let j = 0; j < indicesLlm.length; j++) {
+      const idxOrig = indicesLlm[j]!;
+      const g = geminiOut[j]!;
+      if (g.ok) {
+        resultados[idxOrig] = g.output;
+        await salvarClassificacaoCacheLlm(
+          {
+            descOriginal: inputs[idxOrig]!.descOriginal,
+            material: inputs[idxOrig]!.material,
+            uso: inputs[idxOrig]!.uso,
+          },
+          versoes,
+          g.output,
+        );
+      } else {
+        indicesFallback.push(idxOrig);
+      }
+    }
+  }
+
+  if (indicesFallback.length === 0) {
+    return { classificados: resultados, cache: stats };
+  }
+
   const chamarLlm = state.provider.chamarLlm;
-  const inputsLlm = indicesLlm.map((i) => inputs[i]!);
+  const inputsLlm = indicesFallback.map((i) => inputs[i]!);
   const batchTrad =
     chamarLlm && state.provider.disponivel
       ? await traduzirDescricoesClassificacao(inputsLlm, chamarLlm)
       : null;
 
   const llmOut = await mapComConcorrencia(inputsLlm, CLASSIFY_CONCORRENCIA, async (input, j) => {
-    const idxOrig = indicesLlm[j]!;
+    const idxOrig = indicesFallback[j]!;
     try {
       if (chamarLlm && batchTrad) {
         const pre = {
@@ -187,8 +226,8 @@ async function classificarEmLotes(
     }
   });
 
-  for (let j = 0; j < indicesLlm.length; j++) {
-    resultados[indicesLlm[j]!] = llmOut[j]!;
+  for (let j = 0; j < indicesFallback.length; j++) {
+    resultados[indicesFallback[j]!] = llmOut[j]!;
   }
 
   return { classificados: resultados, cache: stats };
@@ -270,6 +309,7 @@ export async function montarItens(
     const resolvido = resolveNcm(state.ncmCatalog, {
       ncmPlanilha: l.ncm,
       candidatosIa: candidatosBrutos,
+      fonteClassificacao: c?.classificacaoProvedor === "gemini" ? "gemini" : undefined,
       descOriginal: l.descOriginal,
       descPt: c?.descPt,
       uso: l.uso,
