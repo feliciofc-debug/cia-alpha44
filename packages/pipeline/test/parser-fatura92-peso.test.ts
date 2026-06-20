@@ -34,6 +34,8 @@ describe("calcularPesosTotaisLinha — unitário × caixas × por caixa", () => 
     expect(r.qtd).toBe(4);
     expect(r.pesoLiqKg).toBeCloseTo(23, 3);
     expect(r.pesoBrutoKg).toBeCloseTo(46, 3);
+    expect(r.pesoLiqFromUnit).toBe(true);
+    expect(r.pesoBrutoFromUnit).toBe(true);
   });
 
   it("prefere colunas de total quando informadas", () => {
@@ -46,6 +48,8 @@ describe("calcularPesosTotaisLinha — unitário × caixas × por caixa", () => 
     });
     expect(r.pesoLiqKg).toBeCloseTo(16.343, 3);
     expect(r.pesoBrutoKg).toBeCloseTo(18, 3);
+    expect(r.pesoLiqFromUnit).toBe(false);
+    expect(r.pesoBrutoFromUnit).toBe(false);
   });
 });
 

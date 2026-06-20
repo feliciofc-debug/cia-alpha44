@@ -28,18 +28,24 @@ export function calcularPesosTotaisLinha(entrada: EntradaPesoLinha): {
   pesoLiqKg: number | null;
   pesoBrutoKg: number | null;
   qtd: number | null;
+  pesoLiqFromUnit: boolean;
+  pesoBrutoFromUnit: boolean;
 } {
   const qtd = quantidadeTotalLinha(entrada);
 
   let pesoLiqKg = entrada.pesoLiqTotal ?? null;
   let pesoBrutoKg = entrada.pesoBrutoTotal ?? null;
+  let pesoLiqFromUnit = false;
+  let pesoBrutoFromUnit = false;
 
   if (pesoLiqKg === null && entrada.pesoLiqUnit != null && qtd != null && qtd > 0) {
     pesoLiqKg = entrada.pesoLiqUnit * qtd;
+    pesoLiqFromUnit = true;
   }
   if (pesoBrutoKg === null && entrada.pesoBrutoUnit != null && qtd != null && qtd > 0) {
     pesoBrutoKg = entrada.pesoBrutoUnit * qtd;
+    pesoBrutoFromUnit = true;
   }
 
-  return { pesoLiqKg, pesoBrutoKg, qtd };
+  return { pesoLiqKg, pesoBrutoKg, qtd, pesoLiqFromUnit, pesoBrutoFromUnit };
 }

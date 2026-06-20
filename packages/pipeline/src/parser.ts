@@ -56,6 +56,9 @@ export interface LinhaFornecedor {
   qtdPorCaixa?: number | null;
   pesoLiqKg: number | null;
   pesoBrutoKg: number | null;
+  /** true quando peso veio de coluna unitária × qtd — pode ser reescalado se qtd mudar. */
+  pesoLiqFromUnit?: boolean;
+  pesoBrutoFromUnit?: boolean;
   precoUnitario: number | null;
   fobTotalUS: number | null;
   fobKgReferencia?: number | null;
@@ -181,6 +184,8 @@ function extrairLinhasComColunas(
     const qtd = pesoCalc.qtd ?? qtdRaw;
     let pesoLiqKg = pesoCalc.pesoLiqKg;
     let pesoBrutoKg = pesoCalc.pesoBrutoKg;
+    const pesoLiqFromUnit = pesoCalc.pesoLiqFromUnit;
+    const pesoBrutoFromUnit = pesoCalc.pesoBrutoFromUnit;
     const precoUnitario = iPreco !== undefined ? num(row[iPreco]) : null;
     const fobKgRef = iFobKg !== undefined ? num(row[iFobKg]) : null;
     let fobTotalUS = iFob !== undefined ? num(row[iFob]) : null;
@@ -218,6 +223,8 @@ function extrairLinhasComColunas(
       qtdPorCaixa,
       pesoLiqKg,
       pesoBrutoKg,
+      pesoLiqFromUnit,
+      pesoBrutoFromUnit,
       precoUnitario,
       fobTotalUS,
       fobKgReferencia: fobKgRef,
@@ -250,10 +257,24 @@ function aplicarQtdLinhasFornecedor(linhas: LinhaFornecedor[], sammelkarton?: st
     const qtd = r.qtd;
     let pesoLiqKg = l.pesoLiqKg;
     let pesoBrutoKg = l.pesoBrutoKg;
-    if (pesoLiqKg != null && l.qtd != null && l.qtd > 0 && qtd != null && qtd !== l.qtd) {
+    if (
+      l.pesoLiqFromUnit &&
+      pesoLiqKg != null &&
+      l.qtd != null &&
+      l.qtd > 0 &&
+      qtd != null &&
+      qtd !== l.qtd
+    ) {
       pesoLiqKg = (pesoLiqKg / l.qtd) * qtd;
     }
-    if (pesoBrutoKg != null && l.qtd != null && l.qtd > 0 && qtd != null && qtd !== l.qtd) {
+    if (
+      l.pesoBrutoFromUnit &&
+      pesoBrutoKg != null &&
+      l.qtd != null &&
+      l.qtd > 0 &&
+      qtd != null &&
+      qtd !== l.qtd
+    ) {
       pesoBrutoKg = (pesoBrutoKg / l.qtd) * qtd;
     }
     let fobTotalUS = r.fobTotalUS ?? l.fobTotalUS;

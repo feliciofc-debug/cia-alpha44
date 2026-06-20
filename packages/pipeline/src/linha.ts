@@ -47,6 +47,14 @@ export function pesoBrutoReal(l: PesoLinha): number | null {
 }
 
 /**
+ * Peso bruto para FOB planilha China — só coluna 毛重 / bruto total da linha.
+ * Não usa líquido, não estima bruto×0,92, não multiplica por qtd.
+ */
+export function pesoBrutoPlanilhaFob(l: PesoLinha): number {
+  return pesoBrutoReal(l) ?? 0;
+}
+
+/**
  * Peso para rateio fiscal/frete (motor 66).
  * Planilhas chinesas (装箱单): quando há líq e bruto, Comex Plus rateia pelo bruto.
  */

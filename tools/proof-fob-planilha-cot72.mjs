@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 /**
- * Prova: cotação 72 recalculada — FOB/kg planilha China no campo, zero pendente.
+ * Prova: cotação 72 — FOB/kg planilha China × peso BRUTO (毛重 total da linha).
+ * Audita item a item: fobTotal === fobKg×bruto; Σ alvo US$ 47.036.
  */
 import { createClerkClient } from "@clerk/backend";
 
 const API = process.env.SMOKE_API ?? "https://api2.amzofertas.com.br/cia";
 const COT_ID = process.argv[2] ?? "cmqlfuhvm000ykw2cue1whldj";
+const ALVO_FOB = 47_036;
+const TOL_PCT = 0.02;
 
 async function authHeaders() {
   const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
@@ -17,44 +20,20 @@ async function authHeaders() {
   return { Authorization: `Bearer ${jwt}`, "content-type": "application/json" };
 }
 
-function fobKgPrincipal(it) {
+function fobKgPlanilha(it) {
   if (it.fobKgManual != null && it.fobKgManual > 0) return it.fobKgManual;
-  const ref = it.benchmark?.fobKgMedioDI ?? it.benchmark?.mediaFobKg ?? it.calibracao?.fobKgCalibrado;
-  if (ref != null && ref > 0) return ref;
-  if (it.pesoLiqKg > 0 && it.fobTotalUS > 0) return it.fobTotalUS / it.pesoLiqKg;
-  return null;
+  return it.benchmark?.fobKgMedioDI ?? it.benchmark?.mediaFobKg ?? null;
 }
 
 const h = await authHeaders();
-console.log("=== PROVA FOB planilha China — cot 72 (via /api/calcular) ===");
+console.log("=== PROVA FOB planilha × peso BRUTO — cot 72 ===\n");
 
 const det = await fetch(`${API}/api/cotacoes/${COT_ID}`, { headers: h }).then((r) => r.json());
-
-const body = {
-  cambio: det.cambio,
-  freteTotalUS: det.freteTotalUS,
-  adicionaisVaUS: det.adicionaisVaUS ?? 0,
-  reducaoBaseUS: det.reducaoBaseUS ?? 0,
-  siscomex: det.siscomex ?? 0,
-  antidumpingBRL: det.antidumpingBRL ?? 0,
-  cliente: det.cliente,
-  benefFiscal: det.benefFiscal ?? "NENHUM",
-  moeda: det.moeda ?? "USD",
-  incoterm: det.incoterm ?? "FOB",
-  origem: det.origem ?? "CN",
-  destino: det.destino ?? "SP",
-  ufEmpresa: det.ufEmpresa,
-  regimeIcms: det.regimeIcms,
-  despesas: det.despesas ?? [],
-  outrasDespesasBaseBRL: det.outrasDespesasBaseBRL,
-  params: det.params,
-  itens: det.itens,
-};
-
+const c = det.cotacao ?? det;
 const calc = await fetch(`${API}/api/calcular`, {
   method: "POST",
   headers: h,
-  body: JSON.stringify(body),
+  body: JSON.stringify({ ...c, itens: det.itens ?? c.itens }),
 }).then((r) => r.json());
 
 if (!calc.itens?.length) {
@@ -64,47 +43,57 @@ if (!calc.itens?.length) {
 
 const itens = calc.itens;
 const pendentes = itens.filter((it) => it.fobPendente);
+const bad = [];
+let sum = 0;
+let sumEsperado = 0;
+
+console.log("ordem\tncm\tfobKg\tpesoBruto\tfobTotal\tfobKg×bruto\tΔ\tstatus");
+for (const it of itens) {
+  const fobKg = fobKgPlanilha(it);
+  const bruto = it.pesoBrutoKg ?? 0;
+  const fob = it.fobTotalUS ?? 0;
+  const esp = fobKg != null && bruto > 0 ? fobKg * bruto : null;
+  sum += fob;
+  if (esp != null) sumEsperado += esp;
+  const delta = esp != null ? fob - esp : null;
+  const ok = esp == null || Math.abs(delta) <= 1;
+  if (!ok) bad.push({ ordem: it.ordem, ncm: it.ncm, fob, esp, delta, bruto });
+  console.log(
+    `${it.ordem}\t${it.ncm}\t${fobKg?.toFixed(4) ?? "—"}\t${bruto}\t${fob.toFixed(2)}\t${esp?.toFixed(2) ?? "—"}\t${delta?.toFixed(2) ?? "—"}\t${ok ? "OK" : "BAD"}`,
+  );
+}
+
 const balanca = itens.find((it) =>
   /balan|gancho|84233090|84238900|挂钩秤/i.test(`${it.descOriginal} ${it.descPt} ${it.ncm}`),
 );
 
-console.log(`Itens: ${itens.length} | Pendentes: ${pendentes.length}`);
-console.log(`Total BRL: ${calc.financeiro?.totalBRL ?? calc.resultado?.totalBRL}`);
+console.log("\n--- RESUMO ---");
+console.log(`Itens: ${itens.length} | Pendentes: ${pendentes.length} | BAD linhas: ${bad.length}`);
+console.log(`Σ fobTotalUS:     US$ ${sum.toLocaleString("en-US", { minimumFractionDigits: 2 })}`);
+console.log(`Σ fobKg×bruto:    US$ ${sumEsperado.toLocaleString("en-US", { minimumFractionDigits: 2 })}`);
+console.log(`Alvo Paulo/CSV:   US$ ${ALVO_FOB.toLocaleString("en-US", { minimumFractionDigits: 2 })}`);
+console.log(`Engine entrada:   US$ ${(calc.resultado?.entrada?.fobTotalUS ?? sum).toLocaleString("en-US", { minimumFractionDigits: 2 })}`);
 
 if (balanca) {
-  const kg = fobKgPrincipal(balanca);
-  console.log("\n★ Balança de gancho:");
-  console.log(
-    JSON.stringify(
-      {
-        ncm: balanca.ncm,
-        fobKgCampo: kg,
-        refPlanilha: balanca.benchmark?.fobKgMedioDI,
-        fobPendente: balanca.fobPendente ?? false,
-        fobTotalUS: balanca.fobTotalUS,
-        pesoLiqKg: balanca.pesoLiqKg,
-      },
-      null,
-      2,
-    ),
-  );
+  const kg = fobKgPlanilha(balanca);
+  console.log(`\n★ Balança: ncm=${balanca.ncm} fobKg=${kg?.toFixed(4)} bruto=${balanca.pesoBrutoKg} fob=${balanca.fobTotalUS?.toFixed(2)} pendente=${balanca.fobPendente ?? false}`);
 }
 
-console.log("\nTodos os itens (FOB/kg):");
-for (const it of itens) {
-  console.log(
-    `  ordem=${it.ordem} ncm=${it.ncm} fobKg=${fobKgPrincipal(it)?.toFixed(4) ?? "—"} pendente=${it.fobPendente ? "SIM" : "não"}`,
-  );
+for (const b of bad) {
+  console.log(`  ✗ ordem ${b.ordem} ncm=${b.ncm}: fob=${b.fob.toFixed(2)} esperado=${b.esp?.toFixed(2)} bruto=${b.bruto}`);
 }
 
+const tolAbs = ALVO_FOB * TOL_PCT;
+const sumOk = Math.abs(sum - ALVO_FOB) <= tolAbs;
+const formulaOk = bad.length === 0 && Math.abs(sum - sumEsperado) < 1;
 const balancaOk =
   balanca &&
-  Math.abs((fobKgPrincipal(balanca) ?? 0) - 2.8942) < 0.02 &&
+  Math.abs((fobKgPlanilha(balanca) ?? 0) - 2.8942) < 0.02 &&
   !balanca.fobPendente;
-const pass =
-  pendentes.length === 0 &&
-  balancaOk &&
-  (calc.financeiro?.totalBRL ?? calc.resultado?.totalBRL) > 0;
+const pass = pendentes.length === 0 && formulaOk && sumOk && balancaOk;
 
 console.log(pass ? "\nPASS proof-fob-planilha-cot72" : "\nFAIL proof-fob-planilha-cot72");
+if (!sumOk) {
+  console.log(`  → Σ fora do alvo (±${(TOL_PCT * 100).toFixed(0)}%): delta US$ ${(sum - ALVO_FOB).toFixed(2)}`);
+}
 process.exit(pass ? 0 : 1);

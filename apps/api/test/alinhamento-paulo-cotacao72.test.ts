@@ -15,7 +15,7 @@ import {
   loadBenchmarkPlanilha,
   defaultBenchmarkPlanilhaPath,
   fobTotalPlanilhaPeso,
-  resolvePesoLiqRateio,
+  pesoBrutoPlanilhaFob,
   lookupBenchmark,
   criarNcmCatalog,
   loadNcmVigenteCache,
@@ -87,10 +87,14 @@ describe("gate cotação 72 — planilha China × peso no motor", () => {
 
     for (const it of itensCalc) {
       const bench = lookupBenchmark(state.benchmarkIndex, it.ncm);
-      const peso = resolvePesoLiqRateio(it);
+      const pesoBruto = pesoBrutoPlanilhaFob(it);
       sumMotor += fobUsadoNoEngine(it, it.calibracao!);
-      sumPlanilhaRef += fobTotalPlanilhaPeso(peso, bench);
+      sumPlanilhaRef += fobTotalPlanilhaPeso(pesoBruto, bench);
       expect(it.fobPendente).not.toBe(true);
+      if (pesoBruto > 0 && bench.fonte === "Histórico próprio") {
+        const fobKg = bench.fobKgMedioDI ?? bench.mediaFobKg ?? 0;
+        expect(it.fobTotalUS).toBeCloseTo(fobKg * pesoBruto, 0);
+      }
     }
 
     const totalMotor = resultado!.totalBRL;

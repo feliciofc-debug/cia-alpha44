@@ -69,6 +69,7 @@ describe("fobKgManual — override soberano", () => {
       fobTotalUS: 215,
       fobEmbarqueUS: 215,
       pesoLiqKg: 100,
+      pesoBrutoKg: 100,
       benchmark: benchInnove,
       fobKgFonte: "linha",
     });
@@ -93,6 +94,7 @@ describe("fobKgManual — override soberano", () => {
       fobTotalUS: 215,
       fobEmbarqueUS: 215,
       pesoLiqKg: 100,
+      pesoBrutoKg: 100,
       benchmark: benchInnove,
     });
     expect(fobUsadoNoEngine(it, calibracao)).toBeCloseTo(190.72, 2);

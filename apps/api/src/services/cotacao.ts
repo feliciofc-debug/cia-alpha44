@@ -39,6 +39,7 @@ import {
   fobTotalPlanilhaItem,
   fobUsadoNoEngine,
   pesoEngineItem,
+  pesoFobPlanilhaItem,
 } from "./fob-kg-manual.js";
 import { converterLinhasEurParaUsd } from "./conversao-moeda-ingest.js";
 import { normalizarMoedaCodigo } from "@cia/shared";
@@ -405,13 +406,15 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
 
   const itensEnriquecidos: Item[] = itensComFob.map((it) => {
     const pesoRateio = pesoEngineItem(it);
+    const pesoFob = pesoFobPlanilhaItem(it);
     const benchmark = lookupBenchmark(state.benchmarkIndex, it.ncm || "00000000");
     const fobKgPlanilha = fobKgParaPreenchimento(benchmark);
     const fobTotalMotor = fobUsadoNoEngine({ ...it, benchmark }, it.calibracao ?? ({} as never));
+    const pesoFobEfetivo = pesoFob > 0 ? pesoFob : pesoRateio;
     const fobKgEfetivo =
       it.fobKgManual ??
       fobKgPlanilha ??
-      (pesoRateio > 0 && fobTotalMotor > 0 ? fobTotalMotor / pesoRateio : null);
+      (pesoFobEfetivo > 0 && fobTotalMotor > 0 ? fobTotalMotor / pesoFobEfetivo : null);
     const calibracao = it.fobPendente
       ? {
           fobKgOriginal: null,
@@ -488,4 +491,4 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
   return { resultado, itens: validarConfirmacaoNcmItens(itensEnriquecidos), icms, params: paramsEngine };
 }
 
-export { fobKgFinalItem, fobKgReferenciaItem, fobTotalPlanilhaItem, fobUsadoNoEngine, pesoEngineItem };
+export { fobKgFinalItem, fobKgReferenciaItem, fobTotalPlanilhaItem, fobUsadoNoEngine, pesoEngineItem, pesoFobPlanilhaItem };

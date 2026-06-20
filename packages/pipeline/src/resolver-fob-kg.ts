@@ -31,7 +31,7 @@ import {
   type ReferenciaFobKgPlanilha,
 } from "./fob-kg-planilha.js";
 import type { LinhaCrua } from "./linha.js";
-import { resolvePesoLiqRateio } from "./linha.js";
+import { pesoBrutoPlanilhaFob, resolvePesoLiqRateio } from "./linha.js";
 import { linhaPesoAbsurdo, ncmSuspeitoLixo } from "./fob-escala.js";
 import {
   detectarPrecoCusto,
@@ -159,6 +159,15 @@ function pesoRateioItem(it: Pick<Item, "pesoLiqKg" | "pesoBrutoKg">): number {
   return resolvePesoLiqRateio({ pesoLiqKg: it.pesoLiqKg, pesoBrutoKg: it.pesoBrutoKg });
 }
 
+/** Peso bruto total da linha — regra FOB planilha China (PREÇO FOB/KG × 毛重). */
+function pesoBrutoFobItem(it: Pick<Item, "pesoLiqKg" | "pesoBrutoKg">): number {
+  return pesoBrutoPlanilhaFob({ pesoLiqKg: it.pesoLiqKg, pesoBrutoKg: it.pesoBrutoKg });
+}
+
+function pesoBrutoFobLinha(l: Pick<LinhaCrua, "pesoLiqKg" | "pesoBrutoKg">): number {
+  return pesoBrutoPlanilhaFob({ pesoLiqKg: l.pesoLiqKg, pesoBrutoKg: l.pesoBrutoKg });
+}
+
 function fobEmbarqueItem(it: Item): number {
   if (it.fobEmbarqueUS != null && it.fobEmbarqueUS > 0) return it.fobEmbarqueUS;
   if (it.fobTotalUS > 0) return it.fobTotalUS;
@@ -171,12 +180,16 @@ function resolverBenchmark(
   qtd: number | null,
   fobUnitarioUS: number | null,
   index: BenchmarkIndex,
+  opts?: { planilhaChina?: boolean },
 ): { fobTotalUS: number; fobUnitarioUS: number | null; meta: FobKgMeta } | null {
   const bench = lookupBenchmark(index, ncm);
   const fobKg = fobKgParaPreenchimento(bench);
   const fonte = formatarFobKgFonteBenchmark(bench, index);
   if (!fonte || !fobKg || pesoKg <= 0) return null;
-  const avisos = ["FOB/kg de benchmark externo aplicado sobre peso de rateio (base CIF)."];
+  const planilhaChina = opts?.planilhaChina === true;
+  const avisos = planilhaChina
+    ? ["FOB/kg planilha China × peso bruto total da linha (毛重)."]
+    : ["FOB/kg de benchmark externo aplicado sobre peso de rateio (base CIF)."];
   if (bench.avisoBenchmark) avisos.unshift(bench.avisoBenchmark);
   const fobTotal = fobKg * pesoKg;
   return {
@@ -184,7 +197,7 @@ function resolverBenchmark(
     fobUnitarioUS: qtd && qtd > 0 ? fobTotal / qtd : fobUnitarioUS,
     meta: {
       fobKgFonte: fonte,
-      fobKgBase: "liquido",
+      fobKgBase: planilhaChina ? "bruto" : "liquido",
       fobKgAvisos: avisos,
     },
   };
@@ -232,10 +245,11 @@ export function resolverFobKgPlanilha(
       }
       const benchChina = resolverBenchmark(
         l.ncm ?? "",
-        pesoRateio,
+        pesoBrutoFobLinha(l),
         l.qtd,
         l.fobUnitarioUS,
         benchmarkIndex,
+        { planilhaChina: true },
       );
       if (benchChina) {
         const embarque = linhaTemFobExplicito(l) ? l.fobTotalUS! : undefined;
@@ -335,13 +349,13 @@ function resolverItemInterno(
   }
 
   if (planilhaChinaTemNcm(benchmarkIndex, it.ncm ?? "")) {
-    const pesoRateio = pesoRateioItem(it);
     const benchChina = resolverBenchmark(
       it.ncm ?? "",
-      pesoRateio,
+      pesoBrutoFobItem(it),
       it.qtd,
       it.fobUnitarioUS,
       benchmarkIndex,
+      { planilhaChina: true },
     );
     if (benchChina) {
       const embarqueAnterior =
