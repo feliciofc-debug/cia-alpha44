@@ -103,15 +103,6 @@ function despesaValor(despesas: Despesa[], ...chaves: string[]): number {
   return 0;
 }
 
-function totaisRegime(resultado: ResultadoCotacao) {
-  const e = resultado.entrada;
-  const impostosSuspensos = e.iiTotal + e.ipiTotal + e.pisTotal + e.cofinsTotal;
-  const totalIntegral = resultado.totalBRL;
-  const totalEntreposto = Math.max(0, totalIntegral - impostosSuspensos);
-  const proveitoEconomico = totalIntegral - totalEntreposto;
-  return { totalIntegral, totalEntreposto, proveitoEconomico };
-}
-
 function descricaoMercadorias(itens: Item[]): string {
   if (itens.length === 0) return "—";
   const first = (itens[0]?.descPt || itens[0]?.descOriginal || "—").toUpperCase();
@@ -170,7 +161,7 @@ export async function gerarPdfOrcamentoClienteModelo(payload: PayloadOrcamentoCl
   const e = resultado.entrada;
   const s = resultado.saida;
   const despesas = cotacao.despesas ?? [];
-  const { totalIntegral, totalEntreposto, proveitoEconomico } = totaisRegime(resultado);
+  const totalIntegral = resultado.totalBRL;
   const { pesoLiqKg: pesoLiq, pesoBrutoKg: pesoBruto, baseDespachanteBruta } = totaisPesoExibicao(itens);
   const porto = `PORTO ${cotacao.origem || "RJ"}`;
   const faturaTitulo = tituloFatura(cotacao.cliente || "CLIENTE", criadoEm, fmtDataFatura);
@@ -349,34 +340,21 @@ export async function gerarPdfOrcamentoClienteModelo(payload: PayloadOrcamentoCl
   }
   y += b4h + 8;
 
-  const totais: [number, string][] = [
-    [totalIntegral, "TOTAL"],
-    [totalEntreposto, "VALOR DAS DESPESAS - ENTREPOSTO ADUANEIRO SUSPENSOS"],
-    [proveitoEconomico, "VALOR DO PROVEITO ECONÔMICO C/ENTREPOSTO ADUANEIRO"],
-  ];
-  for (const [valBrl, legenda] of totais) {
-    const valUsd = cambio > 0 ? valBrl / cambio : 0;
-    const th = 22;
-    strokeBox(doc, m, y, contentW, th);
-    doc.moveTo(m + contentW * 0.32, y).lineTo(m + contentW * 0.32, y + th).stroke();
-    doc.moveTo(m + contentW * 0.48, y).lineTo(m + contentW * 0.48, y + th).stroke();
-    headerCell(doc, `TOTAL R$ ${fmtBrl(valBrl)}`, m + 6, y + 6, contentW * 0.28);
-    headerCell(doc, `$ ${fmtUsd(valUsd)}`, m + contentW * 0.34, y + 6, contentW * 0.12, { align: "center" });
-    headerCell(doc, legenda, m + contentW * 0.5, y + 6, contentW * 0.48, { bold: false, align: "right" });
-    y += th + 3;
-  }
-
-  y += 4;
-  doc
-    .fontSize(7)
-    .font("Helvetica-Bold")
-    .fillColor("#000000")
-    .text(
-      "OBS: NO ATO DA NACIONALIZAÇÃO PODEREMOS PLEITEAR O USO DE UM E-TARIFÁRIO E REDUZIR O II PARA R$ 0,00",
-      m,
-      y,
-      { width: contentW, align: "left" },
-    );
+  const valUsd = cambio > 0 ? totalIntegral / cambio : 0;
+  const th = 22;
+  strokeBox(doc, m, y, contentW, th);
+  doc.moveTo(m + contentW * 0.32, y).lineTo(m + contentW * 0.32, y + th).stroke();
+  doc.moveTo(m + contentW * 0.48, y).lineTo(m + contentW * 0.48, y + th).stroke();
+  headerCell(doc, `TOTAL R$ ${fmtBrl(totalIntegral)}`, m + 6, y + 6, contentW * 0.28);
+  headerCell(doc, `$ ${fmtUsd(valUsd)}`, m + contentW * 0.34, y + 6, contentW * 0.12, { align: "center" });
+  headerCell(
+    doc,
+    "VALOR DAS DESPESAS + IMPOSTOS REGIME INTEGRAL",
+    m + contentW * 0.5,
+    y + 6,
+    contentW * 0.48,
+    { bold: false, align: "right" },
+  );
 
   return pdfParaBuffer(doc);
 }

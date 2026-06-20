@@ -40,6 +40,10 @@ function fmtBrlMoeda(n: number) {
   return `R$ ${fmtBrl(n)}`;
 }
 
+function fmtUsd(n: number) {
+  return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 function despesaValor(despesas: Despesa[], ...chaves: string[]) {
   const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
   for (const d of despesas) {
@@ -47,14 +51,6 @@ function despesaValor(despesas: Despesa[], ...chaves: string[]) {
     if (chaves.some((k) => n.includes(norm(k)))) return d.valorBRL;
   }
   return 0;
-}
-
-function totaisRegime(resultado: ResultadoCotacao) {
-  const e = resultado.entrada;
-  const impostosSuspensos = e.iiTotal + e.ipiTotal + e.pisTotal + e.cofinsTotal;
-  const totalIntegral = resultado.totalBRL;
-  const totalEntreposto = Math.max(0, totalIntegral - impostosSuspensos);
-  return { totalIntegral, totalEntreposto, proveitoEconomico: totalIntegral - totalEntreposto };
 }
 
 function Box({
@@ -173,7 +169,7 @@ export function PreviewOrcamentoCliente({
   const e = resultado.entrada;
   const s = resultado.saida;
   const despesas = cotacao.despesas ?? [];
-  const { totalIntegral, totalEntreposto, proveitoEconomico } = totaisRegime(resultado);
+  const totalIntegral = resultado.totalBRL;
   const pesoLiq = itens.reduce((acc, it) => acc + (it.pesoLiqKg > 0 ? it.pesoLiqKg : 0), 0);
   const brutoSum = itens.reduce((acc, it) => acc + (it.pesoBrutoKg ?? 0), 0);
   const pesoBruto = brutoSum > 0 ? brutoSum : pesoLiq * 1.1;
@@ -307,21 +303,13 @@ export function PreviewOrcamentoCliente({
           }
         />
 
-        {[
-          [totalIntegral, "TOTAL"],
-          [totalEntreposto, "VALOR DAS DESPESAS - ENTREPOSTO ADUANEIRO SUSPENSOS"],
-          [proveitoEconomico, "VALOR DO PROVEITO ECONÔMICO C/ENTREPOSTO ADUANEIRO"],
-        ].map(([val, leg], i) => (
-          <div key={i} className="mt-1 grid grid-cols-[1fr_auto_auto] border border-black text-[10px] font-bold sm:text-[11px]">
-            <div className="border-r border-black px-2 py-1.5">TOTAL R$ {fmtBrl(val as number)}</div>
-            <div className="border-r border-black px-2 py-1.5">$ {fmtUsd(cambio > 0 ? (val as number) / cambio : 0)}</div>
-            <div className="px-2 py-1.5 text-right font-normal">{leg as string}</div>
+        <div className="mt-1 grid grid-cols-[1fr_auto_auto] border border-black text-[10px] font-bold sm:text-[11px]">
+          <div className="border-r border-black px-2 py-1.5">TOTAL R$ {fmtBrl(totalIntegral)}</div>
+          <div className="border-r border-black px-2 py-1.5">$ {fmtUsd(cambio > 0 ? totalIntegral / cambio : 0)}</div>
+          <div className="px-2 py-1.5 text-right font-normal">
+            VALOR DAS DESPESAS + IMPOSTOS REGIME INTEGRAL
           </div>
-        ))}
-
-        <p className="mt-3 text-[10px] font-bold leading-snug">
-          OBS: NO ATO DA NACIONALIZAÇÃO PODEREMOS PLEITEAR O USO DE UM E-TARIFÁRIO E REDUZIR O II PARA R$ 0,00
-        </p>
+        </div>
       </div>
 
       {onBaixarPdf && (
