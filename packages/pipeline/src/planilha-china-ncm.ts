@@ -111,7 +111,7 @@ export function resolverNcmConciliacaoPlanilhaChina(
   };
 
   // 0. Confirmação humana — NCM operacional prevalece se estiver na planilha China.
-  if (it.ncmClassificacaoCache === "humano") {
+  if (it.ncmClassificacaoCache === "humano" || it.ncmRevisadoHumano) {
     const hit = rowFromNcm(it.ncm ?? "");
     if (hit) return hit;
   }
