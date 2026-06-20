@@ -81,6 +81,7 @@ export interface Item {
   fotoUrl?: string;
   ncmValido?: boolean;
   ncmFonte?: "planilha" | "ia" | "siscomex" | "pendente";
+  ncmClassificacaoCache?: "humano" | "llm";
   ncmPlanilhaOriginal?: string;
   ncmDescricaoOficial?: string;
   ncmAvisos?: string[];
@@ -91,6 +92,7 @@ export interface Item {
   ncmConfirmado?: string;
   ncmConfirmadoPor?: string;
   fobKgFonte?: string;
+  fobEmbarqueUS?: number;
   fobPendente?: boolean;
   fobKgBase?: "bruto" | "liquido" | "indeterminado";
   fobKgAvisos?: string[];

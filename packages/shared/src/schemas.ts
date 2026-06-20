@@ -106,6 +106,8 @@ export const itemSchema = z.object({
   qtd: z.number().nonnegative().nullable().default(null),
   fobUnitarioUS: z.number().nonnegative().nullable().default(null),
   fobTotalUS: z.number().nonnegative(),
+  /** FOB US$ original da planilha embarque (invoice) — não sobrescrever na valoração. */
+  fobEmbarqueUS: z.number().nonnegative().optional(),
   /** Override manual US$/kg — soberano sobre planilha e calibragem. */
   fobKgManual: z.number().positive().nullable().optional(),
   aliquotas: aliquotasSchema,
@@ -125,6 +127,8 @@ export const itemSchema = z.object({
   /** NCM validado na tabela vigente Siscomex (Classif). */
   ncmValido: z.boolean().optional(),
   ncmFonte: z.enum(["planilha", "ia", "siscomex", "pendente"]).optional(),
+  /** Origem do cache P3b quando a classificação veio do Postgres (humano prevalece sobre LLM). */
+  ncmClassificacaoCache: z.enum(["humano", "llm"]).optional(),
   ncmPlanilhaOriginal: z.string().optional(),
   ncmDescricaoOficial: z.string().optional(),
   ncmAvisos: z.array(z.string()).optional(),

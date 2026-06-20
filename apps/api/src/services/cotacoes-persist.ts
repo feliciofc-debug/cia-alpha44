@@ -7,6 +7,8 @@ import {
   mesclarItemMeta,
   criarPdfNcmAuditCtx,
   enriquecerItensPdfNcmAudit,
+  analisarEscalaFobItem,
+  bloquearPersistenciaFobCorrupto,
   type NcmCatalog,
 } from "@cia/pipeline";
 import {
@@ -429,11 +431,25 @@ async function persistirItensPosCalculo(
     const itemRow = itemRows.find((r) => r.ordem === ordem);
     if (!itemRow) continue;
     const metaAtual = (itemRow.meta as import("@cia/pipeline").ItemMetaPersistido | null) ?? {};
-    const metaNovo = { ...metaAtual, ...extrairItemMeta(it) };
+    const analise = analisarEscalaFobItem(it, it.benchmark);
+    const fobPersistir = bloquearPersistenciaFobCorrupto(analise)
+      ? Number(itemRow.fobTotalUS)
+      : (it.fobTotalUS ?? 0);
+    const avisosEscala =
+      analise.flags.length > 0
+        ? [`[FOB escala] ${analise.flags.join(", ")} ratio=${analise.ratio?.toFixed(1) ?? "—"}`]
+        : [];
+    const metaNovo = {
+      ...metaAtual,
+      ...extrairItemMeta(it),
+      fobKgAvisos: [...(it.fobKgAvisos ?? []), ...avisosEscala].filter(Boolean).length
+        ? [...(it.fobKgAvisos ?? []), ...avisosEscala]
+        : it.fobKgAvisos,
+    };
     await tx.item.update({
       where: { id: itemRow.id },
       data: {
-        fobTotalUS: it.fobTotalUS ?? 0,
+        fobTotalUS: fobPersistir,
         fobUnitarioUS: it.fobUnitarioUS ?? null,
         benchmark: (it.benchmark ?? undefined) as Prisma.InputJsonValue | undefined,
         calibracao: (it.calibracao ?? undefined) as Prisma.InputJsonValue | undefined,
@@ -851,14 +867,14 @@ async function recalcularCotacaoPersistida(
   return cotacaoRecalculadaFromRow(rowAtualizado as CotacaoComRelacoes, state);
 }
 
-/** Marca item com revisão humana do NCM (persiste em Item.meta). */
+/** Marca item com revisão humana do NCM (persiste em Item.meta + recalcula cotação). */
 export async function confirmarNcmItem(
   cotacaoId: string,
   tenantSlug: string,
   ordem: number,
   confirmadoPor?: string,
+  state?: AppState,
   provider?: string,
-  catalog?: NcmCatalog,
 ) {
   if (!dbAtivo()) throw new PersistenciaIndisponivelError();
 
@@ -868,6 +884,7 @@ export async function confirmarNcmItem(
   const itemRow = row.itens.find((i) => i.ordem === ordem);
   if (!itemRow) return null;
 
+  const catalog = state?.ncmCatalog;
   const it = itemDominioFromRow(itemRow);
   if (!ncmInformadoParaFechamento(it)) return null;
   if (confirmacaoNcmVigente(it)) {
@@ -876,6 +893,13 @@ export async function confirmarNcmItem(
 
   const versoes = await versoesClassificacaoCacheAtual();
   await confirmarNcmItemInterno(itemRow, confirmadoPor, versoes, { cacheStrict: false });
+
+  if (state) {
+    const recalculada = await recalcularCotacaoPersistida(cotacaoId, tenantSlug, state, row);
+    if (recalculada) {
+      return { ...recalculada, provider: provider ?? recalculada.provider };
+    }
+  }
 
   const atualizada = await buscarCotacaoRow(cotacaoId, tenantSlug);
   if (!atualizada) return null;

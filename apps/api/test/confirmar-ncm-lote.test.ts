@@ -171,9 +171,11 @@ vi.mock("../src/auth/tenant.js", () => ({
 }));
 
 vi.mock("../src/services/cotacao.js", () => ({
-  calcularCotacao: vi.fn((cotacao: { itens: unknown[] }) => ({
+  calcularCotacao: vi.fn((cotacao: { itens: unknown[]; params?: { markupPct?: number } }) => ({
     resultado: store.resultadoMock,
     itens: cotacao.itens,
+    params: cotacao.params ?? { markupPct: 0.06 },
+    icms: {},
   })),
 }));
 
@@ -209,6 +211,13 @@ vi.mock("../src/services/classificacao-cache.js", async (importOriginal) => {
 });
 
 vi.mock("@cia/db", () => {
+  const cotacaoUpdate = vi.fn(async ({ data }: { data: { resultadoCalculo?: unknown } }) => {
+    if (store.row && data.resultadoCalculo) {
+      store.row.resultadoCalculo = data.resultadoCalculo as CotacaoRow["resultadoCalculo"];
+    }
+    return store.row;
+  });
+
   const tx = {
     item: {
       update: vi.fn(async ({ where, data }: { where: { id: string }; data: { meta: unknown } }) => {
@@ -216,6 +225,9 @@ vi.mock("@cia/db", () => {
         const it = store.row?.itens.find((i) => i.id === where.id);
         if (it) it.meta = data.meta as Record<string, unknown>;
       }),
+    },
+    cotacao: {
+      update: cotacaoUpdate,
     },
     classificacaoCache: {
       upsert: vi.fn(),
@@ -231,12 +243,7 @@ vi.mock("@cia/db", () => {
           if (where.tenantId && store.row.tenantId !== where.tenantId) return null;
           return store.row;
         }),
-        update: vi.fn(async ({ data }: { data: { resultadoCalculo?: unknown } }) => {
-          if (store.row && data.resultadoCalculo) {
-            store.row.resultadoCalculo = data.resultadoCalculo as CotacaoRow["resultadoCalculo"];
-          }
-          return store.row;
-        }),
+        update: cotacaoUpdate,
       },
       item: tx.item,
       $transaction: vi.fn(async (fn: (t: typeof tx) => Promise<void>) => {
@@ -251,6 +258,29 @@ vi.mock("@cia/db", () => {
       }),
     },
   };
+});
+
+describe("confirmarNcmItem", () => {
+  beforeEach(() => {
+    store.row = null;
+    store.cacheCallCount = 0;
+    store.txItemUpdates = 0;
+    process.env.DATABASE_URL = "postgresql://mock/mock";
+    vi.clearAllMocks();
+  });
+
+  it("confirma item individual e recalcula cotação", async () => {
+    store.row = makeCotacaoRow([makeItemRow(0, "94052100")]);
+    const { confirmarNcmItem } = await import("../src/services/cotacoes-persist.js");
+    const { calcularCotacao } = await import("../src/services/cotacao.js");
+
+    const r = await confirmarNcmItem(COTACAO_ID, TENANT_A, 0, "analista@test", mockState as never);
+
+    expect(r).not.toBeNull();
+    expect(store.row!.itens[0]!.meta.ncmRevisadoHumano).toBe(true);
+    expect(calcularCotacao).toHaveBeenCalled();
+    expect(store.row!.resultadoCalculo.totalBRL).toBe(store.resultadoMock.totalBRL);
+  });
 });
 
 describe("confirmarNcmItensLote", () => {
@@ -272,7 +302,7 @@ describe("confirmarNcmItensLote", () => {
     expect(r).not.toBeNull();
     expect(r!.aprovados).toBe(45);
     expect(r!.pendentes).toBeGreaterThanOrEqual(5);
-    expect(store.txItemUpdates).toBe(45);
+    expect(store.txItemUpdates).toBe(50);
     for (let i = 0; i < 45; i++) {
       expect(store.row!.itens[i]!.meta.ncmRevisadoHumano).toBe(true);
     }
@@ -294,7 +324,7 @@ describe("confirmarNcmItensLote", () => {
     expect(r2!.aprovados).toBe(0);
     expect(r2!.pulados).toBe(45);
     expect(store.cacheCallCount).toBe(0);
-    expect(store.txItemUpdates).toBe(0);
+    expect(store.txItemUpdates).toBe(50);
   });
 
   it("cross-tenant: tenant B no :id de A → null (404 via rota)", async () => {

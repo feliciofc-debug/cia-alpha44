@@ -26,7 +26,7 @@ import type { ClassifyItemInput, ClassifyItemOutput } from "../llm/types.js";
 import { mapComConcorrencia } from "../util/map-concorrencia.js";
 import {
   criarStatsClassificacaoCache,
-  lookupClassificacaoCache,
+  lookupClassificacaoCacheDetalhe,
   outputConfirmacaoHumana,
   salvarClassificacaoCacheLlm,
   versoesClassificacaoCache,
@@ -35,6 +35,7 @@ import {
 import {
   fobKgFinalItem,
   fobKgReferenciaItem,
+  fobTotalPlanilhaItem,
   fobUsadoNoEngine,
   pesoEngineItem,
 } from "./fob-kg-manual.js";
@@ -116,12 +117,15 @@ async function classificarEmLotes(
       continue;
     }
 
-    const cached = await lookupClassificacaoCache(
+    const cached = await lookupClassificacaoCacheDetalhe(
       { descOriginal: input.descOriginal, material: input.material, uso: input.uso },
       versoes,
     );
     if (cached) {
-      resultados[i] = cached;
+      resultados[i] = {
+        ...cached.output,
+        classificacaoCacheOrigem: cached.confirmadoHumano ? "humano" : "llm",
+      };
       stats.hits += 1;
       continue;
     }
@@ -322,6 +326,9 @@ export async function montarItens(
           ncmCandidatos: resolvido.ncmCandidatos,
           ncmValido: ncmInformadoParaFechamento({ ncm } as Item),
           ncmFonte: resolvido.fonte,
+          ...(c?.classificacaoCacheOrigem
+            ? { ncmClassificacaoCache: c.classificacaoCacheOrigem }
+            : {}),
           ncmDescricaoOficial: resolvido.descricaoOficial ?? undefined,
           ncmPlanilhaOriginal: resolvido.ncmPlanilhaOriginal ?? undefined,
           ncmAvisos: [...resolvido.avisos, ...validacao.avisos, ...avisosClassificacao].length
@@ -333,6 +340,7 @@ export async function montarItens(
           qtd: l.qtd,
           fobUnitarioUS: l.fobUnitarioUS,
           fobTotalUS: fobTotal,
+          ...(fobTotal > 0 ? { fobEmbarqueUS: fobTotal } : {}),
           aliquotas: tec?.aliquotas ?? { ii: 0, ipi: 0, pis: 0.021, cofins: 0.0965, icmsEntrada: 0 },
           aliquotasRastro: tec?.rastros,
           aliquotasOverride: false,
@@ -388,20 +396,20 @@ export interface ResultadoCompleto {
 /** Enriquece itens (benchmark/calibragem/risco) e roda o engine fiscal. */
 export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCompleto {
   const { params: paramsIcms, meta: icms } = aplicarIcmsCotacao(cotacao);
-  const paramsEngine = {
-    ...paramsIcms,
-    ipiAliqSaida: paramsIcms.ipiAliqSaida ?? 0,
-  };
+  const paramsEngine = { ...paramsIcms };
   const cotacaoIcms = { ...cotacao, params: paramsEngine };
 
-  /** Regra global: planilha China (PREÇO FOB/KG) em todos os itens — exceto override manual. */
+  /** Planilha China: referência FOB/kg; base fiscal = invoice (fobEmbarqueUS). */
   const itensComFob = aplicarPlanilhaChinaCotacao(cotacaoIcms.itens, state.benchmarkIndex);
 
   const itensEnriquecidos: Item[] = itensComFob.map((it) => {
     const pesoRateio = pesoEngineItem(it);
-    const fobKg = pesoRateio > 0 && it.fobTotalUS > 0 ? it.fobTotalUS / pesoRateio : null;
     const benchmark = lookupBenchmark(state.benchmarkIndex, it.ncm || "00000000");
     const fobKgPlanilha = fobKgReferenciaItem({ ...it, benchmark, fobPendente: it.fobPendente });
+    const embarque =
+      it.fobEmbarqueUS ?? (it.fobTotalUS > 0 && !it.fobPendente ? it.fobTotalUS : undefined);
+    const fobKgOriginal =
+      embarque != null && embarque > 0 && pesoRateio > 0 ? embarque / pesoRateio : null;
     const calibracao = it.fobPendente
       ? {
           fobKgOriginal: null,
@@ -411,9 +419,9 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
           justificativa: "FOB/kg pendente — informe valor na planilha ou aguarde referência válida.",
         }
       : calibrarFobKg({
-          fobKgOriginal: fobKg,
+          fobKgOriginal: fobKgOriginal,
           benchmark,
-          fobTotalUS: it.fobTotalUS,
+          fobTotalUS: embarque ?? 0,
           pesoLiqKg: pesoRateio,
           fobKgFonte: it.fobKgFonte,
         });
@@ -422,7 +430,7 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
       calibracao,
       fobKgFinal: it.fobPendente
         ? null
-        : (it.fobKgManual ?? fobKgPlanilha ?? fobKg ?? calibracao.fobKgCalibrado),
+        : (it.fobKgManual ?? fobKgPlanilha ?? fobKgOriginal ?? calibracao.fobKgCalibrado),
       anuencia: it.anuencia,
       antidumping: it.antidumping,
     });
@@ -435,7 +443,8 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
           : it.fobKgFonte;
     return {
       ...it,
-      fobTotalUS: it.fobTotalUS,
+      fobTotalUS: embarque ?? it.fobTotalUS,
+      ...(embarque != null && embarque > 0 ? { fobEmbarqueUS: embarque } : {}),
       benchmark,
       calibracao,
       fobKgFonte: fobKgFonteEfetiva,
@@ -478,4 +487,4 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
   return { resultado, itens: validarConfirmacaoNcmItens(itensEnriquecidos), icms, params: paramsEngine };
 }
 
-export { fobKgFinalItem, fobKgReferenciaItem, fobUsadoNoEngine, pesoEngineItem };
+export { fobKgFinalItem, fobKgReferenciaItem, fobTotalPlanilhaItem, fobUsadoNoEngine, pesoEngineItem };

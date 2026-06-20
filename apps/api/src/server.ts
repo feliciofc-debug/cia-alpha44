@@ -531,8 +531,7 @@ export async function buildServer() {
         tenantSlug(req),
         idx,
         body.success ? body.data.confirmadoPor : undefined,
-        undefined,
-        getState().ncmCatalog,
+        getState(),
       );
       if (!atualizada) return reply.status(404).send({ erro: "Cotação ou item não encontrado." });
       return atualizada;

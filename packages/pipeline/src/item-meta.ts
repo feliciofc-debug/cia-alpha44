@@ -5,6 +5,7 @@ export interface ItemMetaPersistido {
   uso?: string;
   material?: string;
   ncmFonte?: Item["ncmFonte"];
+  ncmClassificacaoCache?: Item["ncmClassificacaoCache"];
   ncmConfianca?: number;
   ncmValido?: boolean;
   ncmDescricaoOficial?: string;
@@ -15,6 +16,7 @@ export interface ItemMetaPersistido {
   /** ID da família de produto (detectarFamilia) persistida na classificação. */
   familiaProdutoId?: string;
   fobKgFonte?: string;
+  fobEmbarqueUS?: number;
   fobPendente?: boolean;
   fobKgBase?: Item["fobKgBase"];
   fobKgAvisos?: string[];
@@ -30,6 +32,7 @@ export function extrairItemMeta(it: Item): ItemMetaPersistido {
     uso: it.uso,
     material: it.material,
     ncmFonte: it.ncmFonte,
+    ncmClassificacaoCache: it.ncmClassificacaoCache,
     ncmConfianca: it.ncmConfianca,
     ncmValido: it.ncmValido,
     ncmDescricaoOficial: it.ncmDescricaoOficial,
@@ -39,6 +42,7 @@ export function extrairItemMeta(it: Item): ItemMetaPersistido {
     motivoCompatibilidade: it.motivoCompatibilidade,
     familiaProdutoId: (it as Item & { familiaProdutoId?: string }).familiaProdutoId,
     fobKgFonte: it.fobKgFonte,
+    fobEmbarqueUS: it.fobEmbarqueUS,
     fobPendente: it.fobPendente,
     fobKgBase: it.fobKgBase,
     fobKgAvisos: it.fobKgAvisos,
@@ -58,6 +62,7 @@ export function mesclarItemMeta(it: Item, meta: unknown): Item {
     ...(m.uso != null ? { uso: m.uso } : {}),
     ...(m.material != null ? { material: m.material } : {}),
     ...(m.ncmFonte != null ? { ncmFonte: m.ncmFonte } : {}),
+    ...(m.ncmClassificacaoCache != null ? { ncmClassificacaoCache: m.ncmClassificacaoCache } : {}),
     ...(m.ncmConfianca != null ? { ncmConfianca: m.ncmConfianca } : {}),
     ...(m.ncmValido != null ? { ncmValido: m.ncmValido } : {}),
     ...(m.ncmDescricaoOficial != null ? { ncmDescricaoOficial: m.ncmDescricaoOficial } : {}),
@@ -67,6 +72,7 @@ export function mesclarItemMeta(it: Item, meta: unknown): Item {
     ...(m.motivoCompatibilidade != null ? { motivoCompatibilidade: m.motivoCompatibilidade } : {}),
     ...(m.familiaProdutoId != null ? { familiaProdutoId: m.familiaProdutoId } : {}),
     ...(m.fobKgFonte != null ? { fobKgFonte: m.fobKgFonte } : {}),
+    ...(m.fobEmbarqueUS != null ? { fobEmbarqueUS: m.fobEmbarqueUS } : {}),
     ...(m.fobPendente != null ? { fobPendente: m.fobPendente } : {}),
     ...(m.fobKgBase != null ? { fobKgBase: m.fobKgBase } : {}),
     ...(m.fobKgAvisos != null ? { fobKgAvisos: m.fobKgAvisos } : {}),

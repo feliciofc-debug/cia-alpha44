@@ -35,6 +35,8 @@ export interface ClassifyItemOutput {
   avisoAtributo?: string;
   /** Falha de tradução LLM — classificação segue com descOriginal. */
   avisoTraducao?: string;
+  /** P3b — origem do cache quando classificação veio do Postgres (não persiste no JSON do cache). */
+  classificacaoCacheOrigem?: "humano" | "llm";
 }
 
 export interface LlmProvider {

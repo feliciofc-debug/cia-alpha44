@@ -51,11 +51,16 @@ export async function versoesClassificacaoCacheAtual(): Promise<ClassificacaoCac
   return versoesClassificacaoCache(catalog);
 }
 
-/** Lookup — retorna null se miss, versão divergente ou DB indisponível. */
-export async function lookupClassificacaoCache(
+export interface ClassificacaoCacheLookup {
+  output: ClassifyItemOutput;
+  confirmadoHumano: boolean;
+}
+
+/** Lookup com metadados — retorna null se miss, versão divergente ou DB indisponível. */
+export async function lookupClassificacaoCacheDetalhe(
   input: ClassificacaoCacheKeyInput,
   versoes: ClassificacaoCacheVersoes,
-): Promise<ClassifyItemOutput | null> {
+): Promise<ClassificacaoCacheLookup | null> {
   if (!dbAtivo()) return null;
 
   const chave = chaveClassificacaoCache(input, versoes.promptVersion, versoes.catalogVersion);
@@ -72,10 +77,19 @@ export async function lookupClassificacaoCache(
       where: { chave },
       data: { hitCount: { increment: 1 } },
     });
-    return parsed;
+    return { output: parsed, confirmadoHumano: row.confirmadoHumano };
   } catch {
     return null;
   }
+}
+
+/** Lookup — retorna null se miss, versão divergente ou DB indisponível. */
+export async function lookupClassificacaoCache(
+  input: ClassificacaoCacheKeyInput,
+  versoes: ClassificacaoCacheVersoes,
+): Promise<ClassifyItemOutput | null> {
+  const hit = await lookupClassificacaoCacheDetalhe(input, versoes);
+  return hit?.output ?? null;
 }
 
 /** Grava resultado LLM — não sobrescreve entrada confirmada por humano. */

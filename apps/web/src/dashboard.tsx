@@ -484,6 +484,19 @@ function AnalisePainel({
                         {it.ncmFonte === "siscomex" ? "Siscomex vigente" : it.ncmFonte}
                       </span>
                     )}
+                    {it.ncmClassificacaoCache === "humano" && !it.ncmRevisadoHumano && (
+                      <span
+                        className="block text-[10px] font-medium text-sky-400/90"
+                        title="Classificação reutilizada do cache humano (confirmação anterior em outra cotação)"
+                      >
+                        cache humano
+                      </span>
+                    )}
+                    {it.ncmClassificacaoCache === "llm" && (
+                      <span className="block text-[10px] text-slate-600" title="Classificação reutilizada do cache IA">
+                        cache IA
+                      </span>
+                    )}
                     {it.ncmDescricaoOficial && (
                       <span className="block max-w-[12rem] text-[10px] text-slate-500 truncate" title={it.ncmDescricaoOficial}>
                         {it.ncmDescricaoOficial.slice(0, 50)}
@@ -588,7 +601,20 @@ function AnalisePainel({
                       <span>{pct(it.aliquotas.icmsEntrada)}</span>
                     )}
                   </td>
-                  <td className="p-2 whitespace-nowrap">{it.fobTotalUS > 0 ? it.fobTotalUS.toFixed(2) : "—"}</td>
+                  <td className="p-2 whitespace-nowrap align-top">
+                    <span>{it.fobTotalUS > 0 ? it.fobTotalUS.toFixed(2) : "—"}</span>
+                    {it.fobEmbarqueUS != null && it.fobEmbarqueUS > 0 && Math.abs(it.fobEmbarqueUS - it.fobTotalUS) > 0.01 && (
+                      <span className="mt-0.5 block text-[10px] text-slate-500" title="FOB invoice fornecedor (auditoria)">
+                        invoice: ${it.fobEmbarqueUS.toFixed(2)}
+                        {it.fobTotalUS > 0 && (
+                          <span className="text-amber-400/90">
+                            {" "}
+                            ({(((it.fobTotalUS - it.fobEmbarqueUS) / it.fobEmbarqueUS) * 100).toFixed(0)}%)
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </td>
                   <td className="p-2 whitespace-nowrap align-top">
                     {onAlterarFobKg ? (
                       <InputFobKgItem
