@@ -110,6 +110,12 @@ export function resolverNcmConciliacaoPlanilhaChina(
     return { ncm: key, desc: row.desc, fobKgMedioDI: fobKg, score: 1 };
   };
 
+  // 0. Confirmação humana — NCM operacional prevalece se estiver na planilha China.
+  if (it.ncmClassificacaoCache === "humano") {
+    const hit = rowFromNcm(it.ncm ?? "");
+    if (hit) return hit;
+  }
+
   // 1. Candidatos IA/classificação presentes na planilha China (identificação por produto).
   for (const c of it.ncmCandidatos ?? []) {
     const hit = rowFromNcm(c.ncm);
@@ -122,7 +128,7 @@ export function resolverNcmConciliacaoPlanilhaChina(
   const hits = buscarNcmPlanilhaChinaPorDescricao(texto, planilhaItens, { capitulo4: cap, limite: 8 });
   if (hits.length) return hits[0]!;
 
-  // 3. NCM operacional do item, se existir na planilha China (ex.: confirmação humana).
+  // 3. NCM operacional do item na planilha China.
   const op = rowFromNcm(it.ncm ?? "");
   if (op) return op;
 
