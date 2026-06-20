@@ -238,12 +238,13 @@ export function resolverFobKgPlanilha(
         benchmarkIndex,
       );
       if (benchChina) {
-        if (linhaTemFobExplicito(l)) {
-          metas.push({ ...benchChina.meta, fobEmbarqueUS: l.fobTotalUS! });
-          return l;
-        }
-        metas.push({ ...benchChina.meta, fobPendente: true });
-        return l;
+        const embarque = linhaTemFobExplicito(l) ? l.fobTotalUS! : undefined;
+        metas.push({ ...benchChina.meta, ...(embarque != null ? { fobEmbarqueUS: embarque } : {}) });
+        return {
+          ...l,
+          fobTotalUS: benchChina.fobTotalUS,
+          fobUnitarioUS: benchChina.fobUnitarioUS,
+        };
       }
     }
 
@@ -343,20 +344,23 @@ function resolverItemInterno(
       benchmarkIndex,
     );
     if (benchChina) {
-      const embarque = it.fobEmbarqueUS ?? (fobEmbarqueItem(it) > 0 ? fobEmbarqueItem(it) : undefined);
-      if (embarque != null && embarque > 0) {
-        return {
-          item: {
-            ...it,
-            fobEmbarqueUS: embarque,
-            fobTotalUS: embarque,
-          },
-          meta: { ...benchChina.meta, fobEmbarqueUS: embarque },
-        };
-      }
+      const embarqueAnterior =
+        it.fobEmbarqueUS ??
+        (fobEmbarqueItem(it) > 0 && Math.abs(fobEmbarqueItem(it) - benchChina.fobTotalUS) > 0.01
+          ? fobEmbarqueItem(it)
+          : undefined);
       return {
-        item: { ...it, fobPendente: true, fobTotalUS: 0 },
-        meta: { ...benchChina.meta, fobPendente: true },
+        item: {
+          ...it,
+          fobTotalUS: benchChina.fobTotalUS,
+          fobUnitarioUS: benchChina.fobUnitarioUS,
+          fobPendente: false,
+          ...(embarqueAnterior != null ? { fobEmbarqueUS: embarqueAnterior } : {}),
+        },
+        meta: {
+          ...benchChina.meta,
+          ...(embarqueAnterior != null ? { fobEmbarqueUS: embarqueAnterior } : {}),
+        },
       };
     }
   }

@@ -29,7 +29,7 @@ function itemBase(partial: Partial<Item>): Item {
   } as Item;
 }
 
-describe("aplicarPlanilhaChinaCotacao — regra global em todos os itens", () => {
+describe("aplicarPlanilhaChinaCotacao — planilha China × peso no motor", () => {
   beforeEach(() => {
     substituirHistoricoBenchmark([
       { ncm: "94051190", fobKgMedioDI: 1.9072, fobKg: 1.9072, amostra: 12 },
@@ -38,58 +38,73 @@ describe("aplicarPlanilhaChinaCotacao — regra global em todos os itens", () =>
     ]);
   });
 
-  it("todos os NCMs na planilha China recebem PREÇO FOB/KG — mesmo com FOB de embarque", () => {
+  it("NCM na planilha China: FOB total = planilha × peso (não invoice)", () => {
     const index = buildBenchmarkIndex([], "ref");
     const itens = aplicarPlanilhaChinaCotacao(
       [
-        itemBase({ ncm: "94051190", fobTotalUS: 100, pesoLiqKg: 50, fobKgFonte: "linha" }),
-        itemBase({ ncm: "84238900", fobTotalUS: 80, pesoLiqKg: 20, fobKgFonte: "linha" }),
-        itemBase({ ncm: "85183000", fobTotalUS: 30, pesoLiqKg: 5, fobKgFonte: "linha" }),
+        itemBase({ ncm: "94051190", fobTotalUS: 100, fobEmbarqueUS: 100, pesoLiqKg: 50, fobKgFonte: "linha" }),
+        itemBase({ ncm: "84238900", fobTotalUS: 80, fobEmbarqueUS: 80, pesoLiqKg: 20, fobKgFonte: "linha" }),
       ],
       index,
     );
 
     expect(itens[0]!.fobTotalUS).toBeCloseTo(1.9072 * 50, 2);
+    expect(itens[0]!.fobEmbarqueUS).toBe(100);
     expect(itens[1]!.fobTotalUS).toBeCloseTo(4.5155 * 20, 2);
-    expect(itens[2]!.fobTotalUS).toBeCloseTo(6.2 * 5, 2);
     for (const it of itens) {
+      expect(it.fobPendente).not.toBe(true);
       expect(it.fobKgFonte).toMatch(/planilha-mensal/);
     }
+    expect(fobKgParaPreenchimento(lookupBenchmark(index, "94051190"))).toBeCloseTo(1.9072, 3);
   });
 
-  it("NCM ausente na planilha China cai no ComexStat", () => {
-    const index = buildBenchmarkIndex(
-      [{ ncm: "99999999", desc: "X", fobKg: 3.33, cifKg: 3.5, amostra: 1 }],
-      "ref",
-    );
-    const [it] = aplicarPlanilhaChinaCotacao(
-      [itemBase({ ncm: "99999999", fobTotalUS: null as unknown as number, pesoLiqKg: 10 })],
-      index,
-    );
-    const bench = lookupBenchmark(index, "99999999");
-    expect(bench.fonte).toBe("ComexStat");
-    expect(it!.fobTotalUS).toBeCloseTo(3.33 * 10, 2);
-    expect(it!.fobKgFonte).toMatch(/comexstat/);
-  });
-
-  it("override manual não é substituído pela planilha China", () => {
+  it("sem FOB embarque e NCM na China → planilha×peso, não pendente", () => {
     const index = buildBenchmarkIndex([], "ref");
     const [it] = aplicarPlanilhaChinaCotacao(
-      [itemBase({ ncm: "84238900", fobKgManual: 2.5, fobTotalUS: 100, pesoLiqKg: 20 })],
+      [itemBase({ ncm: "84238900", fobTotalUS: 0, pesoLiqKg: 10 })],
       index,
     );
-    expect(it!.fobTotalUS).toBe(100);
-    expect(it!.fobKgManual).toBe(2.5);
+    expect(it!.fobPendente).not.toBe(true);
+    expect(it!.fobTotalUS).toBeCloseTo(4.5155 * 10, 2);
+    expect(it!.fobKgFonte).toMatch(/planilha-mensal/);
   });
 
-  it("recálculo idempotente mantém valores da planilha", () => {
+  it("override manual não é alterado pela cascata", () => {
+    const index = buildBenchmarkIndex([], "ref");
+    const [it] = aplicarPlanilhaChinaCotacao(
+      [itemBase({ ncm: "84238900", fobKgManual: 2.5, fobTotalUS: 100, fobEmbarqueUS: 100, pesoLiqKg: 20 })],
+      index,
+    );
+    expect(it!.fobKgManual).toBe(2.5);
+    expect(it!.fobTotalUS).toBe(100);
+  });
+
+  it("recálculo idempotente: planilha×peso estável", () => {
     const index = buildBenchmarkIndex([], "ref");
     const once = aplicarPlanilhaChinaCotacao(
-      [itemBase({ ncm: "84238900", fobTotalUS: 999, pesoLiqKg: 10, fobKgFonte: "linha" })],
+      [itemBase({ ncm: "84238900", fobTotalUS: 999, fobEmbarqueUS: 999, pesoLiqKg: 10, fobKgFonte: "linha" })],
       index,
     );
     const twice = aplicarPlanilhaChinaCotacao(once, index);
     expect(twice[0]!.fobTotalUS).toBeCloseTo(4.5155 * 10, 2);
-    expect(fobKgParaPreenchimento(lookupBenchmark(index, "84238900"))).toBeCloseTo(4.5155, 3);
+    expect(twice[0]!.fobEmbarqueUS).toBe(999);
+  });
+
+  it("linha lixo (NCM 00015423 + peso absurdo) fica pendente", () => {
+    const index = buildBenchmarkIndex([], "ref");
+    const [it] = aplicarPlanilhaChinaCotacao(
+      [
+        itemBase({
+          ncm: "00015423",
+          descOriginal: "linha lixo parser",
+          fobTotalUS: 74_936,
+          pesoLiqKg: 171_894,
+          fobEmbarqueUS: 74_936,
+        }),
+      ],
+      index,
+    );
+    expect(it!.fobPendente).toBe(true);
+    expect(it!.fobTotalUS).toBe(0);
   });
 });

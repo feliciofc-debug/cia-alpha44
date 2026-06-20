@@ -39,9 +39,8 @@ export function fobKgReferenciaItem(it: Item): number | null {
 }
 
 /**
- * FOB total US$ no motor (base fiscal v2 — invoice Paulo / planilha 66).
- * manual×peso → fobEmbarqueUS (invoice) → fobTotalUS válido → 0 se pendente.
- * Planilha China NUNCA entra aqui.
+ * FOB total US$ no motor — planilha China (NCM identificado) × peso.
+ * manual×peso → planilha×peso → fobTotalUS (ComexStat/irmão) → 0 se pendente.
  */
 export function fobUsadoNoEngine(it: Item, _calibracao: Calibracao): number {
   if (it.fobPendente) return 0;
@@ -51,8 +50,9 @@ export function fobUsadoNoEngine(it: Item, _calibracao: Calibracao): number {
     return it.fobKgManual * pesoRateio;
   }
 
-  if (it.fobEmbarqueUS != null && it.fobEmbarqueUS > 0) {
-    return it.fobEmbarqueUS;
+  const planilha = fobKgBenchmarkOperacional(it.benchmark);
+  if (planilha != null && planilha > 0 && pesoRateio > 0) {
+    return planilha * pesoRateio;
   }
 
   if (it.fobTotalUS > 0) {

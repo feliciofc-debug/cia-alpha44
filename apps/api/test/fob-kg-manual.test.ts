@@ -49,7 +49,7 @@ describe("fobKgManual — override soberano", () => {
     expect(fobKgFinalItem(it, calibracao)).toBeCloseTo(2.5, 4);
   });
 
-  it("fobUsadoNoEngine prioriza planilha operacional INNOVE sobre FOB embarque", () => {
+  it("fobUsadoNoEngine prioriza planilha INNOVE sobre invoice embarque", () => {
     const benchInnove = {
       ...benchmark,
       fonte: "Histórico próprio" as const,
@@ -59,25 +59,43 @@ describe("fobKgManual — override soberano", () => {
       rastroFonte: "planilha-mensal(2023-S1):media-DI",
     };
     const calibracao = calibrarFobKg({
-      fobKgOriginal: 2.15,
+      fobKgOriginal: 1.9072,
       benchmark: benchInnove,
-      fobTotalUS: 215,
+      fobTotalUS: 190.72,
       pesoLiqKg: 100,
+      fobKgFonte: "planilha-mensal",
+    });
+    const it = itemBase({
+      fobTotalUS: 215,
+      fobEmbarqueUS: 215,
+      pesoLiqKg: 100,
+      benchmark: benchInnove,
       fobKgFonte: "linha",
     });
-    const it = itemBase({ fobTotalUS: 215, pesoLiqKg: 100, benchmark: benchInnove, fobKgFonte: "linha" });
-    expect(fobUsadoNoEngine(it, calibracao)).toBeCloseTo(190.72, 1);
+    expect(fobUsadoNoEngine(it, calibracao)).toBeCloseTo(190.72, 2);
   });
 
-  it("fobKgManual null mantém hierarquia planilha/calibragem", () => {
+  it("fobKgManual null usa planilha China quando NCM na planilha", () => {
+    const benchInnove = {
+      ...benchmark,
+      fonte: "Histórico próprio" as const,
+      fobKgMedioDI: 1.9072,
+      mediaFobKg: 1.9072,
+    };
     const calibracao = calibrarFobKg({
-      fobKgOriginal: 0.5,
-      benchmark,
-      fobTotalUS: 50,
+      fobKgOriginal: 1.9072,
+      benchmark: benchInnove,
+      fobTotalUS: 190.72,
       pesoLiqKg: 100,
     });
-    const it = itemBase({ fobKgManual: null, fobTotalUS: 50 });
-    expect(fobUsadoNoEngine(it, calibracao)).toBe(50);
+    const it = itemBase({
+      fobKgManual: null,
+      fobTotalUS: 215,
+      fobEmbarqueUS: 215,
+      pesoLiqKg: 100,
+      benchmark: benchInnove,
+    });
+    expect(fobUsadoNoEngine(it, calibracao)).toBeCloseTo(190.72, 2);
   });
 
   it("avisoValoracao quando manual abaixo do piso — informativo", () => {
