@@ -47,10 +47,20 @@ function fetchComTimeout(url: string, init: RequestInit, ms: number) {
   return fetchAutenticado(url, { ...init, signal: ctrl.signal }).finally(() => clearTimeout(timer));
 }
 
+function msgErroApi(status: number, txt: string): string {
+  if (status === 401 && /jwt is expired|token expired|expirad/i.test(txt)) {
+    return "Sessão expirada — você será redirecionado para entrar novamente.";
+  }
+  if (status === 401) {
+    return "Não autenticado — faça login novamente.";
+  }
+  return `API ${status}: ${txt}`;
+}
+
 async function handle<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const txt = await res.text().catch(() => "");
-    throw new Error(`API ${res.status}: ${txt}`);
+    throw new Error(msgErroApi(res.status, txt));
   }
   return res.json() as Promise<T>;
 }

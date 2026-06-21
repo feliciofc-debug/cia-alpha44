@@ -1,11 +1,27 @@
 /** Injeta Authorization Bearer (Clerk) ou x-demo-auth em dev. */
 
 type TokenFn = () => Promise<string | null>;
+type SessionExpiredFn = () => void;
 
 let tokenFn: TokenFn | null = null;
+let onSessionExpired: SessionExpiredFn | null = null;
 
 export function registerAuthToken(fn: TokenFn | null) {
   tokenFn = fn;
+}
+
+export function registerSessionExpiredHandler(fn: SessionExpiredFn | null) {
+  onSessionExpired = fn;
+}
+
+async function respostaJwtExpirado(res: Response): Promise<boolean> {
+  if (res.status !== 401) return false;
+  try {
+    const txt = await res.clone().text();
+    return /jwt is expired|token expired|expirad/i.test(txt);
+  } catch {
+    return false;
+  }
 }
 
 export async function withAuthHeaders(init: RequestInit = {}): Promise<RequestInit> {
@@ -28,7 +44,12 @@ export async function withAuthHeaders(init: RequestInit = {}): Promise<RequestIn
 export async function fetchAutenticado(url: string, init: RequestInit = {}): Promise<Response> {
   let res = await fetch(url, await withAuthHeaders(init));
   if (res.status === 401 && tokenFn) {
+    const expirado = await respostaJwtExpirado(res);
+    await new Promise((r) => setTimeout(r, 150));
     res = await fetch(url, await withAuthHeaders(init));
+    if (res.status === 401 && (expirado || (await respostaJwtExpirado(res)))) {
+      onSessionExpired?.();
+    }
   }
   return res;
 }

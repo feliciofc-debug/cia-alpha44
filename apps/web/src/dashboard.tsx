@@ -945,7 +945,7 @@ function ModalDuplicar({
 }
 
 export function Dashboard() {
-  const { user, logout } = useAuth();
+  const { user, logout, isLoaded } = useAuth();
   const [view, setView] = useState<View>("painel");
   const [busca, setBusca] = useState("");
   const [filtroAtivo, setFiltroAtivo] = useState("");
@@ -1060,10 +1060,11 @@ export function Dashboard() {
   }, []);
 
   useEffect(() => {
+    if (!isLoaded || !user) return;
     api.meta().then(setMeta).catch(() => {});
     void carregarPainel();
     void carregarLista();
-  }, [carregarPainel, carregarLista]);
+  }, [isLoaded, user, carregarPainel, carregarLista]);
 
   function irNav(n: NavItem) {
     setErro("");
@@ -1709,9 +1710,18 @@ export function Dashboard() {
     >
       <div className="container-cia py-6 md:py-8">
         {erro && (
-          <p className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-300">
-            {erro}
-          </p>
+          <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-300">
+            <p>{erro}</p>
+            {(erro.includes("401") || /sess[aã]o expirada|n[aã]o autenticado/i.test(erro)) && (
+              <button
+                type="button"
+                className="mt-2 rounded-md bg-red-500/20 px-3 py-1 text-xs font-medium text-red-100 hover:bg-red-500/30"
+                onClick={logout}
+              >
+                Sair e entrar de novo
+              </button>
+            )}
+          </div>
         )}
 
         {view === "referencia" && (

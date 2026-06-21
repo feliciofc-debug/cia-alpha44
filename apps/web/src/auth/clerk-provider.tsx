@@ -1,5 +1,6 @@
 import { ClerkProvider, useAuth as useClerkAuth, useUser } from "@clerk/clerk-react";
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
+import { registerSessionExpiredHandler } from "../lib/auth-fetch.ts";
 import { ApiAuthSync } from "./api-auth-sync.tsx";
 import type { AuthContextValue, User } from "./types.ts";
 
@@ -17,12 +18,19 @@ function ClerkAuthBridge({ children }: { children: ReactNode }) {
         }
       : null;
 
+  useEffect(() => {
+    registerSessionExpiredHandler(() => {
+      void signOut();
+    });
+    return () => registerSessionExpiredHandler(null);
+  }, [signOut]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       mode: "clerk",
       isLoaded,
       user,
-      getToken: () => getToken(),
+      getToken: () => getToken({ skipCache: true }),
       async login() {
         throw new Error("Use a tela de login Clerk");
       },
