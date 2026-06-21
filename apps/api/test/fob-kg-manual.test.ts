@@ -37,19 +37,19 @@ describe("fobKgManual — override soberano", () => {
   const benchmark = lookupBenchmark(benchmarkIndex, "94052100");
   const ncmCatalog = criarNcmCatalog(loadNcmVigente());
 
-  it("fobUsadoNoEngine usa manual × peso quando definido", () => {
+  it("fobUsadoNoEngine usa manual × peso bruto quando definido", () => {
     const calibracao = calibrarFobKg({
       fobKgOriginal: 0.5,
       benchmark,
       fobTotalUS: 50,
       pesoLiqKg: 100,
     });
-    const it = itemBase({ fobKgManual: 2.5, fobTotalUS: 50 });
+    const it = itemBase({ fobKgManual: 2.5, fobTotalUS: 50, pesoBrutoKg: 100 });
     expect(fobUsadoNoEngine(it, calibracao)).toBeCloseTo(250, 4);
     expect(fobKgFinalItem(it, calibracao)).toBeCloseTo(2.5, 4);
   });
 
-  it("fobUsadoNoEngine prioriza invoice embarque sobre referência planilha", () => {
+  it("fobUsadoNoEngine usa planilha×bruto, não invoice embarque", () => {
     const benchInnove = {
       ...benchmark,
       fonte: "Histórico próprio" as const,
@@ -61,7 +61,7 @@ describe("fobKgManual — override soberano", () => {
     const calibracao = calibrarFobKg({
       fobKgOriginal: 2.15,
       benchmark: benchInnove,
-      fobTotalUS: 215,
+      fobTotalUS: 190.72,
       pesoLiqKg: 100,
       fobKgFonte: "linha",
     });
@@ -73,10 +73,10 @@ describe("fobKgManual — override soberano", () => {
       benchmark: benchInnove,
       fobKgFonte: "linha",
     });
-    expect(fobUsadoNoEngine(it, calibracao)).toBeCloseTo(215, 2);
+    expect(fobUsadoNoEngine(it, calibracao)).toBeCloseTo(1.9072 * 100, 2);
   });
 
-  it("fobKgManual null usa invoice quando NCM na planilha", () => {
+  it("fobKgManual null usa planilha×bruto quando NCM na planilha", () => {
     const benchInnove = {
       ...benchmark,
       fonte: "Histórico próprio" as const,
@@ -84,9 +84,9 @@ describe("fobKgManual — override soberano", () => {
       mediaFobKg: 1.9072,
     };
     const calibracao = calibrarFobKg({
-      fobKgOriginal: 2.15,
+      fobKgOriginal: 1.9072,
       benchmark: benchInnove,
-      fobTotalUS: 215,
+      fobTotalUS: 190.72,
       pesoLiqKg: 100,
     });
     const it = itemBase({
@@ -97,7 +97,7 @@ describe("fobKgManual — override soberano", () => {
       pesoBrutoKg: 100,
       benchmark: benchInnove,
     });
-    expect(fobUsadoNoEngine(it, calibracao)).toBeCloseTo(215, 2);
+    expect(fobUsadoNoEngine(it, calibracao)).toBeCloseTo(190.72, 2);
   });
 
   it("avisoValoracao quando manual abaixo do piso — informativo", () => {

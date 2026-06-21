@@ -1,9 +1,9 @@
 /**
  * Regra global FOB/kg — planilha operacional IMPORTAÇÕES DA CHINA.
  *
- * NCM na planilha China → PREÇO FOB/KG (média DI) para REFERÊNCIA / alerta de desvio na UI.
- * FOB total US$ da invoice embarque (fobEmbarqueUS) → base fiscal no motor.
- * Override manual do operador prevalece no motor.
+ * Metodologia empresa: FOB DI = PREÇO FOB/KG (planilha, do NCM) × peso bruto (毛重).
+ * Invoice embarque (fobEmbarqueUS) → referência / alerta de desvio na UI, não entra no motor.
+ * Override manual do operador prevalece no motor (manual × bruto).
  */
 
 import type { Benchmark, Item } from "@cia/shared";
@@ -27,10 +27,7 @@ export function ncmNaPlanilhaChinaIndex(index: BenchmarkIndex, ncm: string): boo
  * Idempotente — seguro em upload, recálculo e alteração de NCM.
  */
 export function aplicarPlanilhaChinaCotacao(itens: Item[], benchmarkIndex: BenchmarkIndex): Item[] {
-  return itens.map((it) => {
-    if (it.fobKgManual != null && it.fobKgManual > 0) return it;
-    return aplicarRegrasFobItens([it], benchmarkIndex)[0]!;
-  });
+  return aplicarRegrasFobItens(itens, benchmarkIndex);
 }
 
 /** Rótulo legível da fonte FOB/kg para relatórios e exportação. */

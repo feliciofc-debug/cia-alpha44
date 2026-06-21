@@ -13,6 +13,18 @@ export const PESO_MAX_LINHA_KG = 50_000;
 /** Ratio fobTotal / (fobKg×peso) acima disto → corrupção grosseira (não bloqueio silencioso). */
 export const RATIO_CORRUPCAO_GROSS = 1_000;
 
+/** Invoice embarque vs planilha×bruto acima disto → lixo de parser (ex.: 58k vs 2,3k). */
+export const RATIO_EMBARQUE_PLANILHA_MAX = 10;
+
+export function embarqueSuspeitoVsPlanilha(
+  fobEmbarqueUS: number,
+  fobEsperadoPlanilha: number | null | undefined,
+): boolean {
+  if (fobEmbarqueUS <= 0 || fobEsperadoPlanilha == null || fobEsperadoPlanilha <= 0) return false;
+  const ratio = fobEmbarqueUS / fobEsperadoPlanilha;
+  return ratio > RATIO_EMBARQUE_PLANILHA_MAX || ratio < 1 / RATIO_EMBARQUE_PLANILHA_MAX;
+}
+
 export type FlagAnomaliaFob = "peso_absurdo" | "ratio_corrupcao" | "ncm_suspeito";
 
 export interface AnaliseEscalaFob {

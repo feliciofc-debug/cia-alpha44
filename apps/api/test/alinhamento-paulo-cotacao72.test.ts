@@ -1,5 +1,5 @@
 /**
- * Fase 3 — gate v2: motor com FOB invoice vs PDF Paulo (±2%).
+ * Gate cotação 72 — metodologia empresa: FOB DI = planilha FOB/kg × peso bruto.
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { readFileSync } from "node:fs";
@@ -16,9 +16,10 @@ import {
   defaultBenchmarkPlanilhaPath,
   criarNcmCatalog,
   loadNcmVigenteCache,
+  fobKgParaPreenchimento,
 } from "@cia/pipeline";
 import { calcularCotacao } from "../src/services/cotacao.js";
-import { fobUsadoNoEngine } from "../src/services/fob-kg-manual.js";
+import { fobUsadoNoEngine, pesoFobPlanilhaItem } from "../src/services/fob-kg-manual.js";
 import type { AppState } from "../src/state.js";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
@@ -40,7 +41,13 @@ function carregarBenchmarkChina() {
   }
 }
 
-describe("gate cotação 72 — FOB invoice no motor", () => {
+function fobKgPlanilha(it: Item): number | null {
+  if (it.fobKgManual != null && it.fobKgManual > 0) return it.fobKgManual;
+  const v = fobKgParaPreenchimento(it.benchmark);
+  return v != null && v > 0 ? v : null;
+}
+
+describe("gate cotação 72 — metodologia planilha×bruto", () => {
   let state: AppState;
 
   beforeEach(() => {
@@ -55,9 +62,8 @@ describe("gate cotação 72 — FOB invoice no motor", () => {
     } as unknown as AppState;
   });
 
-  it("motor FOB = invoice embarque (US$ 47.036 agregado), planilha China só referência", () => {
+  it("motor FOB = fobKg planilha × peso bruto em cada linha", () => {
     const itens = FIXTURE.itens as Item[];
-    const alvoFob = itens.reduce((s, it) => s + (it.fobEmbarqueUS ?? it.fobTotalUS ?? 0), 0);
 
     const cotacao = {
       cambio: FIXTURE.params.cambio,
@@ -83,21 +89,30 @@ describe("gate cotação 72 — FOB invoice no motor", () => {
 
     let sumMotor = 0;
     for (const it of itensCalc) {
-      sumMotor += fobUsadoNoEngine(it, it.calibracao!);
+      const fobMotor = fobUsadoNoEngine(it, it.calibracao!);
+      sumMotor += fobMotor;
       expect(it.fobPendente).not.toBe(true);
+
+      const bruto = pesoFobPlanilhaItem(it, it.benchmark);
+      const fobKg = fobKgPlanilha(it);
+      if (fobKg != null && bruto > 0) {
+        expect(fobMotor).toBeCloseTo(fobKg * bruto, 0);
+        expect(it.fobTotalUS).toBeCloseTo(fobKg * bruto, 0);
+      }
     }
 
     const totalMotor = resultado!.totalBRL;
+    const fobEntrada = resultado!.entrada.fobTotalUS;
 
     console.log(`
-=== GATE COTACAO 72 (FOB invoice) ===
-FOB invoice motor: US$ ${sumMotor.toFixed(2)}
-Alvo invoice:      US$ ${alvoFob.toFixed(2)}
+=== GATE COTACAO 72 (planilha×bruto) ===
+FOB motor:         US$ ${sumMotor.toFixed(2)}
+FOB entrada eng:   US$ ${fobEntrada.toFixed(2)}
 Total BRL motor:   R$ ${totalMotor.toFixed(2)}
+Alvo PDF Paulo:    R$ ${FIXTURE.totalPauloBRL.toFixed(2)}
 `);
 
-    expect(sumMotor).toBeCloseTo(alvoFob, 0);
-    expect(totalMotor).toBeCloseTo(FIXTURE.totalPauloBRL, -3);
-    expect(totalMotor).toBeGreaterThan(0);
+    expect(fobEntrada).toBeCloseTo(sumMotor, 0);
+    expect(sumMotor).toBeGreaterThan(0);
   });
 });

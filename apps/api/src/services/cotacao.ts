@@ -477,17 +477,24 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
   const paramsEngine = { ...paramsIcms };
   const cotacaoIcms = { ...cotacao, params: paramsEngine };
 
-  /** Planilha China: referência FOB/kg; base fiscal = invoice (fobEmbarqueUS). */
+  /** Metodologia empresa: FOB DI = planilha FOB/kg × peso bruto; invoice só referência. */
   const itensComFob = aplicarPlanilhaChinaCotacao(cotacaoIcms.itens, state.benchmarkIndex);
 
   const itensEnriquecidos: Item[] = itensComFob.map((it) => {
     const pesoRateio = pesoEngineItem(it);
     const benchmark = lookupBenchmark(state.benchmarkIndex, it.ncm || "00000000");
     const fobKgPlanilha = fobKgReferenciaItem({ ...it, benchmark, fobPendente: it.fobPendente });
-    const embarque =
-      it.fobEmbarqueUS ?? (it.fobTotalUS > 0 && !it.fobPendente ? it.fobTotalUS : undefined);
+    const fobMetodologia = it.fobPendente
+      ? 0
+      : fobTotalPlanilhaItem({ ...it, benchmark }, benchmark);
+    const embarque = it.fobEmbarqueUS;
+    const pesoBrutoFob = pesoFobPlanilhaItem(it, benchmark);
     const fobKgOriginal =
-      embarque != null && embarque > 0 && pesoRateio > 0 ? embarque / pesoRateio : null;
+      fobMetodologia > 0 && pesoBrutoFob > 0
+        ? fobMetodologia / pesoBrutoFob
+        : embarque != null && embarque > 0 && pesoRateio > 0
+          ? embarque / pesoRateio
+          : null;
     const calibracao = it.fobPendente
       ? {
           fobKgOriginal: null,
@@ -499,7 +506,7 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
       : calibrarFobKg({
           fobKgOriginal,
           benchmark,
-          fobTotalUS: embarque ?? 0,
+          fobTotalUS: fobMetodologia,
           pesoLiqKg: pesoRateio,
           fobKgFonte: it.fobKgFonte,
         });
@@ -521,7 +528,7 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
           : it.fobKgFonte;
     return {
       ...it,
-      fobTotalUS: embarque ?? it.fobTotalUS,
+      fobTotalUS: fobMetodologia > 0 ? fobMetodologia : it.fobTotalUS,
       ...(embarque != null && embarque > 0 ? { fobEmbarqueUS: embarque } : {}),
       benchmark,
       calibracao,

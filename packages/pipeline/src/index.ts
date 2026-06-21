@@ -188,6 +188,8 @@ export { extrairItemMeta, mesclarItemMeta, type ItemMetaPersistido } from "./ite
 export {
   PESO_MAX_LINHA_KG,
   RATIO_CORRUPCAO_GROSS,
+  RATIO_EMBARQUE_PLANILHA_MAX,
+  embarqueSuspeitoVsPlanilha,
   analisarEscalaFob,
   analisarEscalaFobItem,
   bloquearPersistenciaFobCorrupto,
