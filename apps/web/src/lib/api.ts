@@ -1,7 +1,7 @@
 import { despesasParaContainers, outrasDespesasBaseParaContainers, DEFAULT_FRETE_US, DEFAULT_SISCOMEX_BRL } from "./despesas.ts";
 import { icmsSaidaParaDestino } from "./icms-uf.ts";
 import { PdfDownloadError, type ItemInvalidoPdf } from "./pdf-erro.ts";
-import { withAuthHeaders } from "./auth-fetch.ts";
+import { fetchAutenticado, withAuthHeaders } from "./auth-fetch.ts";
 import { mesclarAvisoMoedaCotacao } from "@cia/shared";
 import type {
   Cotacao,
@@ -44,9 +44,7 @@ const NCM_ITEM_TIMEOUT_MS = 120_000;
 function fetchComTimeout(url: string, init: RequestInit, ms: number) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), ms);
-  return withAuthHeaders(init)
-    .then((merged) => fetch(url, { ...merged, signal: ctrl.signal }))
-    .finally(() => clearTimeout(timer));
+  return fetchAutenticado(url, { ...init, signal: ctrl.signal }).finally(() => clearTimeout(timer));
 }
 
 async function handle<T>(res: Response): Promise<T> {

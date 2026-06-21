@@ -25,6 +25,14 @@ export async function withAuthHeaders(init: RequestInit = {}): Promise<RequestIn
   return { ...init, headers };
 }
 
+export async function fetchAutenticado(url: string, init: RequestInit = {}): Promise<Response> {
+  let res = await fetch(url, await withAuthHeaders(init));
+  if (res.status === 401 && tokenFn) {
+    res = await fetch(url, await withAuthHeaders(init));
+  }
+  return res;
+}
+
 export async function authFetch(url: string, init: RequestInit = {}): Promise<Response> {
-  return fetch(url, await withAuthHeaders(init));
+  return fetchAutenticado(url, init);
 }

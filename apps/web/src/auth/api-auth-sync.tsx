@@ -10,7 +10,7 @@ export function ApiAuthSync() {
     if (!isLoaded) return;
     registerAuthToken(async () => {
       if (!isSignedIn) return null;
-      return getToken();
+      return getToken({ skipCache: true });
     });
     return () => registerAuthToken(null);
   }, [isLoaded, isSignedIn, getToken]);
