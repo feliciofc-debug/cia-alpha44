@@ -179,10 +179,11 @@ describe("relatorio-conciliacao", () => {
     expect(text).toContain("Fonte PIS");
   });
 
-  it("fobKg usa base bruta quando fobKgBase=bruto", () => {
+  it("fobKg usa base bruta quando fobKgBase=bruto e sem planilha China", () => {
     const [linha] = montarLinhasConciliacao([
       itemBase({
         descOriginal: "Lustre",
+        ncm: "99999999",
         fobTotalUS: 780.55,
         pesoLiqKg: 356,
         pesoBrutoKg: 370,

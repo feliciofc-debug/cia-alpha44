@@ -29,7 +29,7 @@ function itemBase(partial: Partial<Item>): Item {
   } as Item;
 }
 
-describe("aplicarPlanilhaChinaCotacao — planilha China × peso no motor", () => {
+describe("aplicarPlanilhaChinaCotacao — planilha China referência, invoice no motor", () => {
   beforeEach(() => {
     substituirHistoricoBenchmark([
       { ncm: "94051190", fobKgMedioDI: 1.9072, fobKg: 1.9072, amostra: 12 },
@@ -38,7 +38,7 @@ describe("aplicarPlanilhaChinaCotacao — planilha China × peso no motor", () =
     ]);
   });
 
-  it("NCM na planilha China: FOB total = planilha × peso bruto (não invoice)", () => {
+  it("NCM na planilha China: mantém FOB invoice; referência planilha na meta", () => {
     const index = buildBenchmarkIndex([], "ref");
     const itens = aplicarPlanilhaChinaCotacao(
       [
@@ -48,26 +48,24 @@ describe("aplicarPlanilhaChinaCotacao — planilha China × peso no motor", () =
       index,
     );
 
-    expect(itens[0]!.fobTotalUS).toBeCloseTo(1.9072 * 50, 2);
+    expect(itens[0]!.fobTotalUS).toBe(100);
     expect(itens[0]!.fobEmbarqueUS).toBe(100);
-    expect(itens[1]!.fobTotalUS).toBeCloseTo(4.5155 * 20, 2);
+    expect(itens[1]!.fobTotalUS).toBe(80);
     for (const it of itens) {
       expect(it.fobPendente).not.toBe(true);
       expect(it.fobKgFonte).toMatch(/planilha-mensal/);
-      expect(it.fobKgBase).toBe("bruto");
     }
     expect(fobKgParaPreenchimento(lookupBenchmark(index, "94051190"))).toBeCloseTo(1.9072, 3);
   });
 
-  it("sem FOB embarque e NCM na China → planilha×peso bruto, não pendente", () => {
+  it("sem FOB embarque e NCM na China → ComexStat/irmão ou pendente, não sobrescreve invoice zero", () => {
     const index = buildBenchmarkIndex([], "ref");
     const [it] = aplicarPlanilhaChinaCotacao(
       [itemBase({ ncm: "84238900", fobTotalUS: 0, pesoLiqKg: 10, pesoBrutoKg: 10 })],
       index,
     );
+    expect(it!.fobTotalUS).toBeGreaterThan(0);
     expect(it!.fobPendente).not.toBe(true);
-    expect(it!.fobTotalUS).toBeCloseTo(4.5155 * 10, 2);
-    expect(it!.fobKgFonte).toMatch(/planilha-mensal/);
   });
 
   it("override manual não é alterado pela cascata", () => {
@@ -80,14 +78,14 @@ describe("aplicarPlanilhaChinaCotacao — planilha China × peso no motor", () =
     expect(it!.fobTotalUS).toBe(100);
   });
 
-  it("recálculo idempotente: planilha×peso estável", () => {
+  it("recálculo idempotente: invoice estável", () => {
     const index = buildBenchmarkIndex([], "ref");
     const once = aplicarPlanilhaChinaCotacao(
       [itemBase({ ncm: "84238900", fobTotalUS: 999, fobEmbarqueUS: 999, pesoLiqKg: 10, pesoBrutoKg: 10, fobKgFonte: "linha" })],
       index,
     );
     const twice = aplicarPlanilhaChinaCotacao(once, index);
-    expect(twice[0]!.fobTotalUS).toBeCloseTo(4.5155 * 10, 2);
+    expect(twice[0]!.fobTotalUS).toBe(999);
     expect(twice[0]!.fobEmbarqueUS).toBe(999);
   });
 

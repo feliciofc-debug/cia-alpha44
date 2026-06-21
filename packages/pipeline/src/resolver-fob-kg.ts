@@ -233,32 +233,21 @@ export function resolverFobKgPlanilha(
     const pesoBaseLinha = pesoParaBaseFob(baseDetLinha.fobKgBase, l.pesoBrutoKg, l.pesoLiqKg);
     const pesoRateio = resolvePesoLiqRateio(l);
 
-    /** 1) Planilha China (PREÇO FOB/KG ref.) · 2) embarque · 3) ComexStat · 4) NCM irmão. */
+    /** Planilha China = referência FOB/kg; invoice embarque prevalece no FOB total. */
     if (planilhaChinaTemNcm(benchmarkIndex, l.ncm ?? "")) {
-      if (linhaPesoAbsurdo(l) || ncmSuspeitoLixo(l.ncm ?? "")) {
-        metas.push(
-          metaPendente(
-            `Linha com peso/NCM inválido — não aplicar planilha×peso (peso ${pesoRateio.toLocaleString("en-US")} kg).`,
-          ),
-        );
-        return l;
-      }
       const benchChina = resolverBenchmark(
         l.ncm ?? "",
-        pesoBrutoFobLinha(l),
+        pesoRateio,
         l.qtd,
         l.fobUnitarioUS,
         benchmarkIndex,
-        { planilhaChina: true },
       );
       if (benchChina) {
-        const embarque = linhaTemFobExplicito(l) ? l.fobTotalUS! : undefined;
-        metas.push({ ...benchChina.meta, ...(embarque != null ? { fobEmbarqueUS: embarque } : {}) });
-        return {
-          ...l,
-          fobTotalUS: benchChina.fobTotalUS,
-          fobUnitarioUS: benchChina.fobUnitarioUS,
-        };
+        if (linhaTemFobExplicito(l)) {
+          metas.push({ ...benchChina.meta, fobEmbarqueUS: l.fobTotalUS! });
+          return l;
+        }
+        metas.push(benchChina.meta);
       }
     }
 
@@ -351,31 +340,24 @@ function resolverItemInterno(
   if (planilhaChinaTemNcm(benchmarkIndex, it.ncm ?? "")) {
     const benchChina = resolverBenchmark(
       it.ncm ?? "",
-      pesoBrutoFobItem(it),
+      pesoRateioItem(it),
       it.qtd,
       it.fobUnitarioUS,
       benchmarkIndex,
-      { planilhaChina: true },
     );
     if (benchChina) {
-      const embarqueAnterior =
-        it.fobEmbarqueUS ??
-        (fobEmbarqueItem(it) > 0 && Math.abs(fobEmbarqueItem(it) - benchChina.fobTotalUS) > 0.01
-          ? fobEmbarqueItem(it)
-          : undefined);
-      return {
-        item: {
-          ...it,
-          fobTotalUS: benchChina.fobTotalUS,
-          fobUnitarioUS: benchChina.fobUnitarioUS,
-          fobPendente: false,
-          ...(embarqueAnterior != null ? { fobEmbarqueUS: embarqueAnterior } : {}),
-        },
-        meta: {
-          ...benchChina.meta,
-          ...(embarqueAnterior != null ? { fobEmbarqueUS: embarqueAnterior } : {}),
-        },
-      };
+      const embarque =
+        it.fobEmbarqueUS ?? (fobEmbarqueItem(it) > 0 ? fobEmbarqueItem(it) : undefined);
+      if (embarque != null && embarque > 0) {
+        return {
+          item: {
+            ...it,
+            fobEmbarqueUS: embarque,
+            fobTotalUS: embarque,
+          },
+          meta: { ...benchChina.meta, fobEmbarqueUS: embarque },
+        };
+      }
     }
   }
 

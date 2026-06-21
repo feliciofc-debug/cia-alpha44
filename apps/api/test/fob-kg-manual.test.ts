@@ -49,7 +49,7 @@ describe("fobKgManual — override soberano", () => {
     expect(fobKgFinalItem(it, calibracao)).toBeCloseTo(2.5, 4);
   });
 
-  it("fobUsadoNoEngine prioriza planilha INNOVE sobre invoice embarque", () => {
+  it("fobUsadoNoEngine prioriza invoice embarque sobre referência planilha", () => {
     const benchInnove = {
       ...benchmark,
       fonte: "Histórico próprio" as const,
@@ -59,11 +59,11 @@ describe("fobKgManual — override soberano", () => {
       rastroFonte: "planilha-mensal(2023-S1):media-DI",
     };
     const calibracao = calibrarFobKg({
-      fobKgOriginal: 1.9072,
+      fobKgOriginal: 2.15,
       benchmark: benchInnove,
-      fobTotalUS: 190.72,
+      fobTotalUS: 215,
       pesoLiqKg: 100,
-      fobKgFonte: "planilha-mensal",
+      fobKgFonte: "linha",
     });
     const it = itemBase({
       fobTotalUS: 215,
@@ -73,10 +73,10 @@ describe("fobKgManual — override soberano", () => {
       benchmark: benchInnove,
       fobKgFonte: "linha",
     });
-    expect(fobUsadoNoEngine(it, calibracao)).toBeCloseTo(190.72, 2);
+    expect(fobUsadoNoEngine(it, calibracao)).toBeCloseTo(215, 2);
   });
 
-  it("fobKgManual null usa planilha China quando NCM na planilha", () => {
+  it("fobKgManual null usa invoice quando NCM na planilha", () => {
     const benchInnove = {
       ...benchmark,
       fonte: "Histórico próprio" as const,
@@ -84,9 +84,9 @@ describe("fobKgManual — override soberano", () => {
       mediaFobKg: 1.9072,
     };
     const calibracao = calibrarFobKg({
-      fobKgOriginal: 1.9072,
+      fobKgOriginal: 2.15,
       benchmark: benchInnove,
-      fobTotalUS: 190.72,
+      fobTotalUS: 215,
       pesoLiqKg: 100,
     });
     const it = itemBase({
@@ -97,7 +97,7 @@ describe("fobKgManual — override soberano", () => {
       pesoBrutoKg: 100,
       benchmark: benchInnove,
     });
-    expect(fobUsadoNoEngine(it, calibracao)).toBeCloseTo(190.72, 2);
+    expect(fobUsadoNoEngine(it, calibracao)).toBeCloseTo(215, 2);
   });
 
   it("avisoValoracao quando manual abaixo do piso — informativo", () => {

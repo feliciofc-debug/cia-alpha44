@@ -12,7 +12,6 @@ import {
   detectarFamilia,
   loadNcmVigenteCache,
   lookupBenchmark,
-  fobKgParaPreenchimento,
   preencherFobKgPlanilha,
   resolveNcm,
   pesoLiqReal,
@@ -441,20 +440,17 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
   const paramsEngine = { ...paramsIcms };
   const cotacaoIcms = { ...cotacao, params: paramsEngine };
 
-  /** Planilha China: FOB/kg do NCM × peso entra no motor (manual prevalece). */
+  /** Planilha China: referência FOB/kg; base fiscal = invoice (fobEmbarqueUS). */
   const itensComFob = aplicarPlanilhaChinaCotacao(cotacaoIcms.itens, state.benchmarkIndex);
 
   const itensEnriquecidos: Item[] = itensComFob.map((it) => {
     const pesoRateio = pesoEngineItem(it);
-    const pesoFob = pesoFobPlanilhaItem(it);
     const benchmark = lookupBenchmark(state.benchmarkIndex, it.ncm || "00000000");
-    const fobKgPlanilha = fobKgParaPreenchimento(benchmark);
-    const fobTotalMotor = fobUsadoNoEngine({ ...it, benchmark }, it.calibracao ?? ({} as never));
-    const pesoFobEfetivo = pesoFob > 0 ? pesoFob : pesoRateio;
-    const fobKgEfetivo =
-      it.fobKgManual ??
-      fobKgPlanilha ??
-      (pesoFobEfetivo > 0 && fobTotalMotor > 0 ? fobTotalMotor / pesoFobEfetivo : null);
+    const fobKgPlanilha = fobKgReferenciaItem({ ...it, benchmark, fobPendente: it.fobPendente });
+    const embarque =
+      it.fobEmbarqueUS ?? (it.fobTotalUS > 0 && !it.fobPendente ? it.fobTotalUS : undefined);
+    const fobKgOriginal =
+      embarque != null && embarque > 0 && pesoRateio > 0 ? embarque / pesoRateio : null;
     const calibracao = it.fobPendente
       ? {
           fobKgOriginal: null,
@@ -464,9 +460,9 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
           justificativa: "FOB/kg pendente — informe valor na planilha ou aguarde referência válida.",
         }
       : calibrarFobKg({
-          fobKgOriginal: fobKgEfetivo,
+          fobKgOriginal,
           benchmark,
-          fobTotalUS: fobTotalMotor,
+          fobTotalUS: embarque ?? 0,
           pesoLiqKg: pesoRateio,
           fobKgFonte: it.fobKgFonte,
         });
@@ -475,7 +471,7 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
       calibracao,
       fobKgFinal: it.fobPendente
         ? null
-        : (it.fobKgManual ?? fobKgPlanilha ?? fobKgEfetivo ?? calibracao.fobKgCalibrado),
+        : (it.fobKgManual ?? fobKgPlanilha ?? fobKgOriginal ?? calibracao.fobKgCalibrado),
       anuencia: it.anuencia,
       antidumping: it.antidumping,
     });
@@ -488,7 +484,8 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
           : it.fobKgFonte;
     return {
       ...it,
-      fobTotalUS: fobTotalMotor,
+      fobTotalUS: embarque ?? it.fobTotalUS,
+      ...(embarque != null && embarque > 0 ? { fobEmbarqueUS: embarque } : {}),
       benchmark,
       calibracao,
       fobKgFonte: fobKgFonteEfetiva,

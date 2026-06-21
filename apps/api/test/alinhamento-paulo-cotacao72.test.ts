@@ -14,9 +14,6 @@ import {
   historicoFromPlanilhaSeed,
   loadBenchmarkPlanilha,
   defaultBenchmarkPlanilhaPath,
-  fobTotalPlanilhaPeso,
-  pesoBrutoPlanilhaFob,
-  lookupBenchmark,
   criarNcmCatalog,
   loadNcmVigenteCache,
 } from "@cia/pipeline";
@@ -43,7 +40,7 @@ function carregarBenchmarkChina() {
   }
 }
 
-describe("gate cotação 72 — planilha China × peso no motor", () => {
+describe("gate cotação 72 — FOB invoice no motor", () => {
   let state: AppState;
 
   beforeEach(() => {
@@ -58,10 +55,9 @@ describe("gate cotação 72 — planilha China × peso no motor", () => {
     } as unknown as AppState;
   });
 
-  it("motor FOB = planilha×peso (referência INNOVE), não invoice agregada", () => {
+  it("motor FOB = invoice embarque (US$ 47.036 agregado), planilha China só referência", () => {
     const itens = FIXTURE.itens as Item[];
-    let sumMotor = 0;
-    let sumPlanilhaRef = 0;
+    const alvoFob = itens.reduce((s, it) => s + (it.fobEmbarqueUS ?? it.fobTotalUS ?? 0), 0);
 
     const cotacao = {
       cambio: FIXTURE.params.cambio,
@@ -85,28 +81,23 @@ describe("gate cotação 72 — planilha China × peso no motor", () => {
     const { resultado, itens: itensCalc } = calcularCotacao(cotacao, state);
     expect(resultado).not.toBeNull();
 
+    let sumMotor = 0;
     for (const it of itensCalc) {
-      const bench = lookupBenchmark(state.benchmarkIndex, it.ncm);
-      const pesoBruto = pesoBrutoPlanilhaFob(it);
       sumMotor += fobUsadoNoEngine(it, it.calibracao!);
-      sumPlanilhaRef += fobTotalPlanilhaPeso(pesoBruto, bench);
       expect(it.fobPendente).not.toBe(true);
-      if (pesoBruto > 0 && bench.fonte === "Histórico próprio") {
-        const fobKg = bench.fobKgMedioDI ?? bench.mediaFobKg ?? 0;
-        expect(it.fobTotalUS).toBeCloseTo(fobKg * pesoBruto, 0);
-      }
     }
 
     const totalMotor = resultado!.totalBRL;
 
     console.log(`
-=== GATE COTACAO 72 (planilha China) ===
-FOB planilha×peso motor: US$ ${sumMotor.toFixed(2)}
-FOB planilha ref:        US$ ${sumPlanilhaRef.toFixed(2)}
-Total BRL motor:         R$ ${totalMotor.toFixed(2)}
+=== GATE COTACAO 72 (FOB invoice) ===
+FOB invoice motor: US$ ${sumMotor.toFixed(2)}
+Alvo invoice:      US$ ${alvoFob.toFixed(2)}
+Total BRL motor:   R$ ${totalMotor.toFixed(2)}
 `);
 
-    expect(sumMotor).toBeCloseTo(sumPlanilhaRef, 0);
+    expect(sumMotor).toBeCloseTo(alvoFob, 0);
+    expect(totalMotor).toBeCloseTo(FIXTURE.totalPauloBRL, -3);
     expect(totalMotor).toBeGreaterThan(0);
   });
 });

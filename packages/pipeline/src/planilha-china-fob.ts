@@ -1,8 +1,9 @@
 /**
  * Regra global FOB/kg — planilha operacional IMPORTAÇÕES DA CHINA.
  *
- * NCM identificado na planilha China → PREÇO FOB/KG (média DI) × peso entra no motor.
- * Override manual do operador prevalece. Sem NCM na planilha → ComexStat / irmão / pendente.
+ * NCM na planilha China → PREÇO FOB/KG (média DI) para REFERÊNCIA / alerta de desvio na UI.
+ * FOB total US$ da invoice embarque (fobEmbarqueUS) → base fiscal no motor.
+ * Override manual do operador prevalece no motor.
  */
 
 import type { Benchmark, Item } from "@cia/shared";
