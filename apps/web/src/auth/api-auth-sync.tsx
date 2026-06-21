@@ -8,9 +8,9 @@ export function ApiAuthSync() {
 
   useEffect(() => {
     if (!isLoaded) return;
-    registerAuthToken(async () => {
+    registerAuthToken(async (opts) => {
       if (!isSignedIn) return null;
-      return getToken({ skipCache: true });
+      return getToken(opts?.forceRefresh ? { skipCache: true } : undefined);
     });
     return () => registerAuthToken(null);
   }, [isLoaded, isSignedIn, getToken]);

@@ -30,7 +30,7 @@ function ClerkAuthBridge({ children }: { children: ReactNode }) {
       mode: "clerk",
       isLoaded,
       user,
-      getToken: () => getToken({ skipCache: true }),
+      getToken: () => getToken(),
       async login() {
         throw new Error("Use a tela de login Clerk");
       },
