@@ -24,8 +24,8 @@ export type NcmFonte = "planilha" | "gemini" | "ia" | "siscomex" | "pendente";
 export interface ResolveNcmInput {
   ncmPlanilha?: string | null;
   candidatosIa?: NcmCandidato[];
-  /** Classificador primário — Gemini prevalece sobre coluna embarque quando validado. */
-  fonteClassificacao?: "gemini" | "ia" | null;
+  /** Classificador — planilha China soberana; Gemini só quando planilha China não achou. */
+  fonteClassificacao?: "planilha-china" | "gemini" | "ia" | null;
   /** Texto enriquecido para busca Siscomex (pode incluir material/uso). */
   descricao?: string | null;
   /** Descrição da planilha — fonte de verdade para família e fallback Siscomex. */
@@ -204,7 +204,31 @@ export function resolveNcm(catalog: NcmCatalog, input: ResolveNcmInput): Resolve
 
   let pularPlanilhaPorGeminiFalho = false;
 
-  // Gemini/Lovable — trava fiscal obrigatória (catalog.existe); prevalece sobre coluna embarque.
+  // Planilha IMPORTAÇÕES DA CHINA — soberana (antes de Gemini/IA).
+  if (input.fonteClassificacao === "planilha-china") {
+    const chinaCandidatos = filtrarCandidatosValidos(catalog, input.candidatosIa ?? []);
+    const chinaTop = chinaCandidatos[0];
+    if (chinaTop && catalog.existe(chinaTop.ncm)) {
+      if (planilha && planilha !== chinaTop.ncm) {
+        avisos.push(
+          `NCM coluna embarque (${planilha}) — operacional: planilha IMPORTAÇÕES DA CHINA (${chinaTop.ncm}).`,
+        );
+      }
+      avisos.push(`NCM da planilha IMPORTAÇÕES DA CHINA: ${chinaTop.ncm}.`);
+      return {
+        ncm: chinaTop.ncm,
+        fonte: "planilha",
+        valido: true,
+        descricaoOficial: catalog.descricao(chinaTop.ncm),
+        avisos,
+        ncmCandidatos: chinaCandidatos,
+        ...(planilha && planilha !== chinaTop.ncm ? { ncmPlanilhaOriginal: planilha } : {}),
+      };
+    }
+    avisos.push("Planilha IMPORTAÇÕES DA CHINA sem NCM válido na TEC — tentando Gemini/IA.");
+  }
+
+  // Gemini/Lovable — só itens que NÃO acharam match na planilha China.
   if (input.fonteClassificacao === "gemini") {
     const geminiCandidatos = filtrarCandidatosValidos(catalog, input.candidatosIa ?? []);
     const geminiTop = geminiCandidatos[0];

@@ -484,8 +484,11 @@ function AnalisePainel({
                         {it.ncmFonte === "siscomex"
                           ? "Siscomex vigente"
                           : it.ncmFonte === "gemini"
-                            ? "Gemini (validado Siscomex)"
-                            : it.ncmFonte}
+                            ? "Gemini (fallback — não estava na planilha China)"
+                            : it.ncmFonte === "planilha" &&
+                                it.ncmAvisos?.some((a) => /IMPORTAÇÕES DA CHINA/i.test(a))
+                              ? "Planilha IMPORTAÇÕES DA CHINA"
+                              : it.ncmFonte}
                       </span>
                     )}
                     {it.ncmClassificacaoCache === "humano" && !it.ncmRevisadoHumano && (

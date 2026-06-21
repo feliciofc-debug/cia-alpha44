@@ -6,6 +6,7 @@ import {
   historicoFromPlanilhaSeed,
   loadBenchmarkPlanilha,
   montarLinhasConciliacao,
+  resolverNcmClassificacaoPlanilhaChina,
   resolverNcmConciliacaoPlanilhaChina,
   substituirHistoricoBenchmark,
   type BenchmarkPlanilhaEntry,
@@ -41,6 +42,27 @@ function itemBase(partial: Partial<Item> & Pick<Item, "descOriginal">): Item {
     ...partial,
   } as Item;
 }
+
+describe("planilha-china-ncm — classificação operacional", () => {
+  it("linha embarque: NCM coluna na planilha China antes de Gemini", () => {
+    const hit = resolverNcmClassificacaoPlanilhaChina(
+      { descOriginal: "HY-97 — 挂钩秤", ncm: "84233090", material: null, uso: null },
+      planilha,
+      benchmarkIndex,
+    );
+    expect(hit?.ncm).toBe("84233090");
+  });
+
+  it("sem NCM coluna: busca textual na planilha China", () => {
+    const hit = resolverNcmClassificacaoPlanilhaChina(
+      { descOriginal: "Balança de gancho digital HY-97", ncm: null, material: null, uso: null },
+      planilha,
+      benchmarkIndex,
+    );
+    expect(hit?.ncm).toBeTruthy();
+    expect(hit!.score).toBeGreaterThan(0);
+  });
+});
 
 describe("planilha-china-ncm — conciliação", () => {
   it("balança: NCM planilha China (84233090) prevalece sobre Siscomex operacional", () => {

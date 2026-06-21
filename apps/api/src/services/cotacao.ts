@@ -17,6 +17,8 @@ import {
   pesoLiqReal,
   textoClassificacaoIa,
   validarNcmItem,
+  carregarItensPlanilhaChinaOperacional,
+  resolverNcmClassificacaoPlanilhaChina,
   type LinhaCrua,
   type NcmCatalog,
 } from "@cia/pipeline";
@@ -102,6 +104,7 @@ async function classificarEmLotes(
   const stats = criarStatsClassificacaoCache(inputs.length);
   const resultados: ClassifyItemOutput[] = new Array(inputs.length);
   const indicesLlm: number[] = [];
+  const planilhaChinaItens = carregarItensPlanilhaChinaOperacional();
 
   for (let i = 0; i < inputs.length; i++) {
     const input = inputs[i]!;
@@ -115,6 +118,35 @@ async function classificarEmLotes(
         descDuimp: input.descDuimpConfirmado ?? undefined,
       });
       stats.humanos += 1;
+      continue;
+    }
+
+    const hitChina = resolverNcmClassificacaoPlanilhaChina(
+      linhas[i]!,
+      planilhaChinaItens,
+      state.benchmarkIndex,
+      state.ncmCatalog,
+    );
+    if (hitChina) {
+      const descOficial = state.ncmCatalog.descricao(hitChina.ncm) ?? hitChina.desc;
+      resultados[i] = {
+        descPt: input.descOriginal.trim(),
+        descDuimp: `${descOficial} — NCM planilha IMPORTAÇÕES DA CHINA.`,
+        ncmCandidatos: [
+          {
+            ncm: hitChina.ncm,
+            descricaoOficial: descOficial,
+            confianca: Math.min(0.98, 0.78 + hitChina.score * 0.2),
+          },
+        ],
+        classificacaoProvedor: "planilha-china",
+      };
+      await salvarClassificacaoCacheLlm(
+        { descOriginal: input.descOriginal, material: input.material, uso: input.uso },
+        versoes,
+        resultados[i]!,
+      );
+      stats.hits += 1;
       continue;
     }
 
@@ -308,7 +340,12 @@ export async function montarItens(
     const resolvido = resolveNcm(state.ncmCatalog, {
       ncmPlanilha: l.ncm,
       candidatosIa: candidatosBrutos,
-      fonteClassificacao: c?.classificacaoProvedor === "gemini" ? "gemini" : undefined,
+      fonteClassificacao:
+        c?.classificacaoProvedor === "planilha-china"
+          ? "planilha-china"
+          : c?.classificacaoProvedor === "gemini"
+            ? "gemini"
+            : undefined,
       descOriginal: l.descOriginal,
       descPt: c?.descPt,
       uso: l.uso,

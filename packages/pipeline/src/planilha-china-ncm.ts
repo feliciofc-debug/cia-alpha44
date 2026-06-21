@@ -1,12 +1,15 @@
 /**
  * NCM + FOB/kg da planilha operacional IMPORTAÇÕES DA CHINA por descrição do produto.
- * Conciliação usa este lookup — nunca substitui por NCM Siscomex/IA operacional.
+ * Classificação operacional: planilha China primeiro; Gemini/IA só se não achar aqui.
  */
 
 import type { Item } from "@cia/shared";
 import type { BenchmarkPlanilhaEntry } from "./benchmark-planilha.js";
+import { defaultBenchmarkPlanilhaPath, loadBenchmarkPlanilha } from "./benchmark-historico-store.js";
 import { normalizarNcm, type BenchmarkIndex } from "./benchmark.js";
 import { detectarFamilia, prefixoBuscaPrincipal } from "./classificar-ncm.js";
+import type { LinhaCrua } from "./linha.js";
+import type { NcmCatalog } from "./ncm-catalog.js";
 import { ncmNaPlanilhaChinaIndex } from "./planilha-china-fob.js";
 
 export interface PlanilhaChinaNcmHit {
@@ -92,6 +95,60 @@ function capBuscaItem(it: Item): string | undefined {
   return cap && /^\d{2,4}$/.test(cap) ? cap : undefined;
 }
 
+/** Linhas carregadas da planilha IMPORTAÇÕES DA CHINA NOVO (memória/disco). */
+export function carregarItensPlanilhaChinaOperacional(): BenchmarkPlanilhaEntry[] {
+  const seed = loadBenchmarkPlanilha(defaultBenchmarkPlanilhaPath());
+  return seed?.itens ?? [];
+}
+
+function hitFromNcmColuna(
+  ncm: string | null | undefined,
+  planilhaItens: BenchmarkPlanilhaEntry[],
+  benchmarkIndex?: BenchmarkIndex | null,
+): PlanilhaChinaNcmHit | null {
+  const key = normalizarNcm(ncm ?? "");
+  if (!key || key === "00000000") return null;
+  const row = planilhaItens.find((r) => normalizarNcm(r.ncm) === key);
+  const fobKg = row?.fobKgMedioDI ?? row?.fobKg ?? 0;
+  if (!row || fobKg <= 0) return null;
+  if (benchmarkIndex && !ncmNaPlanilhaChinaIndex(benchmarkIndex, key)) return null;
+  return { ncm: key, desc: row.desc, fobKgMedioDI: fobKg, score: 1 };
+}
+
+function capBuscaLinha(l: Pick<LinhaCrua, "descOriginal" | "uso">): string | undefined {
+  const fam = detectarFamilia({ descOriginal: l.descOriginal, uso: l.uso ?? undefined });
+  const cap = prefixoBuscaPrincipal(fam);
+  return cap && /^\d{2,4}$/.test(cap) ? cap : undefined;
+}
+
+/**
+ * Classificação operacional — planilha China ANTES de Gemini/Google.
+ * 1) NCM coluna embarque se existir na planilha China
+ * 2) Busca textual por descrição/material/uso
+ */
+export function resolverNcmClassificacaoPlanilhaChina(
+  l: Pick<LinhaCrua, "descOriginal" | "ncm" | "material" | "uso">,
+  planilhaItens: BenchmarkPlanilhaEntry[],
+  benchmarkIndex?: BenchmarkIndex | null,
+  catalog?: NcmCatalog | null,
+): PlanilhaChinaNcmHit | null {
+  if (!planilhaItens.length) return null;
+
+  const aceita = (hit: PlanilhaChinaNcmHit | null): PlanilhaChinaNcmHit | null => {
+    if (!hit) return null;
+    if (catalog && !catalog.existe(hit.ncm)) return null;
+    return hit;
+  };
+
+  const porColuna = aceita(hitFromNcmColuna(l.ncm, planilhaItens, benchmarkIndex));
+  if (porColuna) return porColuna;
+
+  const texto = [l.descOriginal?.trim(), l.material?.trim(), l.uso?.trim()].filter(Boolean).join(" ");
+  const cap = capBuscaLinha(l);
+  const hits = buscarNcmPlanilhaChinaPorDescricao(texto, planilhaItens, { capitulo4: cap, limite: 5 });
+  return aceita(hits[0] ?? null);
+}
+
 /** NCM + FOB/kg da planilha China para conciliação — busca por descrição do produto. */
 export function resolverNcmConciliacaoPlanilhaChina(
   it: Item,
@@ -100,15 +157,8 @@ export function resolverNcmConciliacaoPlanilhaChina(
 ): PlanilhaChinaNcmHit | null {
   if (!planilhaItens.length) return null;
 
-  const rowFromNcm = (ncm: string): PlanilhaChinaNcmHit | null => {
-    const key = normalizarNcm(ncm);
-    if (!key || key === "00000000") return null;
-    const row = planilhaItens.find((r) => normalizarNcm(r.ncm) === key);
-    const fobKg = row?.fobKgMedioDI ?? row?.fobKg ?? 0;
-    if (!row || fobKg <= 0) return null;
-    if (benchmarkIndex && !ncmNaPlanilhaChinaIndex(benchmarkIndex, key)) return null;
-    return { ncm: key, desc: row.desc, fobKgMedioDI: fobKg, score: 1 };
-  };
+  const rowFromNcm = (ncm: string): PlanilhaChinaNcmHit | null =>
+    hitFromNcmColuna(ncm, planilhaItens, benchmarkIndex);
 
   // 0. Confirmação humana — NCM operacional prevalece se estiver na planilha China.
   if (it.ncmClassificacaoCache === "humano" || it.ncmRevisadoHumano) {

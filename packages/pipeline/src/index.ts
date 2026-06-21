@@ -208,6 +208,8 @@ export {
 } from "./classificacao-cache-key.js";
 export {
   buscarNcmPlanilhaChinaPorDescricao,
+  carregarItensPlanilhaChinaOperacional,
+  resolverNcmClassificacaoPlanilhaChina,
   resolverNcmConciliacaoPlanilhaChina,
   MIN_SCORE_BUSCA_PLANILHA_CHINA,
   type PlanilhaChinaNcmHit,

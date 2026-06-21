@@ -4,7 +4,19 @@ import { criarNcmCatalog, loadNcmVigente, resolveNcm } from "../src/index.js";
 const catalog = criarNcmCatalog(loadNcmVigente());
 
 describe("resolveNcm — Gemini validado Siscomex", () => {
-  it("prevalece sobre NCM da coluna embarque quando fonte gemini", () => {
+  it("planilha China prevalece sobre Gemini quando fonte planilha-china", () => {
+    const r = resolveNcm(catalog, {
+      ncmPlanilha: "84732910",
+      fonteClassificacao: "planilha-china",
+      candidatosIa: [{ ncm: "84233090", confianca: 0.95 }],
+      descOriginal: "Balança de gancho",
+    });
+    expect(r.fonte).toBe("planilha");
+    expect(r.ncm).toBe("84233090");
+    expect(r.avisos.some((a) => a.includes("IMPORTAÇÕES DA CHINA"))).toBe(true);
+  });
+
+  it("prevalece sobre NCM da coluna embarque quando fonte gemini (fallback)", () => {
     const r = resolveNcm(catalog, {
       ncmPlanilha: "84732910",
       fonteClassificacao: "gemini",

@@ -1,6 +1,5 @@
 /**
- * Classificação NCM primária via Gemini/Lovable (ncm-helper-ai.lovable.app).
- * Lote paralelo — cada item chama sugerir-ncm; cache Postgres evita reclassificar.
+ * Classificação NCM via Gemini/Lovable — FALLBACK quando planilha IMPORTAÇÕES DA CHINA não achou match.
  */
 
 import type { NcmCatalog } from "@cia/pipeline";
