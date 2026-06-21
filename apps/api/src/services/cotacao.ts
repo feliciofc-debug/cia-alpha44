@@ -449,8 +449,14 @@ export async function montarItens(
   );
   for (let i = 0; i < itens.length; i++) {
     const c = comps[i]!;
-    itens[i]!.compatibilidadeProduto = c.compatibilidadeProduto;
-    itens[i]!.motivoCompatibilidade = c.motivoCompatibilidade;
+    if (classificados[i]?.classificacaoProvedor === "planilha-china") {
+      itens[i]!.compatibilidadeProduto = "compativel";
+      itens[i]!.motivoCompatibilidade =
+        "NCM da planilha IMPORTAÇÕES DA CHINA (classificação operacional).";
+    } else {
+      itens[i]!.compatibilidadeProduto = c.compatibilidadeProduto;
+      itens[i]!.motivoCompatibilidade = c.motivoCompatibilidade;
+    }
   }
 
   return {

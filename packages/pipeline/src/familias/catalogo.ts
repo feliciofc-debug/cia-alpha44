@@ -67,9 +67,10 @@ export const FAMILIAS_PRODUTO: FamiliaProduto[] = [
   },
   {
     id: "plastico_utilidades",
-    prefixos: ["3924"],
-    re: /utens[ií]lio|houseware|kitchenware|tableware|餐|厨具|塑料杯|塑料碗/i,
-    termosBusca: "artigos uso domestico plastico cozinha mesa",
+    prefixos: ["3924", "3926"],
+    re: /utens[ií]lio|houseware|kitchenware|tableware|餐|厨具|塑料杯|塑料碗|garrafa(?:\s+de\s+[aá]gua)?|squeeze|water\s+bottle|sport\s+bottle|copo\s+plastic|水瓶/i,
+    termosBusca: "artigos uso domestico plastico cozinha mesa garrafa copo",
+    ncmPreferidos: ["39241000", "39269090"],
   },
   {
     id: "maquinas_eletricas",
@@ -248,8 +249,23 @@ export const FAMILIAS_PRODUTO: FamiliaProduto[] = [
   {
     id: "eletrodomesticos",
     prefixos: ["8509", "8510", "8516"],
-    re: /liquidificador|blender|aspirador|vacuum|ferro\s*passar|iron|fog[aã]o|stove|mixer|juicer|榨汁/i,
-    termosBusca: "eletrodomestico cozinha limpeza",
+    re: /liquidificador|blender|aspirador|vacuum|ferro\s*passar|iron|fog[aã]o|stove|mixer|juicer|榨汁|pipoqueir|popcorn|pipoca|fritadeir|air\s*fry|airfry|microond|torradeir|chaleira|kettle|panela\s*elet|forno\s*el[eé]tr|eletroterm/i,
+    termosBusca: "eletrodomestico cozinha forno fritadeira panela eletrotermica",
+    ncmPreferidos: ["85167910", "85167920", "85166000", "85165000"],
+  },
+  {
+    id: "lavanderia_domestica",
+    prefixos: ["8450"],
+    re: /secadora|secador(?:a)?\s+de\s+roupa|clothes?\s+dryer|lavadora|m[aá]quina\s+de\s+(?:lavar|secar)|washing\s+machine|tumble\s+dryer|洗衣|烘干/i,
+    termosBusca: "maquina lavar secar roupa domestica",
+    ncmPreferidos: ["84501100", "84501200"],
+  },
+  {
+    id: "cabides_organizacao",
+    prefixos: ["7323", "4421", "4202"],
+    re: /cabide|hanger|gancho\s+(?:de\s+)?(?:roupa|parede)|organizador\s+(?:de\s+)?cabide|cabideiro|挂衣/i,
+    termosBusca: "cabide gancho roupa organizacao domestica",
+    ncmPreferidos: ["73239300", "44219900"],
   },
   {
     id: "aparelhos_eletricos",

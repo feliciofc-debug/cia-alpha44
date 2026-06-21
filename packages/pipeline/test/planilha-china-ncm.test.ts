@@ -62,6 +62,36 @@ describe("planilha-china-ncm — classificação operacional", () => {
     expect(hit?.ncm).toBeTruthy();
     expect(hit!.score).toBeGreaterThan(0);
   });
+
+  it("Pipoqueira Preta: família eletrodoméstico — NÃO tinta 32151100", () => {
+    const hit = resolverNcmClassificacaoPlanilhaChina(
+      {
+        descOriginal: "HY-5110 — Pipoqueira Preta 220V Plug Redondo",
+        ncm: null,
+        material: null,
+        uso: null,
+      },
+      planilha,
+      benchmarkIndex,
+    );
+    expect(hit?.ncm).not.toBe("32151100");
+    expect(hit?.ncm?.startsWith("8516")).toBe(true);
+  });
+
+  it("Secadora de roupa: capítulo 8450 — NÃO máquina de costura 8451", () => {
+    const hit = resolverNcmClassificacaoPlanilhaChina(
+      {
+        descOriginal: "Secadora inteligente de uso doméstico",
+        ncm: null,
+        material: null,
+        uso: null,
+      },
+      planilha,
+      benchmarkIndex,
+    );
+    expect(hit?.ncm?.startsWith("8450")).toBe(true);
+    expect(hit?.ncm?.startsWith("8451")).toBe(false);
+  });
 });
 
 describe("planilha-china-ncm — conciliação", () => {
