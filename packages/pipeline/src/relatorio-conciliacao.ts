@@ -258,12 +258,8 @@ export function montarLinhasConciliacao(
       descPt: it.descPt || "—",
       material: it.material?.trim() || "—",
       uso: it.uso?.trim() || "—",
-      ncm: geminiOp ? (it.ncm ?? "—") : (planilhaHit?.ncm ?? it.ncm ?? "—"),
-      ncmFonte: geminiOp
-        ? "Gemini (validado Siscomex)"
-        : planilhaHit
-          ? "planilha China"
-          : (it.ncmFonte ?? "—"),
+      ncm: it.ncm ?? "—",
+      ncmFonte: it.ncmFonte ?? "—",
       ncmConfianca: it.ncmConfianca != null ? it.ncmConfianca.toFixed(2) : "—",
       compatibilidade: it.compatibilidadeProduto ?? "—",
       motivoCompatibilidade: it.motivoCompatibilidade ?? "—",

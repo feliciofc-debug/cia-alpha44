@@ -92,6 +92,36 @@ describe("planilha-china-ncm — classificação operacional", () => {
     expect(hit?.ncm?.startsWith("8450")).toBe(true);
     expect(hit?.ncm?.startsWith("8451")).toBe(false);
   });
+
+  it("Lixador elétrico: capítulo 8467 — NÃO eletrodo 191 USD/kg", () => {
+    const hit = resolverNcmClassificacaoPlanilhaChina(
+      {
+        descOriginal: "Lixador Eletrico uso doméstico",
+        ncm: null,
+        material: null,
+        uso: null,
+      },
+      planilha,
+      benchmarkIndex,
+    );
+    expect(hit?.ncm?.startsWith("8467")).toBe(true);
+    expect((hit?.fobKgMedioDI ?? 0)).toBeLessThan(30);
+  });
+
+  it("Aspirador: NCM aspirador 8508 — NÃO panela eletrotérmica", () => {
+    const hit = resolverNcmClassificacaoPlanilhaChina(
+      {
+        descOriginal: "Aspirador de pó uso doméstico",
+        ncm: null,
+        material: null,
+        uso: null,
+      },
+      planilha,
+      benchmarkIndex,
+    );
+    expect(hit?.ncm).not.toBe("85167910");
+    expect(hit?.ncm?.startsWith("8508")).toBe(true);
+  });
 });
 
 describe("planilha-china-ncm — conciliação", () => {
@@ -113,7 +143,7 @@ describe("planilha-china-ncm — conciliação", () => {
     expect(hit?.fobKgMedioDI).toBeCloseTo(2.8942, 3);
   });
 
-  it("montarLinhasConciliacao exporta ncmFonte planilha China + FOB/kg da linha", () => {
+  it("montarLinhasConciliacao exporta ncm/ncmFonte do item; planilhaHit só FOB/kg", () => {
     const [linha] = montarLinhasConciliacao(
       [
         itemBase({
@@ -129,7 +159,7 @@ describe("planilha-china-ncm — conciliação", () => {
       { planilhaChina: planilha, benchmarkIndex },
     );
     expect(linha!.ncm).toBe("84233090");
-    expect(linha!.ncmFonte).toBe("planilha China");
+    expect(linha!.ncmFonte).toBe("ia");
     expect(Number(String(linha!.fobKg).replace(",", "."))).toBeCloseTo(2.8942, 3);
     expect(linha!.fobKgFonte).toContain("Planilha China");
   });

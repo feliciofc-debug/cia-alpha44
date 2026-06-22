@@ -1,0 +1,448 @@
+{
+  "label": "Cotação 72 — gabarito Felicio (21 linhas, FOB bruto US$ 47.036,67)",
+  "params": {
+    "cambio": 5.4372,
+    "freteTotalUS": 1060,
+    "siscomex": 153.24,
+    "outrasDespesasBaseBRL": 14040,
+    "markupPct": 0.04,
+    "ipiAliqSaida": 0
+  },
+  "despesas": [
+    {
+      "nome": "AFRMM",
+      "valorBRL": 4000,
+      "entraBaseNota": true
+    },
+    {
+      "nome": "Armazenagem",
+      "valorBRL": 6000,
+      "entraBaseNota": true
+    },
+    {
+      "nome": "Liberação BL",
+      "valorBRL": 2500,
+      "entraBaseNota": true
+    },
+    {
+      "nome": "GNRE",
+      "valorBRL": 100,
+      "entraBaseNota": true
+    },
+    {
+      "nome": "Administrativo",
+      "valorBRL": 5000,
+      "entraBaseNota": false
+    },
+    {
+      "nome": "Transp+Esc DTA",
+      "valorBRL": 3500,
+      "entraBaseNota": false
+    },
+    {
+      "nome": "Transporte SP",
+      "valorBRL": 8000,
+      "entraBaseNota": true
+    },
+    {
+      "nome": "Escolta SP",
+      "valorBRL": 2500,
+      "entraBaseNota": false
+    },
+    {
+      "nome": "Despacho HON",
+      "valorBRL": 4000,
+      "entraBaseNota": true
+    }
+  ],
+  "gabarito": {
+    "fobTotalUS": 47036.67,
+    "iiTotalBRL": 36319.77,
+    "linhas": 21
+  },
+  "ncmsRegressao": [
+    "84462100",
+    "84231000",
+    "84233090"
+  ],
+  "itens": [
+    {
+      "modelo": "HY-97",
+      "descOriginal": "HY-97;挂钩秤;Balança de gancho portátil (dinamômetro de pesagem) — aparelho de pesagem, outros, capacidade não superior a 30 kg",
+      "ncm": "84238900",
+      "ncmFonte": "ia",
+      "qtd": 3100,
+      "pesoLiqKg": 422.1,
+      "pesoBrutoKg": 458.8,
+      "fobKgManual": 4.5155,
+      "fobTotalUS": 2071.71,
+      "aliquotas": {
+        "ii": 0.126,
+        "ipi": 0,
+        "pis": 0.021,
+        "cofins": 0.0965,
+        "icmsEntrada": 0
+      }
+    },
+    {
+      "modelo": "HY-5178",
+      "descOriginal": "HY-5178;电动推脂机;Massageador elétrico mecânico para celulite (aparelho mecânico com função própria, não especificado em outras posições)",
+      "ncm": "84798999",
+      "ncmFonte": "ia",
+      "qtd": 90,
+      "pesoLiqKg": 57.96,
+      "pesoBrutoKg": 63,
+      "fobKgManual": 1.9521,
+      "fobTotalUS": 122.98,
+      "aliquotas": {
+        "ii": 0.126,
+        "ipi": 0,
+        "pis": 0.021,
+        "cofins": 0.0965,
+        "icmsEntrada": 0
+      }
+    },
+    {
+      "modelo": "HY-5169",
+      "descOriginal": "HY-5169;5管折叠裤架（OPP袋装）;HY-5169 — Cabide dobrável para calças com 5 tubos (embalagem saco OPP)",
+      "ncm": "42029200",
+      "ncmFonte": "siscomex",
+      "qtd": 5796,
+      "pesoLiqKg": 1587,
+      "pesoBrutoKg": 1725,
+      "fobKgManual": 1.5022,
+      "fobTotalUS": 2591.3,
+      "aliquotas": {
+        "ii": 0.35,
+        "ipi": 0.065,
+        "pis": 0.021,
+        "cofins": 0.0965,
+        "icmsEntrada": 0
+      }
+    },
+    {
+      "modelo": "HY-80036",
+      "descOriginal": "HY-80036;电动磨脚皮器 小盒 300毫安电池;HY-80036 — Lixadeira elétrica para pés - caixa pequena, bateria 300mA",
+      "ncm": "85369060",
+      "ncmFonte": "siscomex",
+      "qtd": 9200,
+      "pesoLiqKg": 1113.02,
+      "pesoBrutoKg": 1209.8,
+      "fobKgManual": 6.55,
+      "fobTotalUS": 7924.19,
+      "aliquotas": {
+        "ii": 0,
+        "ipi": 0.0975,
+        "pis": 0.021,
+        "cofins": 0.0965,
+        "icmsEntrada": 0
+      }
+    },
+    {
+      "modelo": "HY-5110",
+      "descOriginal": "HY-5110;黑色爆米花机220V圆插;HY-5110 — Máquina de pipoca preta 220V plugue redondo",
+      "ncm": "85361000",
+      "ncmFonte": "siscomex",
+      "qtd": 480,
+      "pesoLiqKg": 331.2,
+      "pesoBrutoKg": 360,
+      "fobKgManual": 9.3333,
+      "fobTotalUS": 3359.99,
+      "aliquotas": {
+        "ii": 0.16,
+        "ipi": 0.0975,
+        "pis": 0.021,
+        "cofins": 0.0965,
+        "icmsEntrada": 0
+      }
+    },
+    {
+      "modelo": "HY-5047",
+      "descOriginal": "HY-5047;黑色爆米花机110V圆插;HY-5047 — Máquina de pipoca preta 110V plugue redondo",
+      "ncm": "85361000",
+      "ncmFonte": "siscomex",
+      "qtd": 1200,
+      "pesoLiqKg": 828,
+      "pesoBrutoKg": 900,
+      "fobKgManual": 9.3333,
+      "fobTotalUS": 8399.97,
+      "aliquotas": {
+        "ii": 0.16,
+        "ipi": 0.0975,
+        "pis": 0.021,
+        "cofins": 0.0965,
+        "icmsEntrada": 0
+      }
+    },
+    {
+      "modelo": "HY-5113",
+      "descOriginal": "HY-5113;足球折叠水壶;Garrafa de água dobrável em formato de bola de futebol",
+      "ncm": "19059010",
+      "ncmFonte": "siscomex",
+      "qtd": 910,
+      "pesoLiqKg": 157.78,
+      "pesoBrutoKg": 171.5,
+      "fobKgManual": 1.3168,
+      "fobTotalUS": 225.83,
+      "aliquotas": {
+        "ii": 0.162,
+        "ipi": 0,
+        "pis": 0.021,
+        "cofins": 0.0965,
+        "icmsEntrada": 0
+      }
+    },
+    {
+      "modelo": "HY-5126",
+      "descOriginal": "HY-5126;紫外线消毒牙刷架;Porta-escova de dentes com esterilizador ultravioleta (UV) de uso doméstico",
+      "ncm": "84198999",
+      "ncmFonte": "ia",
+      "qtd": 4000,
+      "pesoLiqKg": 1150,
+      "pesoBrutoKg": 1250,
+      "fobKgManual": 1.9115,
+      "fobTotalUS": 2389.38,
+      "aliquotas": {
+        "ii": 0.126,
+        "ipi": 0,
+        "pis": 0.021,
+        "cofins": 0.0965,
+        "icmsEntrada": 0
+      }
+    },
+    {
+      "modelo": "HY-5123",
+      "descOriginal": "HY-5123;智能烘干机;Secadora inteligente de uso doméstico, capacidade não superior a 10 kg (peso de roupa seca)",
+      "ncm": "84512100",
+      "ncmFonte": "ia",
+      "qtd": 1000,
+      "pesoLiqKg": 294.4,
+      "pesoBrutoKg": 320,
+      "fobKgManual": 5.5928,
+      "fobTotalUS": 1789.7,
+      "aliquotas": {
+        "ii": 0.18,
+        "ipi": 0.13,
+        "pis": 0.021,
+        "cofins": 0.0965,
+        "icmsEntrada": 0
+      }
+    },
+    {
+      "modelo": "HY-5104",
+      "descOriginal": "HY-5104;6件套硅胶空气炸锅（180g);HY-5104 — Kit 6 peças de silicone para Air Fryer (180g)",
+      "ncm": "69022010",
+      "ncmFonte": "siscomex",
+      "qtd": 7500,
+      "pesoLiqKg": 1288,
+      "pesoBrutoKg": 1400,
+      "fobKgManual": 0.4669,
+      "fobTotalUS": 653.66,
+      "aliquotas": {
+        "ii": 0.09,
+        "ipi": 0.052,
+        "pis": 0.021,
+        "cofins": 0.0965,
+        "icmsEntrada": 0
+      }
+    },
+    {
+      "modelo": "HY-5062",
+      "descOriginal": "HY-5062;电视手机放大镜;HY-5062 — Lupa amplificadora de tela para TV e celular",
+      "ncm": "85177120",
+      "ncmFonte": "siscomex",
+      "qtd": 2000,
+      "pesoLiqKg": 805,
+      "pesoBrutoKg": 875,
+      "fobKgManual": 0.5252,
+      "fobTotalUS": 459.55,
+      "aliquotas": {
+        "ii": 0,
+        "ipi": 0.065,
+        "pis": 0.021,
+        "cofins": 0.0965,
+        "icmsEntrada": 0
+      }
+    },
+    {
+      "modelo": "HY-5156",
+      "descOriginal": "HY-5156;不锈钢咖啡滤网（白盒包装）;HY-5156 — Filtro de café em aço inoxidável (embalagem caixa branca)",
+      "ncm": "42021100",
+      "ncmFonte": "siscomex",
+      "qtd": 10000,
+      "pesoLiqKg": 506,
+      "pesoBrutoKg": 550,
+      "fobKgManual": 2.8717,
+      "fobTotalUS": 1579.44,
+      "aliquotas": {
+        "ii": 0.18,
+        "ipi": 0.065,
+        "pis": 0.021,
+        "cofins": 0.0965,
+        "icmsEntrada": 0
+      }
+    },
+    {
+      "modelo": "HY-5179",
+      "descOriginal": "HY-5179;宠物四合一推剪;Tosquiadeira 4 em 1 para animais de estimação — aparelho mecânico com função própria",
+      "ncm": "84798999",
+      "ncmFonte": "ia",
+      "qtd": 3000,
+      "pesoLiqKg": 828,
+      "pesoBrutoKg": 900,
+      "fobKgManual": 1.9521,
+      "fobTotalUS": 1756.89,
+      "aliquotas": {
+        "ii": 0.126,
+        "ipi": 0,
+        "pis": 0.021,
+        "cofins": 0.0965,
+        "icmsEntrada": 0
+      }
+    },
+    {
+      "modelo": "HY-5180",
+      "descOriginal": "HY-5180;宠物祛虱器+3网兜;Removedor de pulgas para animais de estimação com redes coletoras, aparelho mecânico com função própria",
+      "ncm": "84798999",
+      "ncmFonte": "ia",
+      "qtd": 3000,
+      "pesoLiqKg": 828,
+      "pesoBrutoKg": 900,
+      "fobKgManual": 1.9521,
+      "fobTotalUS": 1756.89,
+      "aliquotas": {
+        "ii": 0.126,
+        "ipi": 0,
+        "pis": 0.021,
+        "cofins": 0.0965,
+        "icmsEntrada": 0
+      }
+    },
+    {
+      "modelo": "HY-618",
+      "descOriginal": "HY-618;千斤顶扳手+配件;Chave de porcas manual de abertura variável para macaco hidráulico, com acessórios",
+      "ncm": "82041200",
+      "ncmFonte": "ia",
+      "qtd": 10000,
+      "pesoLiqKg": 2760,
+      "pesoBrutoKg": 3000,
+      "fobKgManual": 1.0994,
+      "fobTotalUS": 3298.2,
+      "aliquotas": {
+        "ii": 0.162,
+        "ipi": 0.052,
+        "pis": 0.021,
+        "cofins": 0.0965,
+        "icmsEntrada": 0
+      }
+    },
+    {
+      "modelo": "HY-619",
+      "descOriginal": "HY-619;短批头;Ponteiras curtas (bits) para parafusadeiras — ferramentas intercambiáveis",
+      "ncm": "82079000",
+      "ncmFonte": "ia",
+      "qtd": 10000,
+      "pesoLiqKg": 920,
+      "pesoBrutoKg": 1000,
+      "fobKgManual": 1.874,
+      "fobTotalUS": 1874,
+      "aliquotas": {
+        "ii": 0.162,
+        "ipi": 0.052,
+        "pis": 0.021,
+        "cofins": 0.0965,
+        "icmsEntrada": 0
+      }
+    },
+    {
+      "modelo": "HY-622",
+      "descOriginal": "HY-622;滚轮扳手;Chave de catraca com soquetes intercambiáveis (chave de catraca com rolete)",
+      "ncm": "82042000",
+      "ncmFonte": "ia",
+      "qtd": 3000,
+      "pesoLiqKg": 1288,
+      "pesoBrutoKg": 1400,
+      "fobKgManual": 1.1544,
+      "fobTotalUS": 1616.16,
+      "aliquotas": {
+        "ii": 0.162,
+        "ipi": 0.052,
+        "pis": 0.021,
+        "cofins": 0.0965,
+        "icmsEntrada": 0
+      }
+    },
+    {
+      "modelo": "KHS-GF4015",
+      "descOriginal": "KHS-GF4015;直发梳;Escova alisadora elétrica de cabelo",
+      "ncm": "85163200",
+      "ncmFonte": "ia",
+      "qtd": 4000,
+      "pesoLiqKg": 1035,
+      "pesoBrutoKg": 1125,
+      "fobKgManual": 3.6007,
+      "fobTotalUS": 4050.79,
+      "aliquotas": {
+        "ii": 0.18,
+        "ipi": 0.2,
+        "pis": 0.021,
+        "cofins": 0.0965,
+        "icmsEntrada": 0
+      }
+    },
+    {
+      "modelo": "H002",
+      "descOriginal": "H002;折叠刀;Canivete dobrável com lâmina(s) dobrável(is)",
+      "ncm": "82119320",
+      "ncmFonte": "ia",
+      "qtd": 3000,
+      "pesoLiqKg": 546.48,
+      "pesoBrutoKg": 594,
+      "fobKgManual": 1.4371,
+      "fobTotalUS": 853.64,
+      "aliquotas": {
+        "ii": 0.162,
+        "ipi": 0.078,
+        "pis": 0.021,
+        "cofins": 0.0965,
+        "icmsEntrada": 0
+      }
+    },
+    {
+      "modelo": "H004-25",
+      "descOriginal": "H004;25cm折叠锯;Serra manual dobrável 25 cm",
+      "ncm": "82021000",
+      "ncmFonte": "ia",
+      "qtd": 500,
+      "pesoLiqKg": 93.38,
+      "pesoBrutoKg": 101.5,
+      "fobKgManual": 1.232,
+      "fobTotalUS": 125.05,
+      "aliquotas": {
+        "ii": 0.162,
+        "ipi": 0.052,
+        "pis": 0.021,
+        "cofins": 0.0965,
+        "icmsEntrada": 0
+      }
+    },
+    {
+      "modelo": "H004-30",
+      "descOriginal": "H004;30cm折叠锯;Serra manual dobrável 30 cm",
+      "ncm": "82021000",
+      "ncmFonte": "ia",
+      "qtd": 500,
+      "pesoLiqKg": 102.58,
+      "pesoBrutoKg": 111.5,
+      "fobKgManual": 1.232,
+      "fobTotalUS": 137.37,
+      "aliquotas": {
+        "ii": 0.162,
+        "ipi": 0.052,
+        "pis": 0.021,
+        "cofins": 0.0965,
+        "icmsEntrada": 0
+      }
+    }
+  ]
+}

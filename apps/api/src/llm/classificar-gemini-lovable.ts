@@ -1,5 +1,5 @@
 /**
- * Classificação NCM via Gemini/Lovable — FALLBACK quando planilha IMPORTAÇÕES DA CHINA não achou match.
+ * Classificação NCM via Gemini/Lovable — após planilha cliente e cache; antes do fluxo legado.
  */
 
 import type { NcmCatalog } from "@cia/pipeline";

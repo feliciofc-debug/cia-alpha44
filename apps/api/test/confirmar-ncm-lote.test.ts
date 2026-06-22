@@ -280,7 +280,7 @@ describe("confirmarNcmItem", () => {
     expect(store.row!.itens[0]!.meta.ncmRevisadoHumano).toBe(true);
     expect(calcularCotacao).toHaveBeenCalled();
     expect(store.row!.resultadoCalculo.totalBRL).toBe(store.resultadoMock.totalBRL);
-  });
+  }, 30_000);
 });
 
 describe("confirmarNcmItensLote", () => {

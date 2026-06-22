@@ -19,13 +19,26 @@ import type { NcmCatalog } from "./ncm-catalog.js";
 import { normNcm8 } from "./ncm-catalog.js";
 import { aplicarDesempateOutros } from "./desempate-outros.js";
 
-export type NcmFonte = "planilha" | "gemini" | "ia" | "siscomex" | "pendente";
+export type NcmFonte =
+  | "planilha"
+  | "planilha-cliente"
+  | "planilha-cliente-familia"
+  | "gemini"
+  | "ia"
+  | "siscomex"
+  | "pendente";
 
 export interface ResolveNcmInput {
   ncmPlanilha?: string | null;
   candidatosIa?: NcmCandidato[];
-  /** Classificador — planilha China soberana; Gemini só quando planilha China não achou. */
-  fonteClassificacao?: "planilha-china" | "gemini" | "ia" | null;
+  /** Classificador — planilha cliente → Gemini/IA → Siscomex. */
+  fonteClassificacao?:
+    | "planilha-cliente"
+    | "planilha-cliente-familia"
+    | "siscomex"
+    | "gemini"
+    | "ia"
+    | null;
   /** Texto enriquecido para busca Siscomex (pode incluir material/uso). */
   descricao?: string | null;
   /** Descrição da planilha — fonte de verdade para família e fallback Siscomex. */
@@ -204,31 +217,53 @@ export function resolveNcm(catalog: NcmCatalog, input: ResolveNcmInput): Resolve
 
   let pularPlanilhaPorGeminiFalho = false;
 
-  // Planilha IMPORTAÇÕES DA CHINA — soberana (antes de Gemini/IA).
-  if (input.fonteClassificacao === "planilha-china") {
-    const chinaCandidatos = filtrarCandidatosValidos(catalog, input.candidatosIa ?? []);
-    const chinaTop = chinaCandidatos[0];
-    if (chinaTop && catalog.existe(chinaTop.ncm)) {
-      if (planilha && planilha !== chinaTop.ncm) {
-        avisos.push(
-          `NCM coluna embarque (${planilha}) — operacional: planilha IMPORTAÇÕES DA CHINA (${chinaTop.ncm}).`,
-        );
-      }
-      avisos.push(`NCM da planilha IMPORTAÇÕES DA CHINA: ${chinaTop.ncm}.`);
+  if (
+    input.fonteClassificacao === "planilha-cliente" ||
+    input.fonteClassificacao === "planilha-cliente-familia"
+  ) {
+    const clienteCandidatos = filtrarCandidatosValidos(catalog, input.candidatosIa ?? []);
+    const clienteTop = clienteCandidatos[0];
+    if (clienteTop && catalog.existe(clienteTop.ncm)) {
+      const fonte =
+        input.fonteClassificacao === "planilha-cliente-familia"
+          ? "planilha-cliente-familia"
+          : "planilha-cliente";
+      const rotulo =
+        fonte === "planilha-cliente"
+          ? "declarado na planilha do cliente"
+          : "herdado de linha da mesma família na fatura";
+      avisos.push(`NCM ${rotulo}: ${clienteTop.ncm}.`);
       return {
-        ncm: chinaTop.ncm,
-        fonte: "planilha",
+        ncm: clienteTop.ncm,
+        fonte,
         valido: true,
-        descricaoOficial: catalog.descricao(chinaTop.ncm),
+        descricaoOficial: catalog.descricao(clienteTop.ncm),
         avisos,
-        ncmCandidatos: chinaCandidatos,
-        ...(planilha && planilha !== chinaTop.ncm ? { ncmPlanilhaOriginal: planilha } : {}),
+        ncmCandidatos: clienteCandidatos,
       };
     }
-    avisos.push("Planilha IMPORTAÇÕES DA CHINA sem NCM válido na TEC — tentando Gemini/IA.");
+    avisos.push("NCM planilha cliente inválido ou incoerente — tentando classificação automática.");
   }
 
-  // Gemini/Lovable — só itens que NÃO acharam match na planilha China.
+  if (input.fonteClassificacao === "siscomex") {
+    const siscomexCandidatos = filtrarCandidatosValidos(catalog, input.candidatosIa ?? []);
+    const siscomexTop = siscomexCandidatos[0];
+    if (siscomexTop && catalog.existe(siscomexTop.ncm)) {
+      avisos.push(`NCM inferido pela tabela Siscomex (último recurso): ${siscomexTop.ncm}.`);
+      avisos.push("Classificação com baixa confiança — revisar");
+      return {
+        ncm: siscomexTop.ncm,
+        fonte: "siscomex",
+        valido: true,
+        descricaoOficial: catalog.descricao(siscomexTop.ncm),
+        avisos,
+        ncmCandidatos: siscomexCandidatos,
+      };
+    }
+    avisos.push("Siscomex sem NCM válido na TEC — tentando Gemini/IA.");
+  }
+
+  // Gemini/Lovable — após planilha cliente e antes do fluxo legado.
   if (input.fonteClassificacao === "gemini") {
     const geminiCandidatos = filtrarCandidatosValidos(catalog, input.candidatosIa ?? []);
     const geminiTop = geminiCandidatos[0];

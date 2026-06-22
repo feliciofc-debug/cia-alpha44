@@ -1,0 +1,36 @@
+{
+  "linhas": [
+    {
+      "descOriginal": "ES-T19A-10BLK — 滑板车T1 MAX 10寸500W款（黑色） — 1-500",
+      "ncm": "87116000",
+      "qtd": 500,
+      "material": "高碳钢",
+      "uso": "骑行",
+      "pesoLiqKg": 10000,
+      "pesoBrutoKg": 11500,
+      "fobUnitarioUS": 140.58,
+      "fobTotalUS": 70290
+    },
+    {
+      "descOriginal": "ES-T19A-10WHI — 滑板车T1 MAX 10寸500W款（白色） — 501-710",
+      "ncm": "87116000",
+      "qtd": 210,
+      "material": "高碳钢",
+      "uso": "骑行",
+      "pesoLiqKg": 4200,
+      "pesoBrutoKg": 4830,
+      "fobUnitarioUS": 140.58,
+      "fobTotalUS": 29521.8
+    },
+    {
+      "descOriginal": "ACC-ES-SSA001 — 减震器 — 711.0",
+      "qtd": 4,
+      "material": "铁",
+      "uso": "配件",
+      "pesoLiqKg": 16,
+      "pesoBrutoKg": 16.4,
+      "fobUnitarioUS": 0.12,
+      "fobTotalUS": 0.48
+    }
+  ]
+}

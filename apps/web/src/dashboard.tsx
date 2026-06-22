@@ -484,11 +484,16 @@ function AnalisePainel({
                         {it.ncmFonte === "siscomex"
                           ? "Siscomex vigente"
                           : it.ncmFonte === "gemini"
-                            ? "Gemini (fallback — não estava na planilha China)"
-                            : it.ncmFonte === "planilha" &&
-                                it.ncmAvisos?.some((a) => /IMPORTAÇÕES DA CHINA/i.test(a))
-                              ? "Planilha IMPORTAÇÕES DA CHINA"
-                              : it.ncmFonte}
+                            ? "Gemini (validado Siscomex)"
+                            : it.ncmFonte === "ia"
+                              ? "IA (2 passes)"
+                              : it.ncmFonte === "planilha-cliente"
+                                ? "Planilha cliente (coluna NCM)"
+                                : it.ncmFonte === "planilha-cliente-familia"
+                                  ? "Planilha cliente (mesma família)"
+                                  : it.ncmFonte === "planilha"
+                                    ? "Planilha embarque"
+                                    : it.ncmFonte}
                       </span>
                     )}
                     {it.ncmClassificacaoCache === "humano" && !it.ncmRevisadoHumano && (

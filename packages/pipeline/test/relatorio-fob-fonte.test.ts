@@ -64,7 +64,7 @@ describe("relatório conciliação — fonte FOB/kg", () => {
     );
     expect(linhas[0]!.fobKgFonte).toContain("Planilha China");
     expect(linhas[0]!.fobKg).toBe("4,5155");
-    expect(linhas[0]!.ncmFonte).toBe("planilha China");
+    expect(linhas[0]!.ncmFonte).toBe("—");
   });
 
   it("coluna fobKgFonte indica ComexStat quando NCM fora da planilha", () => {

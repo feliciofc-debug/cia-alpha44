@@ -217,6 +217,13 @@ export {
   type PlanilhaChinaNcmHit,
 } from "./planilha-china-ncm.js";
 export {
+  resolverNcmDeclaradoCliente,
+  resolverNcmHerancaFamiliaFatura,
+  classificarSiscomexUltimoRecurso,
+  type PlanilhaClienteNcmHit,
+  type ClassificarSiscomexOutput,
+} from "./planilha-cliente-ncm.js";
+export {
   FONTE_ALIQUOTA_TEC_PADRAO,
   gerarConciliacaoBuffer,
   gerarCsvConciliacao,

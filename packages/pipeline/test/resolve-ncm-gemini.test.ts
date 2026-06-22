@@ -4,16 +4,26 @@ import { criarNcmCatalog, loadNcmVigente, resolveNcm } from "../src/index.js";
 const catalog = criarNcmCatalog(loadNcmVigente());
 
 describe("resolveNcm — Gemini validado Siscomex", () => {
-  it("planilha China prevalece sobre Gemini quando fonte planilha-china", () => {
+  it("planilha-cliente prevalece sobre Gemini quando fonte planilha-cliente", () => {
     const r = resolveNcm(catalog, {
       ncmPlanilha: "84732910",
-      fonteClassificacao: "planilha-china",
-      candidatosIa: [{ ncm: "84233090", confianca: 0.95 }],
+      fonteClassificacao: "planilha-cliente",
+      candidatosIa: [{ ncm: "84238900", confianca: 0.95 }],
       descOriginal: "Balança de gancho",
     });
-    expect(r.fonte).toBe("planilha");
-    expect(r.ncm).toBe("84233090");
-    expect(r.avisos.some((a) => a.includes("IMPORTAÇÕES DA CHINA"))).toBe(true);
+    expect(r.fonte).toBe("planilha-cliente");
+    expect(r.ncm).toBe("84238900");
+    expect(r.valido).toBe(true);
+  });
+
+  it("planilha-cliente-familia retorna fonte correta", () => {
+    const r = resolveNcm(catalog, {
+      fonteClassificacao: "planilha-cliente-familia",
+      candidatosIa: [{ ncm: "84798999", confianca: 0.85 }],
+      descOriginal: "Tosquiadeira para pets",
+    });
+    expect(r.fonte).toBe("planilha-cliente-familia");
+    expect(r.ncm).toBe("84798999");
   });
 
   it("prevalece sobre NCM da coluna embarque quando fonte gemini (fallback)", () => {
