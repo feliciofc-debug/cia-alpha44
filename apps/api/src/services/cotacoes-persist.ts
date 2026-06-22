@@ -486,7 +486,8 @@ function linhasCruasFromItensPersistidos(itens: ItemRowPersist[]): LinhaCruaRecl
         pesoLiqKg: num(it.pesoLiqKg),
         qtd: numOrNull(it.qtd),
         fobUnitarioUS: numOrNull(it.fobUnitarioUS),
-        fobTotalUS: meta.fobEmbarqueUS != null ? meta.fobEmbarqueUS : num(it.fobTotalUS),
+        // Não reutilizar meta.fobEmbarqueUS — pode estar corrompido de classificação antiga.
+        fobTotalUS: null,
       };
       if (humano) {
         linha.ncmRevisadoHumano = true;

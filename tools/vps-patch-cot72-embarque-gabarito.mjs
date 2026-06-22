@@ -45,6 +45,8 @@ for (const it of row.itens) {
   const meta = it.meta && typeof it.meta === "object" ? { ...it.meta } : {};
   meta.ncmEmbarque = ncm;
   meta.ncmPlanilhaOriginal = ncm;
+  delete meta.fobEmbarqueUS;
+  delete meta.fobPendente;
   await p.item.update({
     where: { id: it.id },
     data: { meta },
