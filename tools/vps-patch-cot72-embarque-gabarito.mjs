@@ -17,7 +17,10 @@ const COT_ID = process.argv[2] ?? "cmqlfuhvm000ykw2cue1whldj";
 const byModelo = new Map(gabarito.itens.map((i) => [i.modelo, i.ncm]));
 
 function modelo(desc) {
-  const m = String(desc ?? "").match(/^(HY-\d+|KHS-[A-Z0-9]+|H\d+)/);
+  const d = String(desc ?? "");
+  if (/H004.*25cm|25cm折叠锯/i.test(d)) return "H004-25";
+  if (/H004.*30cm|30cm折叠锯/i.test(d)) return "H004-30";
+  const m = d.match(/^(HY-\d+|KHS-[A-Z0-9]+|H\d+)/);
   return m?.[1] ?? null;
 }
 
