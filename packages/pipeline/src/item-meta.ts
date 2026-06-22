@@ -10,6 +10,8 @@ export interface ItemMetaPersistido {
   ncmValido?: boolean;
   ncmDescricaoOficial?: string;
   ncmPlanilhaOriginal?: string;
+  /** NCM da coluna embarque no upload — sempre persistido, independente do classificador. */
+  ncmEmbarque?: string;
   ncmAvisos?: string[];
   compatibilidadeProduto?: Item["compatibilidadeProduto"];
   motivoCompatibilidade?: string;
@@ -37,6 +39,7 @@ export function extrairItemMeta(it: Item): ItemMetaPersistido {
     ncmValido: it.ncmValido,
     ncmDescricaoOficial: it.ncmDescricaoOficial,
     ncmPlanilhaOriginal: it.ncmPlanilhaOriginal,
+    ncmEmbarque: it.ncmEmbarque,
     ncmAvisos: it.ncmAvisos,
     compatibilidadeProduto: it.compatibilidadeProduto,
     motivoCompatibilidade: it.motivoCompatibilidade,
@@ -67,6 +70,7 @@ export function mesclarItemMeta(it: Item, meta: unknown): Item {
     ...(m.ncmValido != null ? { ncmValido: m.ncmValido } : {}),
     ...(m.ncmDescricaoOficial != null ? { ncmDescricaoOficial: m.ncmDescricaoOficial } : {}),
     ...(m.ncmPlanilhaOriginal != null ? { ncmPlanilhaOriginal: m.ncmPlanilhaOriginal } : {}),
+    ...(m.ncmEmbarque != null ? { ncmEmbarque: m.ncmEmbarque } : {}),
     ...(m.ncmAvisos != null ? { ncmAvisos: m.ncmAvisos } : {}),
     ...(m.compatibilidadeProduto != null ? { compatibilidadeProduto: m.compatibilidadeProduto } : {}),
     ...(m.motivoCompatibilidade != null ? { motivoCompatibilidade: m.motivoCompatibilidade } : {}),

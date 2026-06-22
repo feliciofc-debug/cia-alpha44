@@ -20,6 +20,7 @@ import {
   resolverNcmDeclaradoCliente,
   resolverNcmHerancaFamiliaFatura,
   classificarSiscomexUltimoRecurso,
+  normNcm8,
   type LinhaCrua,
   type NcmCatalog,
   type PlanilhaClienteNcmHit,
@@ -426,6 +427,7 @@ export async function montarItens(
     const pesoLiq = pesoLiqReal(l);
     const fobTotal = l.fobTotalUS ?? 0;
     const familia = detectarFamilia({ descOriginal: l.descOriginal, uso: l.uso ?? undefined });
+    const ncmEmbarque = l.ncm ? normNcm8(l.ncm) : null;
 
     const avisosClassificacao: string[] = [];
     if (c?.classificacaoBaixaConfianca) {
@@ -463,6 +465,7 @@ export async function montarItens(
             : {}),
           ncmDescricaoOficial: resolvido.descricaoOficial ?? undefined,
           ncmPlanilhaOriginal: resolvido.ncmPlanilhaOriginal ?? undefined,
+          ...(ncmEmbarque ? { ncmEmbarque } : {}),
           ncmAvisos: [...resolvido.avisos, ...validacao.avisos, ...avisosClassificacao].length
             ? [...resolvido.avisos, ...validacao.avisos, ...avisosClassificacao]
             : undefined,

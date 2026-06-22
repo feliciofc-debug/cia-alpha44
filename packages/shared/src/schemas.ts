@@ -140,6 +140,8 @@ export const itemSchema = z.object({
   /** Origem do cache P3b quando a classificação veio do Postgres (humano prevalece sobre LLM). */
   ncmClassificacaoCache: z.enum(["humano", "llm"]).optional(),
   ncmPlanilhaOriginal: z.string().optional(),
+  /** NCM coluna embarque no upload — persistido sempre, independente do classificador. */
+  ncmEmbarque: z.string().optional(),
   ncmDescricaoOficial: z.string().optional(),
   ncmAvisos: z.array(z.string()).optional(),
   /** Compatibilidade semântica produto × NCM (T5 — independente de ncmValido Siscomex). */

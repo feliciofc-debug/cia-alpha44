@@ -23,6 +23,16 @@ const pipelineTests = [
 
 console.log("[gate-pre-deploy] Rodando gates obrigatórios...\n");
 
+const buildShared = spawnSync("npm", ["run", "build", "-w", "@cia/shared"], {
+  cwd: root,
+  stdio: "inherit",
+  shell: true,
+});
+if (buildShared.status !== 0) {
+  console.error("\n[gate-pre-deploy] FALHOU: build @cia/shared");
+  process.exit(1);
+}
+
 const build = spawnSync("npm", ["run", "build", "-w", "@cia/pipeline"], {
   cwd: root,
   stdio: "inherit",

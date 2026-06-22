@@ -481,7 +481,7 @@ function linhasCruasFromItensPersistidos(itens: ItemRowPersist[]): LinhaCruaRecl
         descOriginal: it.descOriginal,
         material: meta.material ?? null,
         uso: meta.uso ?? null,
-        ncm: meta.ncmPlanilhaOriginal ?? null,
+        ncm: meta.ncmPlanilhaOriginal ?? meta.ncmEmbarque ?? null,
         pesoBrutoKg: numOrNull(it.pesoBrutoKg),
         pesoLiqKg: num(it.pesoLiqKg),
         qtd: numOrNull(it.qtd),
