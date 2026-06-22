@@ -23,7 +23,11 @@ async function authHeaders() {
 async function main() {
   const h = await authHeaders();
   console.log(`Reclassificando cotação ${COT_ID}...`);
-  const r = await fetch(`${API}/api/cotacoes/${COT_ID}/reclassificar`, { method: "POST", headers: h });
+  const r = await fetch(`${API}/api/cotacoes/${COT_ID}/reclassificar`, {
+    method: "POST",
+    headers: h,
+    body: "{}",
+  });
   const j = await r.json();
   if (!r.ok) {
     console.error(JSON.stringify(j, null, 2));
