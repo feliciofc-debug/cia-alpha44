@@ -427,7 +427,13 @@ export async function montarItens(
     const pesoLiq = pesoLiqReal(l);
     const fobTotal = l.fobTotalUS ?? 0;
     const familia = detectarFamilia({ descOriginal: l.descOriginal, uso: l.uso ?? undefined });
-    const ncmEmbarque = l.ncm ? normNcm8(l.ncm) : null;
+    const ncmColuna = l.ncm ? normNcm8(l.ncm) : null;
+    const ncmPlanilhaCliente =
+      c?.classificacaoProvedor === "planilha-cliente" ||
+      c?.classificacaoProvedor === "planilha-cliente-familia"
+        ? normNcm8(c.ncmCandidatos?.[0]?.ncm ?? "")
+        : null;
+    const ncmEmbarque = ncmColuna ?? ncmPlanilhaCliente ?? null;
 
     const avisosClassificacao: string[] = [];
     if (c?.classificacaoBaixaConfianca) {

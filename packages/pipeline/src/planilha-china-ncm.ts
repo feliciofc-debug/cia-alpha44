@@ -49,6 +49,8 @@ function expandirTokensProduto(queryTokens: string[], familia: FamiliaProduto | 
       out.add("panela");
       out.add("eletrot");
     }
+  }
+  if (familia?.id === "eletro_portatil") {
     if (/aspir|vacuum/i.test(joined)) {
       out.add("aspirador");
       out.add("aspir");
@@ -142,6 +144,7 @@ function familiaPrimariaBusca(
   const preferencia = [
     "lavanderia_domestica",
     "ferramentas_eletricas",
+    "eletro_portatil",
     "balancas_pesagem",
     "eletrodomesticos",
     "medico",
@@ -197,12 +200,18 @@ export function buscarNcmPlanilhaChinaPorDescricao(
   },
 ): PlanilhaChinaNcmHit[] {
   const familiaDetectada = opts?.familia ?? detectarFamilia({ descOriginal: texto });
+  const capsAspirador =
+    familiaDetectada?.id === "eletro_portatil" && /\baspir|vacuum/i.test(texto)
+      ? ["8508"]
+      : null;
   const caps =
     opts?.capitulos4?.length
       ? opts.capitulos4
-      : opts?.capitulo4
-        ? [opts.capitulo4.replace(/\D/g, "").slice(0, 4)]
-        : capitulosBuscaFamilia(familiaDetectada);
+      : capsAspirador?.length
+        ? capsAspirador
+        : opts?.capitulo4
+          ? [opts.capitulo4.replace(/\D/g, "").slice(0, 4)]
+          : capitulosBuscaFamilia(familiaDetectada);
 
   const queryTokens = tokensTexto(texto);
   const familia = familiaDetectada;
@@ -303,7 +312,11 @@ export function resolverNcmClassificacaoPlanilhaChina(
   if (porColuna) return porColuna;
 
   const texto = [l.descOriginal?.trim(), l.material?.trim(), l.uso?.trim()].filter(Boolean).join(" ");
-  const caps = capitulosBuscaInput(l);
+  const familiaLinha = familiaBuscaLinha(l);
+  const capsAspirador =
+    familiaLinha?.id === "eletro_portatil" && /\baspir|vacuum/i.test(texto) ? ["8508"] : null;
+  const capsInput = capitulosBuscaInput(l);
+  const caps = capsAspirador?.length ? capsAspirador : capsInput;
   const hits = buscarNcmPlanilhaChinaPorDescricao(texto, planilhaItens, {
     capitulos4: caps.length ? caps : undefined,
     familia,

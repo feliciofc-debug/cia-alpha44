@@ -156,7 +156,7 @@ export const FAMILIAS_PRODUTO: FamiliaProduto[] = [
   {
     id: "ferramentas_eletricas",
     prefixos: ["8467"],
-    re: /esmerilhadeira|lixadeira|polidora|winkelschleifer|schleifer|furadeira|parafusadeira|angle\s*grinder|\bgrinder\b|serra\s*el[eé]tr|power\s*tool|电动工具/i,
+    re: /esmerilhadeira|lixadeira|\blixador\b|polidora|winkelschleifer|schleifer|furadeira|parafusadeira|angle\s*grinder|\bgrinder\b|serra\s*el[eé]tr|power\s*tool|电动工具|磨脚/i,
     termosBusca: "ferramentas eletromecanicas manuais esmerilhadeira lixadeira furadeira",
     ncmPreferidos: ["84672900", "84671190"],
   },
@@ -249,7 +249,7 @@ export const FAMILIAS_PRODUTO: FamiliaProduto[] = [
   {
     id: "eletrodomesticos",
     prefixos: ["8509", "8510", "8516"],
-    re: /liquidificador|blender|aspirador|vacuum|ferro\s*passar|iron|fog[aã]o|stove|mixer|juicer|榨汁|pipoqueir|popcorn|pipoca|fritadeir|air\s*fry|airfry|microond|torradeir|chaleira|kettle|panela\s*elet|forno\s*el[eé]tr|eletroterm/i,
+    re: /liquidificador|blender|ferro\s*passar|iron|fog[aã]o|stove|mixer|juicer|榨汁|pipoqueir|popcorn|pipoca|fritadeir|air\s*fry|airfry|microond|torradeir|chaleira|kettle|panela\s*elet|forno\s*el[eé]tr|eletroterm/i,
     termosBusca: "eletrodomestico cozinha forno fritadeira panela eletrotermica",
     ncmPreferidos: ["85167910", "85167920", "85166000", "85165000"],
   },
@@ -290,8 +290,8 @@ export const FAMILIAS_PRODUTO: FamiliaProduto[] = [
   {
     id: "eletro_portatil",
     prefixos: ["8509", "8508"],
-    re: /eletrodom[eé]stico|aparelho\s*el[eé]tr|electrical\s*appliance|家用/i,
-    termosBusca: "aparelho eletromecanico uso domestico",
-    ncmPreferidos: ["85098090"],
+    re: /\baspirador\b|aspirador\s+de\s+p[oó]|vacuum\s*cleaner|\baspir\b|eletrodom[eé]stico|aparelho\s*el[eé]tr|electrical\s*appliance|家用/i,
+    termosBusca: "aspirador po eletrodomestico portatil uso domestico",
+    ncmPreferidos: ["85086000", "85081900"],
   },
 ];

@@ -37,6 +37,7 @@ const IDS_PRECEDE_MATERIAL = new Set([
   "ferramentas_maquina",
   "sensores_instrumentos",
   "cozinha_utensilios",
+  "eletro_portatil",
   "siderurgico_plano",
   "brinquedos",
   "moto_eletrica",
