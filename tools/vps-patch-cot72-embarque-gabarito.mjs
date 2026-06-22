@@ -14,7 +14,7 @@ const gabarito = JSON.parse(
 );
 const COT_ID = process.argv[2] ?? "cmqlfuhvm000ykw2cue1whldj";
 
-const byModelo = new Map(gabarito.itens.map((i) => [i.modelo, i.ncm]));
+const byModelo = new Map(gabarito.itens.map((i) => [i.modelo, i]));
 
 function modelo(desc) {
   const d = String(desc ?? "");
@@ -37,21 +37,24 @@ if (!row) {
 let ok = 0;
 for (const it of row.itens) {
   const mod = modelo(it.descOriginal);
-  const ncm = mod ? byModelo.get(mod) : null;
-  if (!ncm) {
+  const gab = mod ? byModelo.get(mod) : null;
+  if (!gab?.ncm) {
     console.warn(`SKIP ordem ${it.ordem} — modelo não mapeado: ${it.descOriginal?.slice(0, 40)}`);
     continue;
   }
   const meta = it.meta && typeof it.meta === "object" ? { ...it.meta } : {};
-  meta.ncmEmbarque = ncm;
-  meta.ncmPlanilhaOriginal = ncm;
+  meta.ncmEmbarque = gab.ncm;
+  meta.ncmPlanilhaOriginal = gab.ncm;
   delete meta.fobEmbarqueUS;
   delete meta.fobPendente;
   await p.item.update({
     where: { id: it.id },
-    data: { meta },
+    data: {
+      fobKgManual: gab.fobKgManual ?? null,
+      meta,
+    },
   });
-  console.log(`${it.ordem}\t${mod}\t${ncm}`);
+  console.log(`${it.ordem}\t${mod}\t${gab.ncm}\tfobKg=${gab.fobKgManual ?? "—"}`);
   ok += 1;
 }
 console.log(`Patch OK: ${ok}/${row.itens.length} itens`);
