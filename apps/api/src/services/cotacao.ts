@@ -30,6 +30,7 @@ import type { ClassifyItemInput, ClassifyItemOutput } from "../llm/types.js";
 import { mapComConcorrencia } from "../util/map-concorrencia.js";
 import {
   criarStatsClassificacaoCache,
+  cacheClassificacaoToxico,
   lookupClassificacaoCacheDetalhe,
   outputConfirmacaoHumana,
   salvarClassificacaoCacheLlm,
@@ -195,7 +196,7 @@ async function classificarEmLotes(
       { descOriginal: input.descOriginal, material: input.material, uso: input.uso },
       versoes,
     );
-    if (cached) {
+    if (cached && !cacheClassificacaoToxico(cached.output)) {
       resultados[i] = {
         ...cached.output,
         classificacaoCacheOrigem: cached.confirmadoHumano ? "humano" : "llm",

@@ -56,6 +56,12 @@ export interface ClassificacaoCacheLookup {
   confirmadoHumano: boolean;
 }
 
+/** Entradas antigas do benchmark China — nunca reutilizar como classificador NCM. */
+export function cacheClassificacaoToxico(output: ClassifyItemOutput): boolean {
+  const prov = (output as ClassifyItemOutput & { classificacaoProvedor?: string }).classificacaoProvedor;
+  return prov === "planilha-china";
+}
+
 /** Lookup com metadados — retorna null se miss, versão divergente ou DB indisponível. */
 export async function lookupClassificacaoCacheDetalhe(
   input: ClassificacaoCacheKeyInput,

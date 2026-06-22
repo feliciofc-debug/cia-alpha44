@@ -22,6 +22,7 @@ import {
   excluirCotacao,
   listarCotacoes,
   PersistenciaIndisponivelError,
+  reclassificarCotacaoPersistida,
   salvarCotacao,
 } from "./services/cotacoes-persist.js";
 import { importarBenchmarkPlanilha, statusBenchmarkPlanilha } from "./services/benchmark-planilha.js";
@@ -815,6 +816,17 @@ export async function buildServer() {
       const dup = await duplicarCotacao(id, tenantSlug(req), getState(), body.data);
       if (!dup) return reply.status(404).send({ erro: "Cotação não encontrada." });
       return dup;
+    } catch (e) {
+      return persistenciaErro(reply, e);
+    }
+  });
+
+  app.post("/api/cotacoes/:id/reclassificar", async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string };
+      const atualizada = await reclassificarCotacaoPersistida(id, tenantSlug(req), getState());
+      if (!atualizada) return reply.status(404).send({ erro: "Cotação não encontrada." });
+      return atualizada;
     } catch (e) {
       return persistenciaErro(reply, e);
     }

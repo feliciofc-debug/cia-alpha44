@@ -10,6 +10,8 @@ import {
   analisarEscalaFobItem,
   bloquearPersistenciaFobCorrupto,
   type NcmCatalog,
+  type LinhaCrua,
+  type ItemMetaPersistido,
 } from "@cia/pipeline";
 import {
   confirmacaoNcmVigente,
@@ -40,7 +42,7 @@ import {
 } from "@cia/shared";
 import type { Prisma } from "@prisma/client";
 import { extrairResumoFinanceiro } from "../lib/financeiro.js";
-import { calcularCotacao, fobKgFinalItem, type ResultadoCompleto } from "./cotacao.js";
+import { calcularCotacao, fobKgFinalItem, montarItens, type ResultadoCompleto } from "./cotacao.js";
 import { calcAvisoValoracaoFobKg } from "./fob-kg-manual.js";
 import { detectarFamilia } from "@cia/pipeline";
 import type { AppState } from "../state.js";
@@ -460,6 +462,85 @@ async function persistirItensPosCalculo(
   }
 }
 
+type LinhaCruaReclassificar = LinhaCrua & {
+  ncmRevisadoHumano?: boolean;
+  ncmConfirmado?: string | null;
+  descPt?: string | null;
+  descDuimp?: string | null;
+};
+
+/** Reconstrói linhas do upload a partir dos itens salvos — NCM da planilha cliente, não do classificador tóxico. */
+function linhasCruasFromItensPersistidos(itens: ItemRowPersist[]): LinhaCruaReclassificar[] {
+  return [...itens]
+    .sort((a, b) => a.ordem - b.ordem)
+    .map((it) => {
+      const meta = (it.meta as ItemMetaPersistido | null) ?? {};
+      const dominio = itemDominioFromRow(it);
+      const humano = confirmacaoNcmVigente(dominio);
+      const linha: LinhaCruaReclassificar = {
+        descOriginal: it.descOriginal,
+        material: meta.material ?? null,
+        uso: meta.uso ?? null,
+        ncm: meta.ncmPlanilhaOriginal ?? null,
+        pesoBrutoKg: numOrNull(it.pesoBrutoKg),
+        pesoLiqKg: num(it.pesoLiqKg),
+        qtd: numOrNull(it.qtd),
+        fobUnitarioUS: numOrNull(it.fobUnitarioUS),
+        fobTotalUS: meta.fobEmbarqueUS != null ? meta.fobEmbarqueUS : num(it.fobTotalUS),
+      };
+      if (humano) {
+        linha.ncmRevisadoHumano = true;
+        linha.ncmConfirmado = it.ncm;
+        linha.descPt = it.descPt;
+        linha.descDuimp = it.descDuimp;
+      }
+      return linha;
+    });
+}
+
+async function persistirItensPosReclassificacao(
+  itemRows: ItemRowPersist[],
+  itensCalc: Item[],
+  tx: Prisma.TransactionClient,
+) {
+  for (const it of itensCalc) {
+    const ordem = it.ordem ?? -1;
+    const itemRow = itemRows.find((r) => r.ordem === ordem);
+    if (!itemRow) continue;
+    const analise = analisarEscalaFobItem(it, it.benchmark);
+    const fobPersistir = bloquearPersistenciaFobCorrupto(analise)
+      ? Number(itemRow.fobTotalUS)
+      : (it.fobTotalUS ?? 0);
+    const avisosEscala =
+      analise.flags.length > 0
+        ? [`[FOB escala] ${analise.flags.join(", ")} ratio=${analise.ratio?.toFixed(1) ?? "—"}`]
+        : [];
+    const metaNovo = {
+      ...extrairItemMeta(it),
+      fobKgAvisos: [...(it.fobKgAvisos ?? []), ...avisosEscala].filter(Boolean).length
+        ? [...(it.fobKgAvisos ?? []), ...avisosEscala]
+        : it.fobKgAvisos,
+    };
+    await tx.item.update({
+      where: { id: itemRow.id },
+      data: {
+        descPt: it.descPt ?? "",
+        descDuimp: it.descDuimp ?? "",
+        ncm: it.ncm || "00000000",
+        ncmCandidatos: (it.ncmCandidatos ?? []) as Prisma.InputJsonValue,
+        fobTotalUS: fobPersistir,
+        fobUnitarioUS: it.fobUnitarioUS ?? null,
+        aliquotas: it.aliquotas as Prisma.InputJsonValue,
+        aliquotasOverride: it.aliquotasOverride ?? false,
+        benchmark: (it.benchmark ?? undefined) as Prisma.InputJsonValue | undefined,
+        calibracao: (it.calibracao ?? undefined) as Prisma.InputJsonValue | undefined,
+        risco: (it.risco ?? undefined) as Prisma.InputJsonValue | undefined,
+        meta: metaNovo as Prisma.InputJsonValue,
+      },
+    });
+  }
+}
+
 export async function listarCotacoes(tenantSlug: string, opts?: { cliente?: string; limite?: number }) {
   if (!dbAtivo()) throw new PersistenciaIndisponivelError();
 
@@ -865,6 +946,64 @@ async function recalcularCotacaoPersistida(
   const rowAtualizado = await buscarCotacaoRow(cotacaoId, tenantSlug);
   if (!rowAtualizado) return null;
   return cotacaoRecalculadaFromRow(rowAtualizado as CotacaoComRelacoes, state);
+}
+
+/** Reclassifica NCM dos itens salvos (planilha cliente → IA) e recalcula — corrige cotações gravadas antes do fix. */
+export async function reclassificarCotacaoPersistida(
+  cotacaoId: string,
+  tenantSlug: string,
+  state: AppState,
+) {
+  if (!dbAtivo()) throw new PersistenciaIndisponivelError();
+
+  const row = await buscarCotacaoRow(cotacaoId, tenantSlug);
+  if (!row) return null;
+
+  const { cotacao, itens: itensDb } = mapRowParaDominio(row);
+  const linhas = linhasCruasFromItensPersistidos(row.itens);
+  const montado = await montarItens(linhas, state, {
+    moedaPlanilha: cotacao.moedaPlanilha,
+    cambioEurUsd: cotacao.cambioEurUsd,
+  });
+
+  const itensNovos = montado.itens.map((it, i) => {
+    const antigo = itensDb[i];
+    return {
+      ...it,
+      id: antigo?.id,
+      ordem: antigo?.ordem ?? i,
+      fobKgManual: antigo?.fobKgManual,
+      aliquotasOverride: antigo?.aliquotasOverride ?? false,
+      ...(antigo?.aliquotasOverride ? { aliquotas: antigo.aliquotas } : {}),
+    };
+  });
+
+  const cotacaoCalc: Cotacao = { ...cotacao, itens: itensNovos };
+  const calc = calcularCotacao(cotacaoCalc, state);
+  const itensValidados = validarConfirmacaoNcmItens(
+    mesclarOrdemItensPersistidos(calc.itens, itensNovos),
+  );
+  const canal = canalPredominante(itensValidados);
+
+  await prisma.$transaction(async (tx) => {
+    await persistirItensPosReclassificacao(row.itens, itensValidados, tx);
+    await tx.cotacao.update({
+      where: { id: cotacaoId },
+      data: {
+        status: calc.resultado ? "CALCULADA" : row.status,
+        totalBRL: calc.resultado?.totalBRL ?? null,
+        totalUS: calc.resultado?.totalUS ?? null,
+        canalPredominante: canal,
+        params: calc.params as Prisma.InputJsonValue,
+        resultadoCalculo: (calc.resultado ?? undefined) as unknown as Prisma.InputJsonValue | undefined,
+        calculadoEm: calc.resultado ? new Date() : row.calculadoEm,
+      },
+    });
+  });
+
+  const rowAtualizado = await buscarCotacaoRow(cotacaoId, tenantSlug);
+  if (!rowAtualizado) return null;
+  return cotacaoRecalculadaFromRow(rowAtualizado as CotacaoComRelacoes, state, montado.provider);
 }
 
 /** Marca item com revisão humana do NCM (persiste em Item.meta + recalcula cotação). */
