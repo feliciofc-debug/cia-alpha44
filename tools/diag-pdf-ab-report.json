@@ -1,0 +1,201 @@
+[
+  {
+    "label": "A — smoke confirmado (controle)",
+    "url": "https://api2.amzofertas.com.br/cia/api/cotacoes/cmqb8uowx0001kwgk87pyskr5/pdf?tipo=cliente",
+    "status": 200,
+    "content_type": "application/pdf",
+    "bytes": 13791,
+    "elapsed_s": 1.14,
+    "error": null,
+    "pdf_magic": true,
+    "ncm_stats": {
+      "total": 1,
+      "pendente_fonte": 0,
+      "revisar_compat": 0,
+      "confirmados": 1,
+      "ncm_suspeitos": 0,
+      "cliente": "Smoke PDF A/B confirmado"
+    }
+  },
+  {
+    "label": "B/C — packliste-DE-2026-0815-teste-cego",
+    "url": "https://api2.amzofertas.com.br/cia/api/cotacoes/cmqb85m4e0001kwni2ko0m9r2/pdf?tipo=cliente",
+    "status": 422,
+    "content_type": "application/json; charset=utf-8",
+    "bytes": 4094,
+    "elapsed_s": 0.85,
+    "error": null,
+    "json_body": {
+      "erro": "PDF bloqueado: 12 item(ns) com NCM inválido ou incoerente. Corrija a classificação antes de gerar o orçamento.",
+      "codigo": "NCM_INVALIDO",
+      "itensInvalidos": [
+        {
+          "ordem": 1,
+          "descricao": "DE-WZ-1001 — Akku-Bohrschrauber 18V mit 2 Akkus und Koffer",
+          "ncm": "01012100",
+          "avisos": [
+            "Classificação com baixa confiança — revisar",
+            "NCM sugerido pela IA (validado Siscomex): 01012100.",
+            "Classificação com baixa confiança — revisar",
+            "RGI: RGI 6 — fallback mock por busca Siscomex."
+          ]
+        },
+        {
+          "ordem": 2,
+          "descricao": "DE-WZ-1002 — Schraubendreher-Set 32-teilig, Chrom-Vanadium",
+          "ncm": "01012100",
+          "avisos": [
+            "Classificação com baixa confiança — revisar",
+            "NCM sugerido pela IA (validado Siscomex): 01012100.",
+            "Classificação com baixa confiança — revisar",
+            "RGI: RGI 6 — fallback mock por busca Siscomex."
+          ]
+        },
+        {
+          "ordem": 3,
+          "descricao": "DE-KU-2001 — Thermoskanne Edelstahl 1L, doppelwandig vakuumisoliert",
+          "ncm": "01012100",
+          "avisos": [
+            "Classificação com baixa confiança — revisar",
+            "NCM sugerido pela IA (validado Siscomex): 01012100.",
+            "Classificação com baixa confiança — revisar",
+            "RGI: RGI 6 — fallback mock por busca Siscomex."
+          ]
+        },
+        {
+          "ordem": 4,
+          "descricao": "DE-KU-2002 — Kochtopf-Set 5-teilig Edelstahl mit Glasdeckel",
+          "ncm": "01012100",
+          "avisos": [
+            "Classificação com baixa confiança — revisar",
+            "NCM sugerido pela IA (validado Siscomex): 01012100.",
+            "Classificação com baixa confiança — revisar",
+            "RGI: RGI 6 — fallback mock por busca Siscomex."
+          ]
+        },
+        {
+          "ordem": 6,
+          "descricao": "DE-EL-3002 — USB-C Ladegerät 65W GaN Schnellladegerät",
+          "ncm": "30021211",
+          "avisos": [
+            "Classificação com baixa confiança — revisar",
+            "NCM sugerido pela IA (validado Siscomex): 30021211.",
+            "Classificação com baixa confiança — revisar",
+            "RGI: RGI 6 — fallback mock por busca Siscomex."
+          ]
+        },
+        {
+          "ordem": 7,
+          "descricao": "DE-EL-3003 — LED-Deckenleuchte rund 24W, dimmbar, nur LED-Lichtquelle",
+          "ncm": "76061110",
+          "avisos": [
+            "Classificação com baixa confiança — revisar",
+            "NCM sugerido pela IA (validado Siscomex): 76061110.",
+            "Classificação com baixa confiança — revisar",
+            "RGI: RGI 6 — fallback mock por busca Siscomex."
+          ]
+        },
+        {
+          "ordem": 8,
+          "descricao": "DE-MB-4001 — Bürostuhl drehbar, höhenverstellbar, gepolstert, Metallgestell",
+          "ncm": "40101100",
+          "avisos": [
+            "Classificação com baixa confiança — revisar",
+            "NCM sugerido pela IA (validado Siscomex): 40101100.",
+            "Classificação com baixa confiança — revisar",
+            "RGI: RGI 6 — fallback mock por busca Siscomex."
+          ]
+        },
+        {
+          "ordem": 9,
+          "descricao": "DE-SP-5001 — Elektroroller 350W, 10 Zoll Räder, klappbar",
+          "ncm": "01012100",
+          "avisos": [
+            "Classificação com baixa confiança — revisar",
+            "NCM sugerido pela IA (validado Siscomex): 01012100.",
+            "Classificação com baixa confiança — revisar",
+            "RGI: RGI 6 — fallback mock por busca Siscomex."
+          ]
+        },
+        {
+          "ordem": 10,
+          "descricao": "DE-SP-5002 — Kinderroller mit 3 Rädern, LED-Räder, bis 50 kg",
+          "ncm": "29151100",
+          "avisos": [
+            "Classificação com baixa confiança — revisar",
+            "NCM sugerido pela IA (validado Siscomex): 29151100.",
+            "Classificação com baixa confiança — revisar",
+            "RGI: RGI 6 — fallback mock por busca Siscomex."
+          ]
+        },
+        {
+          "ordem": 11,
+          "descricao": "DE-AT-6001 — Stoßdämpfer hinten für Elektroroller, Ersatzteil",
+          "ncm": "01012100",
+          "avisos": [
+            "Classificação com baixa confiança — revisar",
+            "NCM sugerido pela IA (validado Siscomex): 01012100.",
+            "Classificação com baixa confiança — revisar",
+            "RGI: RGI 6 — fallback mock por busca Siscomex."
+          ]
+        },
+        {
+          "ordem": 12,
+          "descricao": "DE-AT-6002 — Sechskantschrauben M8x40 verzinkt, VPE 100",
+          "ncm": "48041100",
+          "avisos": [
+            "Classificação com baixa confiança — revisar",
+            "NCM sugerido pela IA (validado Siscomex): 48041100.",
+            "Classificação com baixa confiança — revisar",
+            "RGI: RGI 6 — fallback mock por busca Siscomex."
+          ]
+        },
+        {
+          "ordem": 13,
+          "descricao": "DE-TX-7001 — Mikrofaser-Handtuch-Set 3-teilig, 80% Polyester 20% Polyamid",
+          "ncm": "01012100",
+          "avisos": [
+            "Classificação com baixa confiança — revisar",
+            "NCM sugerido pela IA (validado Siscomex): 01012100.",
+            "Classificação com baixa confiança — revisar",
+            "RGI: RGI 6 — fallback mock por busca Siscomex."
+          ]
+        }
+      ]
+    },
+    "ncm_stats": {
+      "total": 14,
+      "pendente_fonte": 0,
+      "revisar_compat": 12,
+      "confirmados": 0,
+      "ncm_suspeitos": 7,
+      "cliente": "packliste-DE-2026-0815-teste-cego"
+    }
+  },
+  {
+    "label": "extra — cmqa4ipy00001kwctpcstzg5w",
+    "url": "https://api2.amzofertas.com.br/cia/api/cotacoes/cmqa4ipy00001kwctpcstzg5w/pdf?tipo=cliente",
+    "status": 404,
+    "content_type": "application/json; charset=utf-8",
+    "bytes": 37,
+    "elapsed_s": 0.77,
+    "error": null,
+    "json_body": {
+      "erro": "Cotação não encontrada."
+    },
+    "ncm_stats": {}
+  },
+  {
+    "label": "extra — cmq475a3d0001kw3s8d4vunf7",
+    "url": "https://api2.amzofertas.com.br/cia/api/cotacoes/cmq475a3d0001kw3s8d4vunf7/pdf?tipo=cliente",
+    "status": 404,
+    "content_type": "application/json; charset=utf-8",
+    "bytes": 37,
+    "elapsed_s": 0.74,
+    "error": null,
+    "json_body": {
+      "erro": "Cotação não encontrada."
+    },
+    "ncm_stats": {}
+  }
+]

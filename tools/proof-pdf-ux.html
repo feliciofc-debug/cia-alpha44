@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Proof — PDF UX fix (P1)</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; padding: 24px; max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 1.25rem; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 16px; margin: 16px 0; }
+    .footer { background: #f8fafc; color: #334155; border-radius: 8px; padding: 16px; position: relative; }
+    .toast { position: absolute; bottom: 100%; right: 0; margin-bottom: 8px; width: 320px; background: #450a0a; border: 1px solid #f87171; color: #fef2f2; border-radius: 8px; padding: 12px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+    .btn-blocked { display: inline-flex; align-items: center; gap: 8px; border: 2px solid #94a3b8; background: #cbd5e1; color: #475569; font-weight: 600; padding: 8px 16px; border-radius: 8px; cursor: not-allowed; }
+    .btn-resolver { background: #059669; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 12px; margin-top: 8px; margin-right: 8px; }
+    .ok { color: #86efac; }
+  </style>
+</head>
+<body>
+  <h1>PDF UX — commit <code>92ddec0</code> (Vercel auto-deploy)</h1>
+  <p class="ok">Smoke API PASS — confirmado 200 PDF · pendente 422 NCM_INVALIDO</p>
+
+  <div class="card">
+    <h2>1. Botão bloqueado (cadeado + cinza)</h2>
+    <div class="footer">
+      <div class="toast" style="position:relative; bottom:auto; margin-bottom:12px;">
+        <strong>PDF bloqueado: 12 item(ns) com NCM pendente</strong>
+        <p style="font-size:11px;margin:6px 0 0;opacity:.9">12 item(ns) exigem confirmação ou revisão na barra NCM.</p>
+        <button class="btn-resolver">Resolver pendências</button>
+      </div>
+      <button class="btn-blocked" type="button">🔒 Baixar PDF deste orçamento</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2. Fluxo após clique</h2>
+    <ul>
+      <li>Toast inline no rodapé do orçamento (não só banner no topo)</li>
+      <li>«Resolver pendências» → aba Detalhamento técnico + scroll <code>#barra-resolucao-ncm</code></li>
+      <li><code>no-empty</code> com <code>allowEmptyCatch: false</code> no ESLint web</li>
+    </ul>
+  </div>
+</body>
+</html>

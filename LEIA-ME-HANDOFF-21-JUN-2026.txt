@@ -1,0 +1,20 @@
+CIA ALPHA 44 — pacote atualizado 21/jun/2026
+============================================
+
+Documentos na Área de Trabalho (leia primeiro):
+  CIA-ALPHA44-PROJETO-COMPLETO-ATUALIZADO-21-JUN-2026.txt
+  CIA-ALPHA44-VERIFICACAO-ETAPAS-CLAUDE.txt
+  GABARITO-conciliacao-72.csv
+  cia-cliente 72.pdf
+
+Gabarito cotação 72: FOB US$ 47.036,67 (21 itens)
+
+Repo: abrir esta pasta no Cursor ou extrair do zip cia-alpha44-atualizado-21-jun-2026.zip
+
+Comandos:
+  npm install
+  npm run build
+  npm test -w @cia/pipeline
+
+Produção API: https://api2.amzofertas.com.br/cia
+Produção Web: https://cia-alpha44-web.vercel.app

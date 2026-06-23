@@ -1,0 +1,37 @@
+---
+description: Protocolo de deploy produção cia-alpha44 — sempre informar status API + Vercel
+alwaysApply: true
+---
+
+# Deploy produção — cia-alpha44
+
+## Quando informar
+
+Após **qualquer** push, fix ou pergunta do Felicio sobre "já fez deploy?", responder **explicitamente** com:
+
+1. **Commit** (hash curto + mensagem)
+2. **API VPS** — HEAD em `/opt/cia-alpha44`, `cia-api` active/inactive, health `/api/health`
+3. **Vercel web** — SHA do bundle ou `VERCEL_GIT_COMMIT_SHA` visível no front
+4. **Prova live** — se rodou ou não (`proof-cot72-zero-upload.mjs`, gate, etc.)
+
+Nunca assumir deploy só porque houve `git push`. Verificar VPS e Vercel.
+
+## Autorização
+
+- **Não** fazer deploy VPS/Vercel sem autorização explícita do Felicio, exceto quando ele pedir "conclui" / "deploy" / "sobe pro ar".
+- Gate `npm run gate:pre-deploy` **VERDE** antes de deploy API.
+- Deploy **API + Vercel juntos** no fechamento de sprint UI (regra Felicio).
+
+## Alvos produção
+
+- API: `https://api2.amzofertas.com.br/cia` — VPS `38.242.146.217`, `/opt/cia-alpha44`
+- Web: `https://cia-alpha44.vercel.app`
+- Deploy API: `bash infra/vps/deploy-api.sh` na VPS após `git reset --hard origin/main`
+
+## Fix só-backend (ex.: tradução descPt)
+
+API sozinha basta para **novos** uploads/reclassificar. Cotações **já salvas** precisam Re-analisar NCM ou novo upload. Informar isso no handoff.
+
+## Registro
+
+Atualizar `tools/HANDOFF-CLAUDE-*.txt` seção "ESTADO DEPLOY" após cada deploy confirmado.
