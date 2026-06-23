@@ -2,7 +2,7 @@
  * Classificação NCM via Gemini/Lovable — após planilha cliente e cache; antes do fluxo legado.
  */
 
-import type { NcmCatalog } from "@cia/pipeline";
+import { resolverDescPtFornecedor, type NcmCatalog } from "@cia/pipeline";
 import { sugerirNcm } from "../services/ncm-helper.js";
 import { mapComConcorrencia } from "../util/map-concorrencia.js";
 import type { ClassifyItemInput, ClassifyItemOutput } from "./types.js";
@@ -16,14 +16,17 @@ export function geminiClassificacaoHabilitada(): boolean {
 }
 
 function saidaPendente(input: ClassifyItemInput, aviso?: string): ClassifyItemOutput {
-  const descPt = input.descPtConfirmado?.trim() || input.descOriginal.trim();
+  const { descPt, avisoTraducao } = resolverDescPtFornecedor(
+    input.descOriginal,
+    input.descPtConfirmado,
+  );
   return {
     descPt,
     descDuimp: `${descPt} — ${aviso ?? AVISO_PENDENTE}.`,
     ncmCandidatos: [],
     classificacaoBaixaConfianca: true,
     classificacaoProvedor: "gemini",
-    avisoTraducao: aviso,
+    avisoTraducao: aviso ?? avisoTraducao,
   };
 }
 
@@ -74,7 +77,10 @@ export async function classificarItensGeminiLote(
       })),
     ];
 
-    const descPt = input.descPtConfirmado?.trim() || input.descOriginal.trim();
+    const { descPt, avisoTraducao } = resolverDescPtFornecedor(
+      input.descOriginal,
+      input.descPtConfirmado,
+    );
     const descDuimp =
       sug.sugestao.descricaoOficial?.trim() ||
       `${descPt} — classificação Gemini (validação Siscomex na resolução).`;
@@ -89,6 +95,7 @@ export async function classificarItensGeminiLote(
         confiancaPasse2: conf,
         classificacaoBaixaConfianca: conf < 0.6,
         classificacaoProvedor: "gemini",
+        ...(avisoTraducao ? { avisoTraducao } : {}),
       },
     };
   });

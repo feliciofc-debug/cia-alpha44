@@ -9,6 +9,7 @@ import {
   listarNcm8DaPosicao,
   montarCandidatosPasse1,
   textoClassificacaoIa,
+  resolverDescPtFornecedor,
   type NcmCatalog,
 } from "@cia/pipeline";
 import type { ClassifyItemInput, ClassifyItemOutput, LlmProvider } from "./types.js";
@@ -63,15 +64,22 @@ interface TraducaoResult {
 export type { TraducaoResult };
 
 function fallbackTraducao(itens: ClassifyItemInput[]): TraducaoResult {
-  const descricoes = itens.map((it) => traduzirDescricaoClassificacaoMock(it.descOriginal));
+  const descricoes = itens.map((it) =>
+    resolverDescPtFornecedor(it.descOriginal, traduzirDescricaoClassificacaoMock(it.descOriginal))
+      .descPt,
+  );
   const melhorou = descricoes.some((pt, i) => pt !== itens[i]!.descOriginal);
   if (melhorou) {
     return { descricoes, traducaoIndisponivel: true };
   }
   return {
-    descricoes: itens.map((it) => it.descOriginal),
+    descricoes: itens.map((it) => resolverDescPtFornecedor(it.descOriginal).descPt),
     traducaoIndisponivel: true,
   };
+}
+
+function formatarDescPtLote(itens: ClassifyItemInput[], descricoes: string[]): string[] {
+  return descricoes.map((pt, i) => resolverDescPtFornecedor(itens[i]!.descOriginal, pt).descPt);
 }
 
 async function traduzirDescricoes(
@@ -94,7 +102,10 @@ async function traduzirDescricoes(
     const anyOk = traduzidos.some((pt) => pt.length > 0);
     if (!anyOk) return fallbackTraducao(itens);
     return {
-      descricoes: traduzidos.map((pt, i) => pt || itens[i]!.descOriginal),
+      descricoes: formatarDescPtLote(
+        itens,
+        traduzidos.map((pt, i) => pt || itens[i]!.descOriginal),
+      ),
       traducaoIndisponivel: false,
     };
   };
@@ -210,7 +221,7 @@ export async function executar2PassesComLlm(
       `${descPt} — classificação fiscal conforme NCM ${p2.ncm} (Siscomex vigente).`;
 
     resultados[itemIdx] = {
-      descPt: p2.descPt.trim() || descPt,
+      descPt: resolverDescPtFornecedor(it.descOriginal, p2.descPt.trim() || descPt).descPt,
       descDuimp,
       ncmCandidatos: [
         {

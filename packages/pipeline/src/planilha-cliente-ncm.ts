@@ -12,6 +12,7 @@ import {
 } from "./classificar-ncm.js";
 import type { LinhaCrua } from "./linha.js";
 import { normNcm8, type NcmCatalog } from "./ncm-catalog.js";
+import { resolverDescPtFornecedor } from "./traducao-pt.js";
 import { tokensProdutoSemCor } from "./tokens-cor-produto.js";
 
 export interface PlanilhaClienteNcmHit {
@@ -112,10 +113,12 @@ export function classificarSiscomexUltimoRecurso(
   if (familia && !ncmCoerenteComFamilia(top.ncm, familia)) return null;
 
   const descOficial = top.descricaoOficial ?? catalog.descricao(top.ncm) ?? top.ncm;
+  const { descPt, avisoTraducao } = resolverDescPtFornecedor(linha.descOriginal);
   return {
-    descPt: linha.descOriginal.trim(),
+    descPt,
     descDuimp: `${descOficial} — NCM inferido Siscomex (último recurso).`,
     ncmCandidatos: candidatos,
     classificacaoProvedor: "siscomex",
+    ...(avisoTraducao ? { avisoTraducao } : {}),
   };
 }

@@ -224,6 +224,15 @@ export {
   type ClassificarSiscomexOutput,
 } from "./planilha-cliente-ncm.js";
 export {
+  AVISO_TRADUCAO_PT_INDISPONIVEL,
+  extrairTraducaoPtEmbutida,
+  formatDescPt,
+  parseModeloFornecedor,
+  resolverDescPtFornecedor,
+  temCaractereCjk,
+  type ResultadoDescPt,
+} from "./traducao-pt.js";
+export {
   FONTE_ALIQUOTA_TEC_PADRAO,
   gerarConciliacaoBuffer,
   gerarCsvConciliacao,

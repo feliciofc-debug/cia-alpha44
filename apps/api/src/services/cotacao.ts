@@ -24,6 +24,7 @@ import {
   type LinhaCrua,
   type NcmCatalog,
   type PlanilhaClienteNcmHit,
+  resolverDescPtFornecedor,
 } from "@cia/pipeline";
 import type { Cotacao, Item } from "@cia/shared";
 import type { AppState } from "../state.js";
@@ -64,8 +65,9 @@ function outputFromPlanilhaClienteHit(
     hit.provedor === "planilha-cliente"
       ? "NCM declarado na planilha do cliente"
       : "NCM herdado de linha da mesma família na fatura";
+  const { descPt, avisoTraducao } = resolverDescPtFornecedor(input.descOriginal);
   return {
-    descPt: input.descOriginal.trim(),
+    descPt,
     descDuimp: `${descOficial} — ${rotulo}.`,
     ncmCandidatos: [
       {
@@ -75,6 +77,19 @@ function outputFromPlanilhaClienteHit(
       },
     ],
     classificacaoProvedor: hit.provedor,
+    ...(avisoTraducao ? { avisoTraducao } : {}),
+  };
+}
+
+function normalizarDescPtClassificacao(
+  descOriginal: string,
+  output: ClassifyItemOutput,
+): ClassifyItemOutput {
+  const { descPt, avisoTraducao } = resolverDescPtFornecedor(descOriginal, output.descPt);
+  return {
+    ...output,
+    descPt,
+    avisoTraducao: avisoTraducao ?? output.avisoTraducao,
   };
 }
 
@@ -305,6 +320,13 @@ async function classificarEmLotes(
   }
 
   for (let i = 0; i < resultados.length; i++) {
+    const out = resultados[i];
+    if (out) {
+      resultados[i] = normalizarDescPtClassificacao(inputs[i]!.descOriginal, out);
+    }
+  }
+
+  for (let i = 0; i < resultados.length; i++) {
     if (resultados[i]?.ncmCandidatos?.length) continue;
     const fb = classificarSiscomexUltimoRecurso(linhas[i]!, state.ncmCatalog);
     if (fb) {
@@ -461,12 +483,13 @@ export async function montarItens(
     if (c?.avisoTraducao) {
       avisosClassificacao.push(c.avisoTraducao);
     }
+    const descPtResolvido = resolverDescPtFornecedor(l.descOriginal, c?.descPt);
 
     itens.push(
       anexarMetaFobItem(
         {
           descOriginal: l.descOriginal,
-          descPt: c?.descPt ?? l.descOriginal,
+          descPt: descPtResolvido.descPt,
           descDuimp: c?.descDuimp ?? "",
           uso: l.uso ?? undefined,
           material: l.material ?? undefined,
@@ -483,8 +506,18 @@ export async function montarItens(
           ncmPlanilhaOriginal: resolvido.ncmPlanilhaOriginal ?? undefined,
           ncmEmbarqueStatus,
           ...(ncmEmbarque != null ? { ncmEmbarque } : { ncmEmbarque: null }),
-          ncmAvisos: [...resolvido.avisos, ...validacao.avisos, ...avisosClassificacao].length
-            ? [...resolvido.avisos, ...validacao.avisos, ...avisosClassificacao]
+          ncmAvisos: [
+            ...resolvido.avisos,
+            ...validacao.avisos,
+            ...avisosClassificacao,
+            ...(descPtResolvido.avisoTraducao ? [descPtResolvido.avisoTraducao] : []),
+          ].length
+            ? [
+                ...resolvido.avisos,
+                ...validacao.avisos,
+                ...avisosClassificacao,
+                ...(descPtResolvido.avisoTraducao ? [descPtResolvido.avisoTraducao] : []),
+              ]
             : undefined,
           ...(familia ? { familiaProdutoId: familia.id } : {}),
           pesoBrutoKg: l.pesoBrutoKg,
