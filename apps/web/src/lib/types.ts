@@ -85,6 +85,7 @@ export interface Item {
   ncmPlanilhaOriginal?: string;
   ncmEmbarque?: string | null;
   ncmEmbarqueStatus?: "coluna" | "heranca-familia" | "sem-ncm-coluna";
+  ncmReferencia?: string;
   ncmDescricaoOficial?: string;
   ncmAvisos?: string[];
   compatibilidadeProduto?: "compativel" | "incompativel" | "revisar";

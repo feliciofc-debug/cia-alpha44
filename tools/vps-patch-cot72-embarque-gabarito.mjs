@@ -1,61 +1,16 @@
 #!/usr/bin/env node
 /**
- * Injeta NCM embarque (gabarito fatura 72) no meta dos itens — necessário quando
- * cotação foi gravada sem ncmPlanilhaOriginal. Depois rode vps-reclassificar-cotacao.mjs.
+ * APOSENTADO — não injeta mais NCM como declaração do cliente.
+ *
+ * O patch gravava NCM do gabarito em meta.ncmPlanilhaOriginal, gerando rótulo falso
+ * "declarado na planilha do cliente" na reclassificação.
+ *
+ * Use em vez disso:
+ *   source /etc/cia-alpha44/api.env
+ *   bash tools/run-reclassificar-cot72-producao.sh [cotacaoId]
  */
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
-import { PrismaClient } from "@prisma/client";
-
-const __dir = dirname(fileURLToPath(import.meta.url));
-const gabarito = JSON.parse(
-  readFileSync(join(__dir, "fixtures/cotacao-72-gabarito.json"), "utf8"),
+console.error(
+  "APOSENTADO: vps-patch-cot72-embarque-gabarito.mjs não deve mais ser usado.\n" +
+    "Use: bash tools/run-reclassificar-cot72-producao.sh",
 );
-const COT_ID = process.argv[2] ?? "cmqlfuhvm000ykw2cue1whldj";
-
-const byModelo = new Map(gabarito.itens.map((i) => [i.modelo, i]));
-
-function modelo(desc) {
-  const d = String(desc ?? "");
-  if (/H004.*25cm|25cm折叠锯/i.test(d)) return "H004-25";
-  if (/H004.*30cm|30cm折叠锯/i.test(d)) return "H004-30";
-  const m = d.match(/^(HY-\d+|KHS-[A-Z0-9]+|H\d+)/);
-  return m?.[1] ?? null;
-}
-
-const p = new PrismaClient();
-const row = await p.cotacao.findUnique({
-  where: { id: COT_ID },
-  include: { itens: { orderBy: { ordem: "asc" } } },
-});
-if (!row) {
-  console.error("Cotação não encontrada:", COT_ID);
-  process.exit(1);
-}
-
-let ok = 0;
-for (const it of row.itens) {
-  const mod = modelo(it.descOriginal);
-  const gab = mod ? byModelo.get(mod) : null;
-  if (!gab?.ncm) {
-    console.warn(`SKIP ordem ${it.ordem} — modelo não mapeado: ${it.descOriginal?.slice(0, 40)}`);
-    continue;
-  }
-  const meta = it.meta && typeof it.meta === "object" ? { ...it.meta } : {};
-  meta.ncmEmbarque = gab.ncm;
-  meta.ncmPlanilhaOriginal = gab.ncm;
-  delete meta.fobEmbarqueUS;
-  delete meta.fobPendente;
-  await p.item.update({
-    where: { id: it.id },
-    data: {
-      fobKgManual: gab.fobKgManual ?? null,
-      meta,
-    },
-  });
-  console.log(`${it.ordem}\t${mod}\t${gab.ncm}\tfobKg=${gab.fobKgManual ?? "—"}`);
-  ok += 1;
-}
-console.log(`Patch OK: ${ok}/${row.itens.length} itens`);
-await p.$disconnect();
+process.exit(1);

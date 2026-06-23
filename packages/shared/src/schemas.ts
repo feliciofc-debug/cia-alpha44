@@ -144,6 +144,8 @@ export const itemSchema = z.object({
   ncmEmbarque: z.string().nullable().optional(),
   /** Origem do ncmEmbarque — null explícito quando sem coluna NCM (gemini/IA). */
   ncmEmbarqueStatus: z.enum(["coluna", "heranca-familia", "sem-ncm-coluna"]).optional(),
+  /** NCM de gabarito/patch/legado — só referência visual, sem autoridade de classificação. */
+  ncmReferencia: z.string().optional(),
   ncmDescricaoOficial: z.string().optional(),
   ncmAvisos: z.array(z.string()).optional(),
   /** Compatibilidade semântica produto × NCM (T5 — independente de ncmValido Siscomex). */
