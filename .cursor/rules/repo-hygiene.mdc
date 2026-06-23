@@ -1,0 +1,25 @@
+---
+description: Higiene do repositório — commit, push, branch e PR ao concluir cada tarefa
+alwaysApply: true
+---
+
+# Higiene do repositório
+
+Regra permanente para **todas** as tarefas neste projeto.
+
+## Ao concluir cada tarefa
+
+1. **Commit e push automáticos** ao finalizar:
+   ```bash
+   git add -A && git commit -m "<descrição da tarefa>" && git push
+   ```
+2. **Zero pendências** — nunca deixar alterações não commitadas acumuladas entre tarefas.
+3. **Branch própria** — trabalhar sempre em branch dedicada e abrir **Pull Request** para revisão.
+4. **Um agente por vez** — não rodar múltiplos agentes em paralelo no mesmo repositório.
+
+## Fluxo esperado
+
+- Iniciar tarefa → criar/usar branch `cursor/<descrição>-48a6`
+- Implementar → testar se aplicável
+- Concluir → `git add -A && git commit -m "..." && git push` → criar/atualizar PR
+- Working tree limpa antes da próxima tarefa
