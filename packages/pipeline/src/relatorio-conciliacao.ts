@@ -141,8 +141,8 @@ const ROTULOS: Record<keyof LinhaConciliacao, string> = {
   fobUnitUS: "FOB unit. (US$)",
   fobTotalUS: "FOB total (US$)",
   fobKg: "FOB/kg (US$)",
-  fobKgFonte: "fobKgFonte",
-  fobKgBase: "fobKgBase",
+  fobKgFonte: "Fonte FOB/kg",
+  fobKgBase: "Base peso FOB/kg",
   avisos: "Avisos",
 };
 

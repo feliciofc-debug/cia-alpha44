@@ -32,17 +32,24 @@ export function itemRevisaoOpcionalNcm(it: Item, ctx?: PdfNcmAuditContext): bool
   return false;
 }
 
-export function itemPodeConfirmarNcm(_it: Item, _ctx?: PdfNcmAuditContext): boolean {
-  /** NCM informado basta — confirmação manual não é gate de fechamento. */
+export function itemPodeConfirmarNcm(it: Item, ctx?: PdfNcmAuditContext): boolean {
+  return itemPodeConfirmarNcmIndividual(it, ctx);
+}
+
+export function itemPodeConfirmarNcmIndividual(it: Item, _ctx?: PdfNcmAuditContext): boolean {
+  if (!ncmInformadoParaFechamento(it)) return false;
+  if (confirmacaoNcmVigente(it)) return false;
+  if (it.ncmFonte === "gemini" || it.ncmFonte === "ia") return true;
+  if (it.ncmEmbarqueStatus === "sem-ncm-coluna") return true;
+  if (it.compatibilidadeProduto === "revisar" || it.compatibilidadeProduto === "incompativel") {
+    return true;
+  }
+  if (it.ncmConfianca != null && it.ncmConfianca < LIMIAR_CONFIANCA_NCM) return true;
   return false;
 }
 
-export function itemPodeConfirmarNcmIndividual(_it: Item, _ctx?: PdfNcmAuditContext): boolean {
-  return false;
-}
-
-export function itensPendentesConfirmacaoNcm(_itens: Item[], _ctx?: PdfNcmAuditContext): Item[] {
-  return [];
+export function itensPendentesConfirmacaoNcm(itens: Item[], ctx?: PdfNcmAuditContext): Item[] {
+  return itens.filter((it) => itemPodeConfirmarNcmIndividual(it, ctx));
 }
 
 /** Barra de resolução — só itens SEM NCM informado (bloqueiam PDF). */

@@ -79,6 +79,10 @@ export interface ResultadoParse {
   avisos: string[];
   moedaPlanilha?: string;
   sammelkarton?: string;
+  /** true quando cabeçalho NCM foi mapeado na planilha. */
+  colunaNcmDetectada?: boolean;
+  /** Linhas com dígitos válidos na coluna NCM. */
+  linhasComNcmColuna?: number;
 }
 
 export type MapearColunasIAFn = (entrada: EntradaMapeamentoIA) => Promise<MapeamentoColunasIA | null>;
@@ -620,6 +624,24 @@ function parseRows(
     avisos.push("Nenhuma linha de item encontrada após o cabeçalho.");
   }
 
+  const colunaNcmDetectada = colunas.some((c) => c.tipo === "ncm");
+  const linhasComNcmColuna = linhas.filter((l) => l.ncm != null).length;
+  if (!colunaNcmDetectada) {
+    avisos.push(
+      `NCM embarque: coluna não detectada na planilha (0/${linhas.length} linhas com NCM na coluna).`,
+    );
+  } else if (linhasComNcmColuna === 0) {
+    avisos.push(
+      `NCM embarque: coluna detectada, porém 0/${linhas.length} linhas preenchidas.`,
+    );
+  } else if (linhasComNcmColuna < linhas.length) {
+    avisos.push(
+      `NCM embarque: ${linhasComNcmColuna}/${linhas.length} linhas com NCM na coluna (${linhas.length - linhasComNcmColuna} em branco).`,
+    );
+  } else {
+    avisos.push(`NCM embarque: ${linhasComNcmColuna}/${linhas.length} linhas com NCM na coluna.`);
+  }
+
   if (ctx.moedaPlanilha) {
     const avisoMoeda = avisoMoedaPlanilha(ctx.moedaPlanilha);
     if (avisoMoeda) avisos.push(avisoMoeda);
@@ -633,6 +655,8 @@ function parseRows(
     avisos,
     moedaPlanilha: ctx.moedaPlanilha,
     sammelkarton: ctx.sammelkarton,
+    colunaNcmDetectada,
+    linhasComNcmColuna,
   };
 }
 
@@ -845,6 +869,11 @@ function resultadoParaSupplier(parsed: ResultadoParse): ParsedSupplierFile {
     avisos,
     moedaPlanilha: parsed.moedaPlanilha,
     sammelkarton: parsed.sammelkarton,
+    metaNcmEmbarque: {
+      colunaDetectada: parsed.colunaNcmDetectada ?? false,
+      linhasComNcmColuna: parsed.linhasComNcmColuna ?? linhas.filter((l) => l.ncm != null).length,
+      totalLinhas: linhas.length,
+    },
   };
 }
 
@@ -862,6 +891,12 @@ export interface ParsedSupplierFile {
   cambioEurUsdData?: string | null;
   cambioEurUsdFonte?: string | null;
   sammelkarton?: string;
+  /** Meta da coluna NCM embarque — distingue planilha sem coluna vs linha em branco. */
+  metaNcmEmbarque?: {
+    colunaDetectada: boolean;
+    linhasComNcmColuna: number;
+    totalLinhas: number;
+  };
 }
 
 export interface ParseSupplierFileOpts extends ParsePlanilhaOpts {}

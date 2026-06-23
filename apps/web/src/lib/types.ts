@@ -83,6 +83,8 @@ export interface Item {
   ncmFonte?: "planilha" | "planilha-cliente" | "planilha-cliente-familia" | "gemini" | "ia" | "siscomex" | "pendente";
   ncmClassificacaoCache?: "humano" | "llm";
   ncmPlanilhaOriginal?: string;
+  ncmEmbarque?: string | null;
+  ncmEmbarqueStatus?: "coluna" | "heranca-familia" | "sem-ncm-coluna";
   ncmDescricaoOficial?: string;
   ncmAvisos?: string[];
   compatibilidadeProduto?: "compativel" | "incompativel" | "revisar";

@@ -76,10 +76,14 @@ describe("pdf-ncm — NCM informado aceito", () => {
     expect(itensBloqueandoPdf([item({ compatibilidadeProduto: "compativel" })])).toHaveLength(0);
   });
 
-  it("itemPodeConfirmarNcm — confirmação não é gate (sempre false)", () => {
+  it("itemPodeConfirmarNcm — gemini/IA e sem coluna podem confirmar", () => {
     expect(itemPodeConfirmarNcm(item({ ncm: "" }))).toBe(false);
-    expect(itemPodeConfirmarNcm(item({ compatibilidadeProduto: "revisar" }))).toBe(false);
-    expect(itemPodeConfirmarNcmIndividual(item({ compatibilidadeProduto: "incompativel" }))).toBe(false);
+    expect(itemPodeConfirmarNcm(item({ ncmFonte: "gemini" }))).toBe(true);
+    expect(itemPodeConfirmarNcm(item({ ncmEmbarqueStatus: "sem-ncm-coluna", ncmFonte: "gemini" }))).toBe(true);
+    expect(
+      itemPodeConfirmarNcmIndividual(item({ ncmFonte: "planilha-cliente", compatibilidadeProduto: "compativel" })),
+    ).toBe(false);
+    expect(itemPodeConfirmarNcmIndividual(item({ compatibilidadeProduto: "incompativel" }))).toBe(true);
   });
 
   it("baixa confiança com NCM não entra na barra", () => {

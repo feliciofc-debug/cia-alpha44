@@ -1,5 +1,5 @@
 import type { Item } from "./types.ts";
-import { confirmacaoNcmVigente, ncm8Limpo } from "@cia/shared";
+import { confirmacaoNcmVigente, LIMIAR_CONFIANCA_NCM, ncm8Limpo } from "@cia/shared";
 
 /**
  * Regra estrutural — DUPLICADA no front de propósito.
@@ -23,16 +23,24 @@ export function itemPrecisaResolucaoNcm(it: Item): boolean {
   return !ncmInformadoParaFechamento(it);
 }
 
-export function itemPodeConfirmarNcm(_it: Item): boolean {
+export function itemPodeConfirmarNcm(it: Item): boolean {
+  return itemPodeConfirmarNcmIndividual(it);
+}
+
+export function itemPodeConfirmarNcmIndividual(it: Item): boolean {
+  if (!ncmInformadoParaFechamento(it)) return false;
+  if (confirmacaoNcmVigente(it)) return false;
+  if (it.ncmFonte === "gemini" || it.ncmFonte === "ia") return true;
+  if (it.ncmEmbarqueStatus === "sem-ncm-coluna") return true;
+  if (it.compatibilidadeProduto === "revisar" || it.compatibilidadeProduto === "incompativel") {
+    return true;
+  }
+  if (it.ncmConfianca != null && it.ncmConfianca < LIMIAR_CONFIANCA_NCM) return true;
   return false;
 }
 
-export function itemPodeConfirmarNcmIndividual(_it: Item): boolean {
-  return false;
-}
-
-export function itensPendentesConfirmacaoNcm(_itens: Item[]): Item[] {
-  return [];
+export function itensPendentesConfirmacaoNcm(itens: Item[]): Item[] {
+  return itens.filter((it) => itemPodeConfirmarNcmIndividual(it));
 }
 
 export {

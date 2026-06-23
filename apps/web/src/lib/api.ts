@@ -453,6 +453,13 @@ export const api = {
       >,
     ),
 
+  reclassificarCotacao: (cotacaoId: string) =>
+    fetchComTimeout(
+      `${BASE}/api/cotacoes/${cotacaoId}/reclassificar`,
+      { method: "POST", headers: { "content-type": "application/json" }, body: "{}" },
+      NCM_ITEM_TIMEOUT_MS,
+    ).then(handle<CotacaoSalva>),
+
   /** Conciliação IA — informativa; sempre HTTP 200. */
   conciliarNcmItem: (cotacaoId: string, ordem: number) =>
     fetchComTimeout(

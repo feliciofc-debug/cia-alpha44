@@ -240,6 +240,8 @@ function AnalisePainel({
   avisosValoracaoFob,
   onConfirmarIcmsSaida,
   confirmandoIcms,
+  onReclassificarNcm,
+  reclassificandoNcm,
 }: {
   analise: AnaliseView;
   onSalvar?: () => void;
@@ -273,6 +275,8 @@ function AnalisePainel({
   avisosValoracaoFob?: Record<number, AvisoValoracao | null>;
   onConfirmarIcmsSaida?: () => void | Promise<void>;
   confirmandoIcms?: boolean;
+  onReclassificarNcm?: () => void | Promise<void>;
+  reclassificandoNcm?: boolean;
 }) {
   const itens = analise.itens;
   const qtdPendentesNcm = itensPendentesConfirmacaoNcm(itens).length;
@@ -480,13 +484,19 @@ function AnalisePainel({
                       </span>
                     )}
                     {it.ncmFonte && (
-                      <span className="block text-[10px] text-slate-500">
+                      <span
+                        className={`block text-[10px] ${
+                          it.ncmFonte === "gemini" || it.ncmFonte === "ia"
+                            ? "font-semibold text-amber-300"
+                            : "text-slate-500"
+                        }`}
+                      >
                         {it.ncmFonte === "siscomex"
                           ? "Siscomex vigente"
                           : it.ncmFonte === "gemini"
-                            ? "Gemini (validado Siscomex)"
+                            ? "◆ referência IA"
                             : it.ncmFonte === "ia"
-                              ? "IA (2 passes)"
+                              ? "◆ referência IA (2 passes)"
                               : it.ncmFonte === "planilha-cliente"
                                 ? "Planilha cliente (coluna NCM)"
                                 : it.ncmFonte === "planilha-cliente-familia"
@@ -494,6 +504,14 @@ function AnalisePainel({
                                   : it.ncmFonte === "planilha"
                                     ? "Planilha embarque"
                                     : it.ncmFonte}
+                      </span>
+                    )}
+                    {it.ncmEmbarqueStatus === "sem-ncm-coluna" && (
+                      <span
+                        className="block text-[10px] text-slate-500"
+                        title="Linha sem NCM na coluna da planilha — use Confirmar NCM após revisão"
+                      >
+                        sem NCM na coluna embarque
                       </span>
                     )}
                     {it.ncmClassificacaoCache === "humano" && !it.ncmRevisadoHumano && (
@@ -764,6 +782,19 @@ function AnalisePainel({
           <p className="mt-2 text-sm font-medium text-orange-300">{icmsMeta.avisoRegimeIcms}</p>
         )}
         {analise.avisoFiscal && <p className="mt-2 text-sm text-amber-300">{analise.avisoFiscal}</p>}
+        {salvaId && onReclassificarNcm && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn-ghost text-xs text-amber-200 hover:text-amber-100"
+              disabled={reclassificandoNcm || aplicandoEditor}
+              title="Reexecuta classificação NCM (planilha → IA) — não altera parâmetros fiscais do editor"
+              onClick={() => void onReclassificarNcm()}
+            >
+              {reclassificandoNcm ? "Re-analisando NCM…" : "Re-analisar NCM"}
+            </button>
+          </div>
+        )}
       </div>
 
       {avisoMoedaEur && (
@@ -988,6 +1019,7 @@ export function Dashboard() {
   const [confirmandoTodosNcm, setConfirmandoTodosNcm] = useState(false);
   const [resumoNcmLote, setResumoNcmLote] = useState<{ aprovados: number; pendentes: number } | null>(null);
   const [confirmandoIcms, setConfirmandoIcms] = useState(false);
+  const [reclassificandoNcm, setReclassificandoNcm] = useState(false);
   const [alterandoNcm, setAlterandoNcm] = useState<number | null>(null);
   const [alterandoFobKg, setAlterandoFobKg] = useState<number | null>(null);
   const [avisosValoracaoFob, setAvisosValoracaoFob] = useState<Record<number, AvisoValoracao | null>>({});
@@ -1203,6 +1235,25 @@ export function Dashboard() {
       setErro(e instanceof Error ? e.message : "Falha ao confirmar ICMS.");
     } finally {
       setConfirmandoIcms(false);
+    }
+  }
+
+  async function reclassificarNcmCotacao() {
+    const id = detalhe?.id ?? salvaId;
+    if (!id) return;
+    if (!window.confirm("Re-analisar NCM de todos os itens? Parâmetros fiscais do editor não serão alterados.")) {
+      return;
+    }
+    setReclassificandoNcm(true);
+    setErro("");
+    try {
+      const atualizada = await api.reclassificarCotacao(id);
+      sincronizarEstadoAposPatch(atualizada);
+      await carregarLista();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao re-analisar NCM.");
+    } finally {
+      setReclassificandoNcm(false);
     }
   }
 
@@ -1978,6 +2029,8 @@ export function Dashboard() {
                 avisosValoracaoFob={avisosValoracaoFob}
                 onConfirmarIcmsSaida={() => void confirmarIcmsSaida()}
                 confirmandoIcms={confirmandoIcms}
+                onReclassificarNcm={() => void reclassificarNcmCotacao()}
+                reclassificandoNcm={reclassificandoNcm}
               />
             </div>
           </div>
@@ -2085,6 +2138,8 @@ export function Dashboard() {
                   avisosValoracaoFob={avisosValoracaoFob}
                   onConfirmarIcmsSaida={() => void confirmarIcmsSaida()}
                   confirmandoIcms={confirmandoIcms}
+                  onReclassificarNcm={() => void reclassificarNcmCotacao()}
+                  reclassificandoNcm={reclassificandoNcm}
                 />
                 {salvaId && (
                   <button type="button" className="btn-ghost mt-4 w-full" onClick={() => void abrirCotacao(salvaId)}>

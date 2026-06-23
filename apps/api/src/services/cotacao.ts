@@ -433,7 +433,17 @@ export async function montarItens(
       c?.classificacaoProvedor === "planilha-cliente-familia"
         ? normNcm8(c.ncmCandidatos?.[0]?.ncm ?? "")
         : null;
-    const ncmEmbarque = ncmColuna ?? ncmPlanilhaCliente ?? null;
+    const ncmEmbarqueStatus: "coluna" | "heranca-familia" | "sem-ncm-coluna" = ncmColuna
+      ? "coluna"
+      : c?.classificacaoProvedor === "planilha-cliente-familia" && ncmPlanilhaCliente
+        ? "heranca-familia"
+        : "sem-ncm-coluna";
+    const ncmEmbarque =
+      ncmEmbarqueStatus === "coluna"
+        ? ncmColuna
+        : ncmEmbarqueStatus === "heranca-familia"
+          ? ncmPlanilhaCliente
+          : null;
 
     const avisosClassificacao: string[] = [];
     if (c?.classificacaoBaixaConfianca) {
@@ -471,7 +481,8 @@ export async function montarItens(
             : {}),
           ncmDescricaoOficial: resolvido.descricaoOficial ?? undefined,
           ncmPlanilhaOriginal: resolvido.ncmPlanilhaOriginal ?? undefined,
-          ...(ncmEmbarque ? { ncmEmbarque } : {}),
+          ncmEmbarqueStatus,
+          ...(ncmEmbarque != null ? { ncmEmbarque } : { ncmEmbarque: null }),
           ncmAvisos: [...resolvido.avisos, ...validacao.avisos, ...avisosClassificacao].length
             ? [...resolvido.avisos, ...validacao.avisos, ...avisosClassificacao]
             : undefined,

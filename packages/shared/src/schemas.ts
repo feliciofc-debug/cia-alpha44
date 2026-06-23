@@ -141,7 +141,9 @@ export const itemSchema = z.object({
   ncmClassificacaoCache: z.enum(["humano", "llm"]).optional(),
   ncmPlanilhaOriginal: z.string().optional(),
   /** NCM coluna embarque no upload — persistido sempre, independente do classificador. */
-  ncmEmbarque: z.string().optional(),
+  ncmEmbarque: z.string().nullable().optional(),
+  /** Origem do ncmEmbarque — null explícito quando sem coluna NCM (gemini/IA). */
+  ncmEmbarqueStatus: z.enum(["coluna", "heranca-familia", "sem-ncm-coluna"]).optional(),
   ncmDescricaoOficial: z.string().optional(),
   ncmAvisos: z.array(z.string()).optional(),
   /** Compatibilidade semântica produto × NCM (T5 — independente de ncmValido Siscomex). */

@@ -88,6 +88,18 @@ export function InputFobKgItem({
             limpar
           </button>
         )}
+        <button
+          type="button"
+          className="rounded bg-brand-600/80 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-brand-500 disabled:opacity-50"
+          disabled={disabled}
+          title="Gravar FOB/kg manual"
+          onClick={() => {
+            setEditando(false);
+            void onCommit(ordem, parseValor());
+          }}
+        >
+          Salvar
+        </button>
       </div>
       {fob.manualAtivo && fob.referencia != null && (
         <span className="mt-0.5 block text-[10px] text-slate-500">ref. {usdKg(fob.referencia)}</span>

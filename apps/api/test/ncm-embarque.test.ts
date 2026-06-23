@@ -49,6 +49,7 @@ describe("ncmEmbarque — upload classificar", () => {
     ];
     const { itens } = await montarItens(linhas, buildState());
     expect(itens[0]!.ncmEmbarque).toBe("84238900");
+    expect(itens[0]!.ncmEmbarqueStatus).toBe("coluna");
   });
 
   it("persiste ncmEmbarque na herança planilha-cliente-familia (linha sem coluna NCM)", async () => {
@@ -76,7 +77,26 @@ describe("ncmEmbarque — upload classificar", () => {
     ];
     const { itens } = await montarItens(linhas, buildState());
     expect(itens[0]!.ncmEmbarque).toBe("87116000");
+    expect(itens[0]!.ncmEmbarqueStatus).toBe("coluna");
     expect(itens[1]!.ncmFonte).toBe("planilha-cliente-familia");
     expect(itens[1]!.ncmEmbarque).toBe("87116000");
+    expect(itens[1]!.ncmEmbarqueStatus).toBe("heranca-familia");
+  });
+
+  it("gemini sem coluna NCM — ncmEmbarque null explícito + sem-ncm-coluna", async () => {
+    const linhas: LinhaCrua[] = [
+      {
+        descOriginal: "HY-5123;烘干机;Secadora portátil",
+        ncm: null,
+        qtd: 100,
+        pesoBrutoKg: 10,
+        pesoLiqKg: 9,
+        fobTotalUS: 50,
+        fobUnitarioUS: null,
+      },
+    ];
+    const { itens } = await montarItens(linhas, buildState());
+    expect(itens[0]!.ncmEmbarque).toBeNull();
+    expect(itens[0]!.ncmEmbarqueStatus).toBe("sem-ncm-coluna");
   });
 });

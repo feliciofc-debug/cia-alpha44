@@ -395,7 +395,11 @@ export function PainelEditorCotacao({
       </details>
 
       <button type="button" className="btn-primary w-full sm:w-auto" disabled={aplicando} onClick={onAplicar}>
-        {aplicando ? "Recalculando…" : modo === "salva" ? "Salvar e recalcular" : "Aplicar e recalcular"}
+        {aplicando
+          ? "Recalculando…"
+          : modo === "salva"
+            ? "Salvar e recalcular fiscal"
+            : "Recalcular fiscal"}
       </button>
     </div>
   );
