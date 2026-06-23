@@ -5,6 +5,7 @@ import type { ResultadoCotacao } from "@cia/fiscal-engine";
 import {
   extrairItemMeta,
   mesclarItemMeta,
+  ncmColunaEmbarqueParaClassificacao,
   criarPdfNcmAuditCtx,
   enriquecerItensPdfNcmAudit,
   analisarEscalaFobItem,
@@ -481,7 +482,9 @@ function linhasCruasFromItensPersistidos(itens: ItemRowPersist[]): LinhaCruaRecl
         descOriginal: it.descOriginal,
         material: meta.material ?? null,
         uso: meta.uso ?? null,
-        ncm: meta.ncmPlanilhaOriginal ?? meta.ncmEmbarque ?? null,
+        ncm: ncmColunaEmbarqueParaClassificacao(meta, {
+          ncmConfirmadoHumano: humano ? it.ncm : null,
+        }),
         pesoBrutoKg: numOrNull(it.pesoBrutoKg),
         pesoLiqKg: num(it.pesoLiqKg),
         qtd: numOrNull(it.qtd),
