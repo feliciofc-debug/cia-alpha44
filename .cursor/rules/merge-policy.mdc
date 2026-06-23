@@ -1,0 +1,38 @@
+---
+description: Política de merge — automático (CI/doc/UI) vs manual (NCM/fiscal/produção)
+alwaysApply: true
+---
+
+# Política permanente de merge
+
+Classificar **cada PR** por risco e agir conforme a regra abaixo.
+
+**Pré-requisito universal:** o check `CI / test-and-build` deve estar **VERDE**. Nunca mergear com CI vermelho — parar e reportar.
+
+## Merge automático (agente mergeia em `main` sem esperar humano)
+
+Quando o PR for **apenas**:
+
+- Correção de CI / workflow / build
+- Ajuste de texto, label, tradução, UI **sem** lógica de cálculo
+- Documentação, scripts de teste/diagnóstico, refactor **sem** mudança de comportamento
+
+**Condição:** CI verde → mergear. CI vermelho → parar e reportar.
+
+## Merge manual (abrir PR e **PARAR** — não mergear; aguardar Felicio/Claude)
+
+Quando o PR tocar em:
+
+- Lógica de classificação NCM
+- Motor fiscal / cálculo de imposto (II, IPI, PIS, COFINS, ICMS, FOB)
+- Hierarquia de fontes (planilha-cliente, gemini, siscomex, visão)
+- Qualquer execução contra produção/VPS/banco real
+
+Nesses casos, escrever no PR: **"AGUARDANDO REVISÃO HUMANA — mexe em [área]"**.
+
+## Fluxo do agente
+
+1. Abrir PR → classificar risco
+2. CI verde? Se não → reportar e parar
+3. Automático → merge em `main`
+4. Manual → comentar no PR e aguardar aprovação
