@@ -11,6 +11,7 @@ vi.mock("@cia/db", () => ({
 
 import { prisma } from "@cia/db";
 import {
+  cacheClassificacaoToxico,
   outputConfirmacaoHumana,
   salvarClassificacaoCacheHumano,
   versoesClassificacaoCache,
@@ -67,5 +68,30 @@ describe("salvarClassificacaoCacheHumano — coerência P1.1", () => {
         { strict: true },
       ),
     ).rejects.toBeInstanceOf(CacheHumanoIncoerenteError);
+  });
+});
+
+describe("cacheClassificacaoToxico", () => {
+  it("ignora cache planilha-cliente quando a linha atual nao tem coluna NCM real", () => {
+    const output = {
+      descPt: "Maquina de pipoca",
+      descDuimp: "Maquina de pipoca — NCM declarado na planilha do cliente.",
+      ncmCandidatos: [{ ncm: "85361000", confianca: 0.95 }],
+      classificacaoProvedor: "planilha-cliente" as const,
+    };
+
+    expect(cacheClassificacaoToxico(output, { temColunaNcmReal: false })).toBe(true);
+    expect(cacheClassificacaoToxico(output, { temColunaNcmReal: true })).toBe(false);
+  });
+
+  it("continua bloqueando cache planilha-china legado", () => {
+    const output = {
+      descPt: "Produto",
+      descDuimp: "Produto",
+      ncmCandidatos: [{ ncm: "84238900", confianca: 0.8 }],
+      classificacaoProvedor: "planilha-china" as never,
+    };
+
+    expect(cacheClassificacaoToxico(output)).toBe(true);
   });
 });

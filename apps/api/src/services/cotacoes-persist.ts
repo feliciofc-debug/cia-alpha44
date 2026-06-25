@@ -4,6 +4,7 @@ import { prisma, type CanalAduaneiro, type Cotacao as CotacaoRow } from "@cia/db
 import type { ItemFiscalResult, ResultadoCotacao } from "@cia/fiscal-engine";
 import {
   extrairItemMeta,
+  limparNcmInjetadoMeta,
   mesclarItemMeta,
   ncmColunaEmbarqueParaClassificacao,
   criarPdfNcmAuditCtx,
@@ -13,6 +14,7 @@ import {
   type NcmCatalog,
   type LinhaCrua,
   type ItemMetaPersistido,
+  type LimpezaNcmInjetadoMotivo,
 } from "@cia/pipeline";
 import {
   confirmacaoNcmVigente,
@@ -54,6 +56,9 @@ import {
 } from "./classificacao-cache.js";
 import { excluirFotosCotacao, fotoUrlApi, lerFotoItem, salvarFotoItem } from "./fotos.js";
 import { ensureTenant } from "../auth/tenant.js";
+
+const COT72_PRODUCAO_ID = "cmqlfuhvm000ykw2cue1whldj";
+const COT72_MARKUP_REGRA_ATUAL = 0.04;
 
 export class PersistenciaIndisponivelError extends Error {
   constructor() {
@@ -462,32 +467,52 @@ function camposAlteradosReclassificacao(
   };
 }
 
-function limparMetaNcmInjetado(metaRaw: unknown): { meta: ItemMetaPersistido; limpo: boolean } {
-  const meta = metaRaw && typeof metaRaw === "object" ? { ...(metaRaw as ItemMetaPersistido) } : {};
-  const humano = meta.ncmRevisadoHumano === true;
-  const status = meta.ncmEmbarqueStatus;
-  const tinhaInjetado = !humano && status !== "coluna" && Boolean(meta.ncmPlanilhaOriginal || meta.ncmEmbarque);
-  if (!tinhaInjetado) return { meta, limpo: false };
+function cotacaoSemColunaNcmReal(row: Pick<CotacaoComRelacoes, "id">): boolean {
+  return row.id === COT72_PRODUCAO_ID;
+}
 
-  delete meta.ncmPlanilhaOriginal;
-  meta.ncmEmbarque = null;
-  meta.ncmEmbarqueStatus = "sem-ncm-coluna";
-  return { meta, limpo: true };
+function normalizarCotacaoLegadaCot72(cotacao: Cotacao, cotacaoId: string): Cotacao {
+  if (cotacaoId !== COT72_PRODUCAO_ID) return cotacao;
+  return {
+    ...cotacao,
+    params: {
+      ...cotacao.params,
+      markupPct: COT72_MARKUP_REGRA_ATUAL,
+    },
+  };
 }
 
 function rowComLimpezaNcmInjetado(row: CotacaoComRelacoes): {
   row: CotacaoComRelacoes;
-  limpezas: Array<{ ordem: number; ncmPlanilhaOriginal?: string | null; ncmEmbarque?: string | null }>;
+  limpezas: Array<{
+    ordem: number;
+    motivo?: LimpezaNcmInjetadoMotivo;
+    ncmPlanilhaOriginal?: string | null;
+    ncmEmbarque?: string | null;
+    ncmEmbarqueStatus?: string | null;
+    ncmReferencia?: string | null;
+  }>;
 } {
-  const limpezas: Array<{ ordem: number; ncmPlanilhaOriginal?: string | null; ncmEmbarque?: string | null }> = [];
+  const limpezas: Array<{
+    ordem: number;
+    motivo?: LimpezaNcmInjetadoMotivo;
+    ncmPlanilhaOriginal?: string | null;
+    ncmEmbarque?: string | null;
+    ncmEmbarqueStatus?: string | null;
+    ncmReferencia?: string | null;
+  }> = [];
+  const forcarSemColunaNcm = cotacaoSemColunaNcmReal(row);
   const itens = row.itens.map((it) => {
     const antes = (it.meta as ItemMetaPersistido | null) ?? {};
-    const { meta, limpo } = limparMetaNcmInjetado(antes);
+    const { meta, limpo, motivo } = limparNcmInjetadoMeta(antes, { forcarSemColunaNcm });
     if (limpo) {
       limpezas.push({
         ordem: it.ordem,
+        motivo,
         ncmPlanilhaOriginal: antes.ncmPlanilhaOriginal ?? null,
         ncmEmbarque: antes.ncmEmbarque ?? null,
+        ncmEmbarqueStatus: antes.ncmEmbarqueStatus ?? null,
+        ncmReferencia: meta.ncmReferencia ?? null,
       });
     }
     return limpo ? { ...it, meta } : it;
@@ -1029,7 +1054,8 @@ async function prepararReclassificacaoCotacaoPersistida(
   state: AppState,
   opts?: { gravarCacheClassificacao?: boolean },
 ) {
-  const { cotacao, itens: itensDb } = mapRowParaDominio(row);
+  const { cotacao: cotacaoPersistida, itens: itensDb } = mapRowParaDominio(row);
+  const cotacao = normalizarCotacaoLegadaCot72(cotacaoPersistida, row.id);
   const linhas = linhasCruasFromItensPersistidos(row.itens);
   const montado = await montarItens(linhas, state, {
     moedaPlanilha: cotacao.moedaPlanilha,

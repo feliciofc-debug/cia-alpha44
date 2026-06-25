@@ -65,6 +65,48 @@ export function ncmColunaEmbarqueParaClassificacao(
   return null;
 }
 
+export type LimpezaNcmInjetadoMotivo = "ncm-injetado-sem-coluna" | "coluna-legado-sem-coluna-ncm";
+
+export interface LimpezaNcmInjetadoResultado {
+  meta: ItemMetaPersistido;
+  limpo: boolean;
+  motivo?: LimpezaNcmInjetadoMotivo;
+}
+
+/**
+ * Remove NCM legado/injetado quando sabemos que nao veio de uma coluna NCM real.
+ * Confirmacao humana e preservada; NCM antigo vira referencia para auditoria.
+ */
+export function limparNcmInjetadoMeta(
+  metaRaw: unknown,
+  opts?: { forcarSemColunaNcm?: boolean },
+): LimpezaNcmInjetadoResultado {
+  const meta = metaRaw && typeof metaRaw === "object" ? { ...(metaRaw as ItemMetaPersistido) } : {};
+  const humano = meta.ncmRevisadoHumano === true;
+  if (humano) return { meta, limpo: false };
+
+  const status = meta.ncmEmbarqueStatus;
+  const temNcmLegado = Boolean(meta.ncmPlanilhaOriginal || meta.ncmEmbarque);
+  const colunaLegadoFalso = opts?.forcarSemColunaNcm === true && status === "coluna" && temNcmLegado;
+  const ncmInjetadoSemColuna = status !== "coluna" && temNcmLegado;
+
+  if (!colunaLegadoFalso && !ncmInjetadoSemColuna) {
+    return { meta, limpo: false };
+  }
+
+  const referencia = meta.ncmReferencia ?? meta.ncmPlanilhaOriginal ?? meta.ncmEmbarque ?? undefined;
+  if (referencia) meta.ncmReferencia = referencia;
+  delete meta.ncmPlanilhaOriginal;
+  meta.ncmEmbarque = null;
+  meta.ncmEmbarqueStatus = "sem-ncm-coluna";
+
+  return {
+    meta,
+    limpo: true,
+    motivo: colunaLegadoFalso ? "coluna-legado-sem-coluna-ncm" : "ncm-injetado-sem-coluna",
+  };
+}
+
 export function extrairItemMeta(it: Item): ItemMetaPersistido {
   return {
     uso: it.uso,

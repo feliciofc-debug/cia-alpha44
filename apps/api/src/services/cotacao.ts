@@ -217,7 +217,8 @@ async function classificarEmLotes(
       { descOriginal: input.descOriginal, material: input.material, uso: input.uso },
       versoes,
     );
-    if (cached && !cacheClassificacaoToxico(cached.output)) {
+    const temColunaNcmReal = Boolean(normNcm8(linhas[i]?.ncm ?? ""));
+    if (cached && !cacheClassificacaoToxico(cached.output, { temColunaNcmReal })) {
       resultados[i] = {
         ...cached.output,
         classificacaoCacheOrigem: cached.confirmadoHumano ? "humano" : "llm",

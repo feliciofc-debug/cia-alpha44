@@ -66,8 +66,16 @@ function boolMark(v) {
   return v ? "SIM" : "não";
 }
 
+function countBy(values) {
+  const counts = new Map();
+  for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
+  return [...counts.entries()].map(([value, count]) => `${value}: ${count}`).join(", ") || "—";
+}
+
 function markdown(preview, manifest) {
   const item9 = preview.itens.find((it) => /HY-5123/i.test(it.descOriginal ?? ""));
+  const fontesDepois = countBy(preview.itens.map((it) => it.depois.ncmFonte ?? "sem-fonte"));
+  const motivosLimpeza = countBy((preview.limpezaNcmInjetado.itens ?? []).map((it) => it.motivo ?? "sem-motivo"));
   const linhas = [
     "# Dry-run reclassificação cotação 72",
     "",
@@ -81,6 +89,8 @@ function markdown(preview, manifest) {
     "",
     `- Itens antes/depois: ${preview.antes.totalItens}/${preview.depois.totalItens}`,
     `- Limpeza NCM injetado prevista: ${preview.limpezaNcmInjetado.itensAfetados} itens`,
+    `- Motivos da limpeza: ${motivosLimpeza}`,
+    `- Fontes NCM depois: ${fontesDepois}`,
     `- Markup antes/depois: ${(Number(preview.antes.markupPct ?? 0) * 100).toFixed(2)}% / ${(Number(preview.depois.markupPct ?? 0) * 100).toFixed(2)}%`,
     `- FOB antes: US$ ${money(preview.antes.fobTotalUS)}`,
     `- FOB depois: US$ ${money(preview.depois.fobTotalUS)}`,

@@ -12,10 +12,12 @@ import { PrismaClient } from "@prisma/client";
 import { readFile } from "node:fs/promises";
 
 const COT_ID = process.argv[2] ?? process.env.COT72_ID ?? "cmqlfuhvm000ykw2cue1whldj";
+const COT72_PRODUCAO_ID = "cmqlfuhvm000ykw2cue1whldj";
 const DRY_RUN = process.argv.includes("--dry-run");
 const manifestPath = process.env.COT72_BACKUP_MANIFEST;
 const tenantArgIdx = process.argv.indexOf("--tenant");
 let tenantRef = process.env.COT72_TENANT_SLUG ?? process.env.COT72_TENANT_ID ?? (tenantArgIdx >= 0 ? process.argv[tenantArgIdx + 1] : undefined);
+const forcarSemColunaNcm = COT_ID === COT72_PRODUCAO_ID && process.env.COT72_HAS_NCM_COLUMN !== "1";
 const p = new PrismaClient();
 
 async function exigirBackup() {
@@ -70,17 +72,21 @@ await exigirBackup();
 const row = await buscarCotacaoAlvo();
 
 let limpos = 0;
+let colunasLegado = 0;
 for (const it of row.itens) {
   const meta = it.meta && typeof it.meta === "object" ? { ...it.meta } : {};
   const humano = meta.ncmRevisadoHumano === true;
   const status = meta.ncmEmbarqueStatus;
+  const temNcmLegado = Boolean(meta.ncmPlanilhaOriginal || meta.ncmEmbarque);
+  const colunaLegadoFalso = forcarSemColunaNcm && !humano && status === "coluna" && temNcmLegado;
   const tinhaInjetado =
     !humano &&
-    status !== "coluna" &&
-    (meta.ncmPlanilhaOriginal || meta.ncmEmbarque);
+    ((status !== "coluna" && temNcmLegado) || colunaLegadoFalso);
 
   if (!tinhaInjetado) continue;
 
+  const referencia = meta.ncmReferencia ?? meta.ncmPlanilhaOriginal ?? meta.ncmEmbarque;
+  if (referencia) meta.ncmReferencia = referencia;
   delete meta.ncmPlanilhaOriginal;
   meta.ncmEmbarque = null;
   meta.ncmEmbarqueStatus = "sem-ncm-coluna";
@@ -91,9 +97,12 @@ for (const it of row.itens) {
       data: { meta },
     });
   }
-  console.log(`ordem ${it.ordem}: NCM injetado ${DRY_RUN ? "seria removido" : "removido"}`);
+  if (colunaLegadoFalso) colunasLegado += 1;
+  const motivo = colunaLegadoFalso ? "coluna legado falso -> sem-ncm-coluna" : "NCM injetado";
+  console.log(`ordem ${it.ordem}: ${motivo} ${DRY_RUN ? "seria removido" : "removido"}`);
   limpos += 1;
 }
 
 console.log(`\n${DRY_RUN ? "Dry-run limpos" : "Limpos"}: ${limpos}/${row.itens.length} itens — pronto para reclassificar.`);
+console.log(`Colunas legado falsas saneadas: ${colunasLegado}`);
 await p.$disconnect();
