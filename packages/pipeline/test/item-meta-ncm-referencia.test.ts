@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   avisoNcmReferencia,
+  limparNcmInjetadoMeta,
   mesclarItemMeta,
   ncmColunaEmbarqueParaClassificacao,
   referenciaNcmLegado,
@@ -68,5 +69,36 @@ describe("referenciaNcmLegado / mesclarItemMeta", () => {
     expect(it.ncmEmbarque).toBeNull();
     expect(it.ncmAvisos?.some((a) => a.includes("referência"))).toBe(true);
     expect(it.ncmAvisos?.some((a) => a.includes("declarado na planilha"))).toBe(false);
+  });
+});
+
+describe("limparNcmInjetadoMeta", () => {
+  it("saneia coluna legado falso quando a cotacao fonte nao tem coluna NCM", () => {
+    const r = limparNcmInjetadoMeta(
+      {
+        ncmEmbarqueStatus: "coluna",
+        ncmEmbarque: "85361000",
+        ncmPlanilhaOriginal: "85361000",
+      },
+      { forcarSemColunaNcm: true },
+    );
+
+    expect(r.limpo).toBe(true);
+    expect(r.motivo).toBe("coluna-legado-sem-coluna-ncm");
+    expect(r.meta.ncmEmbarqueStatus).toBe("sem-ncm-coluna");
+    expect(r.meta.ncmEmbarque).toBeNull();
+    expect(r.meta.ncmPlanilhaOriginal).toBeUndefined();
+    expect(r.meta.ncmReferencia).toBe("85361000");
+  });
+
+  it("preserva coluna real quando nao ha saneamento explicito", () => {
+    const r = limparNcmInjetadoMeta({
+      ncmEmbarqueStatus: "coluna",
+      ncmEmbarque: "84238900",
+    });
+
+    expect(r.limpo).toBe(false);
+    expect(r.meta.ncmEmbarqueStatus).toBe("coluna");
+    expect(r.meta.ncmEmbarque).toBe("84238900");
   });
 });

@@ -56,10 +56,23 @@ export interface ClassificacaoCacheLookup {
   confirmadoHumano: boolean;
 }
 
-/** Entradas antigas do benchmark China — nunca reutilizar como classificador NCM. */
-export function cacheClassificacaoToxico(output: ClassifyItemOutput): boolean {
+/**
+ * Entradas antigas ou incompatíveis com o contexto atual — nunca reutilizar como classificador NCM.
+ * `planilha-cliente*` só é confiável quando a linha atual tem coluna NCM real.
+ */
+export function cacheClassificacaoToxico(
+  output: ClassifyItemOutput,
+  opts?: { temColunaNcmReal?: boolean },
+): boolean {
   const prov = (output as unknown as Record<string, unknown>).classificacaoProvedor;
-  return prov === "planilha-china";
+  if (prov === "planilha-china") return true;
+  if (
+    opts?.temColunaNcmReal === false &&
+    (prov === "planilha-cliente" || prov === "planilha-cliente-familia")
+  ) {
+    return true;
+  }
+  return false;
 }
 
 /** Lookup com metadados — retorna null se miss, versão divergente ou DB indisponível. */

@@ -184,7 +184,7 @@ export {
   type AliquotaResult,
 } from "./tec.js";
 export { confiancaNcmFinal } from "./confianca-ncm.js";
-export { extrairItemMeta, mesclarItemMeta, avisoNcmReferencia, referenciaNcmLegado, ncmColunaEmbarqueParaClassificacao, type ItemMetaPersistido } from "./item-meta.js";
+export { extrairItemMeta, mesclarItemMeta, avisoNcmReferencia, referenciaNcmLegado, ncmColunaEmbarqueParaClassificacao, limparNcmInjetadoMeta, type ItemMetaPersistido, type LimpezaNcmInjetadoMotivo } from "./item-meta.js";
 export {
   PESO_MAX_LINHA_KG,
   RATIO_CORRUPCAO_GROSS,
