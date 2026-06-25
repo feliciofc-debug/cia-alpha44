@@ -5,6 +5,7 @@
  *
  * Uso na VPS:
  *   source /etc/cia-alpha44/api.env
+ *   COT72_TENANT_SLUG=user_user_... \
  *   node tools/limpar-ncm-injetado-cot72.mjs [cotacaoId]
  */
 import { PrismaClient } from "@prisma/client";
@@ -13,6 +14,8 @@ import { readFile } from "node:fs/promises";
 const COT_ID = process.argv[2] ?? process.env.COT72_ID ?? "cmqlfuhvm000ykw2cue1whldj";
 const DRY_RUN = process.argv.includes("--dry-run");
 const manifestPath = process.env.COT72_BACKUP_MANIFEST;
+const tenantArgIdx = process.argv.indexOf("--tenant");
+let tenantRef = process.env.COT72_TENANT_SLUG ?? process.env.COT72_TENANT_ID ?? (tenantArgIdx >= 0 ? process.argv[tenantArgIdx + 1] : undefined);
 const p = new PrismaClient();
 
 async function exigirBackup() {
@@ -30,18 +33,41 @@ async function exigirBackup() {
     console.error("Manifest sem hashes obrigatórios de backup.");
     process.exit(1);
   }
+  tenantRef = tenantRef ?? manifest.tenantSlug ?? manifest.tenantId;
+  return manifest;
+}
+
+async function resolverTenant(ref) {
+  if (!ref?.trim()) return null;
+  const tenant = await p.tenant.findFirst({
+    where: { OR: [{ id: ref.trim() }, { slug: ref.trim() }] },
+  });
+  if (!tenant) {
+    throw new Error(`Tenant não encontrado: ${ref}`);
+  }
+  return tenant;
+}
+
+async function buscarCotacaoAlvo() {
+  const tenant = await resolverTenant(tenantRef);
+  const row = await p.cotacao.findFirst({
+    where: {
+      id: COT_ID,
+      ...(tenant ? { tenantId: tenant.id } : {}),
+    },
+    include: { tenant: true, itens: { orderBy: { ordem: "asc" } } },
+  });
+  if (row) return row;
+
+  const qualquerTenant = await p.cotacao.findUnique({ where: { id: COT_ID }, include: { tenant: true } });
+  if (qualquerTenant && tenant) {
+    throw new Error(`Cotação ${COT_ID} existe, mas no tenant ${qualquerTenant.tenant.slug}; tenant solicitado: ${tenant.slug}.`);
+  }
+  throw new Error(`Cotação não encontrada: ${COT_ID}${tenant ? ` no tenant ${tenant.slug}` : ""}.`);
 }
 
 await exigirBackup();
-
-const row = await p.cotacao.findUnique({
-  where: { id: COT_ID },
-  include: { itens: { orderBy: { ordem: "asc" } } },
-});
-if (!row) {
-  console.error("Cotação não encontrada:", COT_ID);
-  process.exit(1);
-}
+const row = await buscarCotacaoAlvo();
 
 let limpos = 0;
 for (const it of row.itens) {

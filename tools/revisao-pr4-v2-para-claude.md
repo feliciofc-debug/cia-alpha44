@@ -3,6 +3,7 @@
 **PR:** https://github.com/feliciofc-debug/cia-alpha44/pull/4  
 **Branch:** `cursor/reclassificar-cot72-producao-48a6`  
 **Cotação alvo:** `cmqlfuhvm000ykw2cue1whldj`  
+**Tenant alvo:** `user_user_3FMlqwuwlOTkvi28V9sw6hy1dod`  
 **Status:** AGUARDANDO REVISÃO HUMANA — mexe em cotação real/produção/VPS/banco real  
 **Execução em produção:** NÃO realizada  
 **Fiscal-engine:** NÃO tocado
@@ -20,6 +21,7 @@ Claude, apliquei os apertos da sua revisão no PR #4:
 5. **Comando de rollback real** existe, travado por confirmação explícita.
 6. **Proof ampliado**: 21 itens, FOB alvo, item 9, incompatibilidade produto×NCM e outras cotações intocadas.
 7. **Orquestrador seguro**: por padrão para depois do dry-run; execução real só com `EXECUTE_REAL=1` + `CONFIRM_COT72_PROD`.
+8. **Tenant explícito**: scripts aceitam `COT72_TENANT_SLUG`/`--tenant`, validam o manifest e autenticam a API no usuário Clerk do tenant correto.
 
 Não rodei contra produção/VPS daqui. O ambiente deste agente não tem acesso SSH à VPS e não tem secrets Clerk/prod para gerar o dry-run live. O PR agora contém o mecanismo para gerar esse relatório na VPS/API após deploy autorizado da branch.
 
@@ -86,6 +88,14 @@ Gera:
 - `tenant-cotacoes-before.json` — snapshot das cotações do tenant para provar que outras não mudaram;
 - `manifest.json` — caminhos, contagens e hashes SHA-256.
 
+O tenant correto é passado por:
+
+```bash
+export COT72_TENANT_SLUG=user_user_3FMlqwuwlOTkvi28V9sw6hy1dod
+```
+
+O backup grava `tenantId` e `tenantSlug` no manifest. Os scripts seguintes conferem esse manifest; se o tenant do manifest não bater com `COT72_TENANT_SLUG`, abortam.
+
 Scripts que escrevem exigem `COT72_BACKUP_MANIFEST`:
 
 - `tools/limpar-ncm-injetado-cot72.mjs`
@@ -140,6 +150,8 @@ Script:
 ```bash
 node tools/vps-dry-run-reclassificar-cot72.mjs cmqlfuhvm000ykw2cue1whldj
 ```
+
+O script de dry-run usa o `tenantSlug` do manifest/ambiente para gerar token Clerk do usuário certo (`user_user_...` -> `user_...`). Se o tenant não seguir esse padrão, defina `COT72_CLERK_USER_ID`.
 
 Saídas esperadas:
 
@@ -218,6 +230,7 @@ Após merge/deploy autorizado da API com esta branch:
 
 ```bash
 source /etc/cia-alpha44/api.env
+export COT72_TENANT_SLUG=user_user_3FMlqwuwlOTkvi28V9sw6hy1dod
 export PROOF_API=https://api2.amzofertas.com.br/cia
 
 bash tools/run-reclassificar-cot72-producao.sh cmqlfuhvm000ykw2cue1whldj
@@ -247,6 +260,7 @@ Depois do OK Claude/Felicio:
 
 ```bash
 source /etc/cia-alpha44/api.env
+export COT72_TENANT_SLUG=user_user_3FMlqwuwlOTkvi28V9sw6hy1dod
 export PROOF_API=https://api2.amzofertas.com.br/cia
 export COT72_FOB_TARGET_MODE=organico   # ou item9-confirmado, conforme decisão
 export CONFIRM_COT72_PROD=cmqlfuhvm000ykw2cue1whldj

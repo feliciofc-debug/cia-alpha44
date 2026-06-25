@@ -10,6 +10,7 @@
  *
  * Uso:
  *   source /etc/cia-alpha44/api.env
+ *   COT72_TENANT_SLUG=user_user_... \
  *   node tools/backup-cot72-producao.mjs cmqlfuhvm000ykw2cue1whldj /tmp/cot72-backup
  */
 import { PrismaClient } from "@prisma/client";
@@ -21,6 +22,8 @@ import { join, resolve } from "node:path";
 const COT_ID = process.argv[2] ?? process.env.COT72_ID ?? "cmqlfuhvm000ykw2cue1whldj";
 const outDir = resolve(process.argv[3] ?? process.env.COT72_BACKUP_DIR ?? `/tmp/cot72-backup-${Date.now()}`);
 const printManifestOnly = process.argv.includes("--print-manifest");
+const tenantArgIdx = process.argv.indexOf("--tenant");
+const TENANT_REF = process.env.COT72_TENANT_SLUG ?? process.env.COT72_TENANT_ID ?? (tenantArgIdx >= 0 ? process.argv[tenantArgIdx + 1] : undefined);
 const p = new PrismaClient();
 
 function jsonStable(value) {
@@ -113,18 +116,58 @@ function restoreSql(row) {
   return lines.join("\n");
 }
 
-async function main() {
-  const row = await p.cotacao.findUnique({
-    where: { id: COT_ID },
+async function resolverTenant(ref) {
+  if (!ref?.trim()) return null;
+  const tenant = await p.tenant.findFirst({
+    where: { OR: [{ id: ref.trim() }, { slug: ref.trim() }] },
+  });
+  if (!tenant) {
+    throw new Error(`Tenant não encontrado: ${ref}`);
+  }
+  return tenant;
+}
+
+async function buscarCotacaoAlvo() {
+  const tenant = await resolverTenant(TENANT_REF);
+  const row = await p.cotacao.findFirst({
+    where: {
+      id: COT_ID,
+      ...(tenant ? { tenantId: tenant.id } : {}),
+    },
     include: {
+      tenant: true,
       itens: { orderBy: { ordem: "asc" } },
       despesas: { orderBy: { ordem: "asc" } },
     },
   });
-  if (!row) {
-    console.error(`Cotação não encontrada: ${COT_ID}`);
-    process.exit(1);
+  if (row) return row;
+
+  const qualquerTenant = await p.cotacao.findUnique({
+    where: { id: COT_ID },
+    include: { tenant: true },
+  });
+  if (qualquerTenant && tenant) {
+    throw new Error(
+      `Cotação ${COT_ID} existe, mas no tenant ${qualquerTenant.tenant.slug}; tenant solicitado: ${tenant.slug}.`,
+    );
   }
+
+  const recentes = tenant
+    ? await p.cotacao.findMany({
+        where: { tenantId: tenant.id },
+        orderBy: { criadoEm: "desc" },
+        take: 5,
+        select: { id: true, cliente: true },
+      })
+    : [];
+  const dica = recentes.length
+    ? ` Últimas cotações do tenant ${tenant?.slug}: ${recentes.map((r) => `${r.id} (${r.cliente})`).join("; ")}`
+    : "";
+  throw new Error(`Cotação não encontrada: ${COT_ID}${tenant ? ` no tenant ${tenant.slug}` : ""}.${dica}`);
+}
+
+async function main() {
+  const row = await buscarCotacaoAlvo();
 
   await mkdir(outDir, { recursive: true });
   const manifestPath = join(outDir, "manifest.json");
@@ -151,6 +194,7 @@ async function main() {
     tipo: "backup-cot72-producao",
     cotacaoId: row.id,
     tenantId: row.tenantId,
+    tenantSlug: row.tenant.slug,
     criadoEm: new Date().toISOString(),
     paths: {
       dir: outDir,
