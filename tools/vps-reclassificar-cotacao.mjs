@@ -4,9 +4,27 @@
  * Uso: source /etc/cia-alpha44/api.env && node tools/vps-reclassificar-cotacao.mjs [cotacaoId]
  */
 import { createClerkClient } from "@clerk/backend";
+import { readFile } from "node:fs/promises";
 
 const API = process.env.PROOF_API ?? "http://127.0.0.1:3333";
 const COT_ID = process.argv[2] ?? process.env.COT72_ID ?? "cmqlfuhvm000ykw2cue1whldj";
+const manifestPath = process.env.COT72_BACKUP_MANIFEST;
+
+async function exigirBackupEConfirmacao() {
+  if (!manifestPath) {
+    throw new Error("COT72_BACKUP_MANIFEST obrigatório antes de reclassificar.");
+  }
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  if (manifest.cotacaoId !== COT_ID) {
+    throw new Error(`Manifest é da cotação ${manifest.cotacaoId}, não ${COT_ID}.`);
+  }
+  if (!manifest.sha256?.cotacaoJson || !manifest.sha256?.restoreSql) {
+    throw new Error("Manifest sem hashes obrigatórios de backup.");
+  }
+  if (process.env.CONFIRM_COT72_PROD !== COT_ID) {
+    throw new Error(`Confirme execução real com CONFIRM_COT72_PROD=${COT_ID}`);
+  }
+}
 
 async function authHeaders() {
   const key = process.env.CLERK_SECRET_KEY?.trim();
@@ -21,6 +39,7 @@ async function authHeaders() {
 }
 
 async function main() {
+  await exigirBackupEConfirmacao();
   const h = await authHeaders();
   console.log(`Reclassificando cotação ${COT_ID}...`);
   const r = await fetch(`${API}/api/cotacoes/${COT_ID}/reclassificar`, {
