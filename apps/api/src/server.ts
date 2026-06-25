@@ -19,6 +19,7 @@ import {
   confirmarNcmItensLote,
   desfazerConfirmacaoNcmItem,
   duplicarCotacao,
+  dryRunReclassificarCotacaoPersistida,
   excluirCotacao,
   listarCotacoes,
   PersistenciaIndisponivelError,
@@ -824,9 +825,28 @@ export async function buildServer() {
   app.post("/api/cotacoes/:id/reclassificar", async (req, reply) => {
     try {
       const { id } = req.params as { id: string };
+      const dryRun =
+        String((req.query as { dryRun?: string | boolean } | undefined)?.dryRun ?? "").toLowerCase() === "1" ||
+        String((req.query as { dryRun?: string | boolean } | undefined)?.dryRun ?? "").toLowerCase() === "true";
+      if (dryRun) {
+        const preview = await dryRunReclassificarCotacaoPersistida(id, tenantSlug(req), getState());
+        if (!preview) return reply.status(404).send({ erro: "Cotação não encontrada." });
+        return preview;
+      }
       const atualizada = await reclassificarCotacaoPersistida(id, tenantSlug(req), getState());
       if (!atualizada) return reply.status(404).send({ erro: "Cotação não encontrada." });
       return atualizada;
+    } catch (e) {
+      return persistenciaErro(reply, e);
+    }
+  });
+
+  app.post("/api/cotacoes/:id/reclassificar-dry-run", async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string };
+      const preview = await dryRunReclassificarCotacaoPersistida(id, tenantSlug(req), getState());
+      if (!preview) return reply.status(404).send({ erro: "Cotação não encontrada." });
+      return preview;
     } catch (e) {
       return persistenciaErro(reply, e);
     }

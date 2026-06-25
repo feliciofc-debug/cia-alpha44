@@ -134,6 +134,7 @@ async function classificarItemComFallback(
 async function classificarEmLotes(
   state: AppState,
   linhas: LinhaCrua[],
+  opts?: { gravarCache?: boolean },
 ): Promise<{ classificados: ClassifyItemOutput[]; cache: ClassificacaoCacheStats }> {
   const { contextoSiscomexParaItem } = await import("../llm/ncm-contexto-siscomex.js");
   const { classificarItens2Passes, executar2PassesComLlm, traduzirDescricoesClassificacao } =
@@ -163,6 +164,18 @@ async function classificarEmLotes(
   const stats = criarStatsClassificacaoCache(inputs.length);
   const resultados: ClassifyItemOutput[] = new Array(inputs.length);
   const indicesLlm: number[] = [];
+  const gravarCache = opts?.gravarCache !== false;
+  const salvarCache = async (
+    input: Pick<ClassifyItemInput, "descOriginal" | "material" | "uso">,
+    output: ClassifyItemOutput,
+  ) => {
+    if (!gravarCache) return;
+    await salvarClassificacaoCacheLlm(
+      { descOriginal: input.descOriginal, material: input.material, uso: input.uso },
+      versoes,
+      output,
+    );
+  };
 
   for (let i = 0; i < inputs.length; i++) {
     const input = inputs[i]!;
@@ -182,11 +195,7 @@ async function classificarEmLotes(
     const hitCliente = resolverNcmDeclaradoCliente(input, linhas[i]!, state.ncmCatalog);
     if (hitCliente) {
       resultados[i] = outputFromPlanilhaClienteHit(input, hitCliente, state.ncmCatalog);
-      await salvarClassificacaoCacheLlm(
-        { descOriginal: input.descOriginal, material: input.material, uso: input.uso },
-        versoes,
-        resultados[i]!,
-      );
+      await salvarCache(input, resultados[i]!);
       stats.hits += 1;
       continue;
     }
@@ -199,11 +208,7 @@ async function classificarEmLotes(
     );
     if (hitFamilia) {
       resultados[i] = outputFromPlanilhaClienteHit(input, hitFamilia, state.ncmCatalog);
-      await salvarClassificacaoCacheLlm(
-        { descOriginal: input.descOriginal, material: input.material, uso: input.uso },
-        versoes,
-        resultados[i]!,
-      );
+      await salvarCache(input, resultados[i]!);
       stats.hits += 1;
       continue;
     }
@@ -249,15 +254,7 @@ async function classificarEmLotes(
       const g = geminiOut[j]!;
       if (g.ok) {
         resultados[idxOrig] = g.output;
-        await salvarClassificacaoCacheLlm(
-          {
-            descOriginal: inputs[idxOrig]!.descOriginal,
-            material: inputs[idxOrig]!.material,
-            uso: inputs[idxOrig]!.uso,
-          },
-          versoes,
-          g.output,
-        );
+        await salvarCache(inputs[idxOrig]!, g.output);
       } else {
         indicesFallback.push(idxOrig);
       }
@@ -285,31 +282,19 @@ async function classificarEmLotes(
         };
         const [doisPasses] = await executar2PassesComLlm(state.ncmCatalog, [input], chamarLlm, pre);
         if (doisPasses) {
-          await salvarClassificacaoCacheLlm(
-            { descOriginal: input.descOriginal, material: input.material, uso: input.uso },
-            versoes,
-            doisPasses,
-          );
+          await salvarCache(input, doisPasses);
           return doisPasses;
         }
       }
       const fallback = await classificarItemComFallback(state, input, classificarItens2Passes);
       if (fallback.ncmCandidatos?.length) {
-        await salvarClassificacaoCacheLlm(
-          { descOriginal: input.descOriginal, material: input.material, uso: input.uso },
-          versoes,
-          fallback,
-        );
+        await salvarCache(input, fallback);
       }
       return fallback;
     } catch {
       const fallback = await classificarItemComFallback(state, input, classificarItens2Passes);
       if (fallback.ncmCandidatos?.length) {
-        await salvarClassificacaoCacheLlm(
-          { descOriginal: input.descOriginal, material: input.material, uso: input.uso },
-          versoes,
-          fallback,
-        );
+        await salvarCache(input, fallback);
       }
       return fallback;
     }
@@ -331,15 +316,7 @@ async function classificarEmLotes(
     const fb = classificarSiscomexUltimoRecurso(linhas[i]!, state.ncmCatalog);
     if (fb) {
       resultados[i] = fb;
-      await salvarClassificacaoCacheLlm(
-        {
-          descOriginal: inputs[i]!.descOriginal,
-          material: inputs[i]!.material,
-          uso: inputs[i]!.uso,
-        },
-        versoes,
-        fb,
-      );
+      await salvarCache(inputs[i]!, fb);
     }
   }
 
@@ -351,6 +328,7 @@ export interface MontarItensOpts {
   cambioEurUsd?: number | null;
   cambioEurUsdData?: string | null;
   cambioEurUsdFonte?: string | null;
+  gravarCacheClassificacao?: boolean;
 }
 
 export interface MontarItensMetaCambio {
@@ -412,7 +390,9 @@ export async function montarItens(
 }> {
   const { linhas: linhasMoeda, meta: metaCambio } = await prepararLinhasMoeda(linhas, opts);
   const { linhas: linhasNorm, metas: metasFob } = preencherFobKgPlanilha(linhasMoeda, state.benchmarkIndex);
-  const { classificados, cache: classificacaoCache } = await classificarEmLotes(state, linhasNorm);
+  const { classificados, cache: classificacaoCache } = await classificarEmLotes(state, linhasNorm, {
+    gravarCache: opts?.gravarCacheClassificacao !== false,
+  });
 
   const itens: Item[] = [];
   for (let i = 0; i < linhasNorm.length; i++) {

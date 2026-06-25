@@ -1,7 +1,7 @@
 /** Persistência de cotações — Prisma + mapeamento domínio ↔ banco. */
 
 import { prisma, type CanalAduaneiro, type Cotacao as CotacaoRow } from "@cia/db";
-import type { ResultadoCotacao } from "@cia/fiscal-engine";
+import type { ItemFiscalResult, ResultadoCotacao } from "@cia/fiscal-engine";
 import {
   extrairItemMeta,
   mesclarItemMeta,
@@ -423,6 +423,77 @@ export function cotacaoRecalculadaFromRow(
 }
 
 type ItemRowPersist = CotacaoComRelacoes["itens"][number];
+
+function fiscalPorIndice(resultado: ResultadoCotacao | null | undefined, indice: number): ItemFiscalResult | null {
+  return resultado?.itens?.[indice] ?? null;
+}
+
+function resumoItemReclassificacao(item: Item, fiscal: ItemFiscalResult | null) {
+  return {
+    ncm: item.ncm,
+    ncmFonte: item.ncmFonte ?? null,
+    descPt: item.descPt ?? "",
+    fobTotalUS: item.fobTotalUS ?? 0,
+    aliquotas: item.aliquotas,
+    impostosEntrada: {
+      ii: fiscal?.ii ?? null,
+      ipi: fiscal?.ipi ?? null,
+      pis: fiscal?.pis ?? null,
+      cofins: fiscal?.cofins ?? null,
+    },
+    compatibilidadeProduto: item.compatibilidadeProduto ?? null,
+    ncmAvisos: item.ncmAvisos ?? [],
+  };
+}
+
+function camposAlteradosReclassificacao(
+  antes: ReturnType<typeof resumoItemReclassificacao>,
+  depois: ReturnType<typeof resumoItemReclassificacao>,
+) {
+  return {
+    ncm: antes.ncm !== depois.ncm,
+    ncmFonte: antes.ncmFonte !== depois.ncmFonte,
+    descPt: antes.descPt !== depois.descPt,
+    fobTotalUS: Math.abs((antes.fobTotalUS ?? 0) - (depois.fobTotalUS ?? 0)) > 0.005,
+    ii: Math.abs((antes.impostosEntrada.ii ?? 0) - (depois.impostosEntrada.ii ?? 0)) > 0.005,
+    ipi: Math.abs((antes.impostosEntrada.ipi ?? 0) - (depois.impostosEntrada.ipi ?? 0)) > 0.005,
+    pis: Math.abs((antes.impostosEntrada.pis ?? 0) - (depois.impostosEntrada.pis ?? 0)) > 0.005,
+    cofins: Math.abs((antes.impostosEntrada.cofins ?? 0) - (depois.impostosEntrada.cofins ?? 0)) > 0.005,
+  };
+}
+
+function limparMetaNcmInjetado(metaRaw: unknown): { meta: ItemMetaPersistido; limpo: boolean } {
+  const meta = metaRaw && typeof metaRaw === "object" ? { ...(metaRaw as ItemMetaPersistido) } : {};
+  const humano = meta.ncmRevisadoHumano === true;
+  const status = meta.ncmEmbarqueStatus;
+  const tinhaInjetado = !humano && status !== "coluna" && Boolean(meta.ncmPlanilhaOriginal || meta.ncmEmbarque);
+  if (!tinhaInjetado) return { meta, limpo: false };
+
+  delete meta.ncmPlanilhaOriginal;
+  meta.ncmEmbarque = null;
+  meta.ncmEmbarqueStatus = "sem-ncm-coluna";
+  return { meta, limpo: true };
+}
+
+function rowComLimpezaNcmInjetado(row: CotacaoComRelacoes): {
+  row: CotacaoComRelacoes;
+  limpezas: Array<{ ordem: number; ncmPlanilhaOriginal?: string | null; ncmEmbarque?: string | null }>;
+} {
+  const limpezas: Array<{ ordem: number; ncmPlanilhaOriginal?: string | null; ncmEmbarque?: string | null }> = [];
+  const itens = row.itens.map((it) => {
+    const antes = (it.meta as ItemMetaPersistido | null) ?? {};
+    const { meta, limpo } = limparMetaNcmInjetado(antes);
+    if (limpo) {
+      limpezas.push({
+        ordem: it.ordem,
+        ncmPlanilhaOriginal: antes.ncmPlanilhaOriginal ?? null,
+        ncmEmbarque: antes.ncmEmbarque ?? null,
+      });
+    }
+    return limpo ? { ...it, meta } : it;
+  });
+  return { row: { ...row, itens }, limpezas };
+}
 
 async function persistirItensPosCalculo(
   itemRows: ItemRowPersist[],
@@ -953,21 +1024,17 @@ async function recalcularCotacaoPersistida(
 }
 
 /** Reclassifica NCM dos itens salvos (planilha cliente → IA) e recalcula — corrige cotações gravadas antes do fix. */
-export async function reclassificarCotacaoPersistida(
-  cotacaoId: string,
-  tenantSlug: string,
+async function prepararReclassificacaoCotacaoPersistida(
+  row: CotacaoComRelacoes,
   state: AppState,
+  opts?: { gravarCacheClassificacao?: boolean },
 ) {
-  if (!dbAtivo()) throw new PersistenciaIndisponivelError();
-
-  const row = await buscarCotacaoRow(cotacaoId, tenantSlug);
-  if (!row) return null;
-
   const { cotacao, itens: itensDb } = mapRowParaDominio(row);
   const linhas = linhasCruasFromItensPersistidos(row.itens);
   const montado = await montarItens(linhas, state, {
     moedaPlanilha: cotacao.moedaPlanilha,
     cambioEurUsd: cotacao.cambioEurUsd,
+    gravarCacheClassificacao: opts?.gravarCacheClassificacao !== false,
   });
 
   const itensNovos = montado.itens.map((it, i) => {
@@ -989,25 +1056,110 @@ export async function reclassificarCotacaoPersistida(
   );
   const canal = canalPredominante(itensValidados);
 
+  return { cotacao, itensDb, montado, itensNovos, calc, itensValidados, canal };
+}
+
+export async function dryRunReclassificarCotacaoPersistida(
+  cotacaoId: string,
+  tenantSlug: string,
+  state: AppState,
+) {
+  if (!dbAtivo()) throw new PersistenciaIndisponivelError();
+
+  const rowOriginal = await buscarCotacaoRow(cotacaoId, tenantSlug);
+  if (!rowOriginal) return null;
+
+  const row = rowOriginal as CotacaoComRelacoes;
+  const { row: rowSimulado, limpezas } = rowComLimpezaNcmInjetado(row);
+  const antesDominio = mapRowParaDominio(row);
+  const preparado = await prepararReclassificacaoCotacaoPersistida(rowSimulado, state, {
+    gravarCacheClassificacao: false,
+  });
+
+  const itensAntes = [...antesDominio.itens].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+  const itensDepois = [...preparado.itensValidados].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+  const itens = itensAntes.map((antes, i) => {
+    const depois = itensDepois[i]!;
+    const resumoAntes = resumoItemReclassificacao(antes, fiscalPorIndice(antesDominio.resultado, i));
+    const resumoDepois = resumoItemReclassificacao(depois, fiscalPorIndice(preparado.calc.resultado, i));
+    return {
+      ordem: antes.ordem ?? i,
+      descOriginal: antes.descOriginal,
+      antes: resumoAntes,
+      depois: resumoDepois,
+      mudou: camposAlteradosReclassificacao(resumoAntes, resumoDepois),
+    };
+  });
+
+  const fobAntes = itensAntes.reduce((s, it) => s + (it.fobTotalUS ?? 0), 0);
+  const fobDepois = itensDepois.reduce((s, it) => s + (it.fobTotalUS ?? 0), 0);
+
+  return {
+    dryRun: true as const,
+    cotacaoId,
+    tenantSlug,
+    provider: preparado.montado.provider,
+    limpezaNcmInjetado: {
+      itensAfetados: limpezas.length,
+      itens: limpezas,
+    },
+    antes: {
+      totalItens: itensAntes.length,
+      totalUS: numOrNull(row.totalUS),
+      totalBRL: numOrNull(row.totalBRL),
+      updatedAt: row.atualizadoEm.toISOString(),
+      fobTotalUS: fobAntes,
+      iiTotalBRL: antesDominio.resultado?.entrada.iiTotal ?? null,
+      ipiTotalBRL: antesDominio.resultado?.entrada.ipiTotal ?? null,
+      pisTotalBRL: antesDominio.resultado?.entrada.pisTotal ?? null,
+      cofinsTotalBRL: antesDominio.resultado?.entrada.cofinsTotal ?? null,
+    },
+    depois: {
+      totalItens: itensDepois.length,
+      totalUS: preparado.calc.resultado.totalUS,
+      totalBRL: preparado.calc.resultado.totalBRL,
+      canalPredominante: preparado.canal,
+      fobTotalUS: fobDepois,
+      iiTotalBRL: preparado.calc.resultado.entrada.iiTotal,
+      ipiTotalBRL: preparado.calc.resultado.entrada.ipiTotal,
+      pisTotalBRL: preparado.calc.resultado.entrada.pisTotal,
+      cofinsTotalBRL: preparado.calc.resultado.entrada.cofinsTotal,
+    },
+    itens,
+  };
+}
+
+export async function reclassificarCotacaoPersistida(
+  cotacaoId: string,
+  tenantSlug: string,
+  state: AppState,
+) {
+  if (!dbAtivo()) throw new PersistenciaIndisponivelError();
+
+  const row = await buscarCotacaoRow(cotacaoId, tenantSlug);
+  if (!row) return null;
+
+  const preparado = await prepararReclassificacaoCotacaoPersistida(row as CotacaoComRelacoes, state);
+
   await prisma.$transaction(async (tx) => {
-    await persistirItensPosReclassificacao(row.itens, itensValidados, tx);
+    await persistirItensPosReclassificacao(row.itens, preparado.itensValidados, tx);
     await tx.cotacao.update({
       where: { id: cotacaoId },
       data: {
-        status: calc.resultado ? "CALCULADA" : row.status,
-        totalBRL: calc.resultado?.totalBRL ?? null,
-        totalUS: calc.resultado?.totalUS ?? null,
-        canalPredominante: canal,
-        params: calc.params as Prisma.InputJsonValue,
-        resultadoCalculo: (calc.resultado ?? undefined) as unknown as Prisma.InputJsonValue | undefined,
-        calculadoEm: calc.resultado ? new Date() : row.calculadoEm,
+        status: preparado.calc.resultado ? "CALCULADA" : row.status,
+        totalBRL: preparado.calc.resultado?.totalBRL ?? null,
+        totalUS: preparado.calc.resultado?.totalUS ?? null,
+        canalPredominante: preparado.canal,
+        params: preparado.calc.params as Prisma.InputJsonValue,
+        resultadoCalculo: (preparado.calc.resultado ?? undefined) as unknown as Prisma.InputJsonValue | undefined,
+        calculadoEm: preparado.calc.resultado ? new Date() : row.calculadoEm,
       },
     });
   });
 
   const rowAtualizado = await buscarCotacaoRow(cotacaoId, tenantSlug);
   if (!rowAtualizado) return null;
-  return cotacaoRecalculadaFromRow(rowAtualizado as CotacaoComRelacoes, state, montado.provider);
+  return cotacaoRecalculadaFromRow(rowAtualizado as CotacaoComRelacoes, state, preparado.montado.provider);
 }
 
 /** Marca item com revisão humana do NCM (persiste em Item.meta + recalcula cotação). */
