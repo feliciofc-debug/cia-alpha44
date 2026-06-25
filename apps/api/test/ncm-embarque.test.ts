@@ -99,4 +99,21 @@ describe("ncmEmbarque — upload classificar", () => {
     expect(itens[0]!.ncmEmbarque).toBeNull();
     expect(itens[0]!.ncmEmbarqueStatus).toBe("sem-ncm-coluna");
   });
+
+  it("linha com ncm null (meta injetado ignorado) — não classifica planilha-cliente", async () => {
+    const linhas: LinhaCrua[] = [
+      {
+        descOriginal: "HY-97;挂钩秤;Balança de gancho portátil (dinamômetro de pesagem)",
+        ncm: null,
+        qtd: 100,
+        pesoBrutoKg: 10,
+        pesoLiqKg: 9,
+        fobTotalUS: 50,
+        fobUnitarioUS: null,
+      },
+    ];
+    const { itens } = await montarItens(linhas, buildState());
+    expect(itens[0]!.ncmFonte).not.toBe("planilha-cliente");
+    expect(itens[0]!.ncmAvisos?.some((a) => /declarado na planilha do cliente/i.test(a))).toBeFalsy();
+  });
 });

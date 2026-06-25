@@ -483,6 +483,14 @@ function AnalisePainel({
                         planilha: {fmtNcm(it.ncmPlanilhaOriginal)}
                       </span>
                     )}
+                    {it.ncmReferencia && (
+                      <span
+                        className="block text-[10px] text-amber-400/90"
+                        title="NCM de gabarito ou legado — não veio da coluna da planilha do cliente"
+                      >
+                        NCM de referência — conferir: {fmtNcm(it.ncmReferencia)}
+                      </span>
+                    )}
                     {it.ncmFonte && (
                       <span
                         className={`block text-[10px] ${
