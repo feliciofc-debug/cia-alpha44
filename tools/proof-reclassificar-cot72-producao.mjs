@@ -7,7 +7,7 @@
  *   source /etc/cia-alpha44/api.env
  *   node tools/limpar-ncm-injetado-cot72.mjs
  *   node tools/vps-reclassificar-cotacao.mjs cmqlfuhvm000ykw2cue1whldj
- *   PROOF_API=https://api2.amzofertas.com.br/cia node tools/proof-reclassificar-cot72-producao.mjs
+ *   COT72_TENANT_SLUG=user_user_... PROOF_API=https://api2.amzofertas.com.br/cia node tools/proof-reclassificar-cot72-producao.mjs
  */
 import { createClerkClient } from "@clerk/backend";
 import { PrismaClient } from "@prisma/client";
@@ -22,6 +22,8 @@ const EXPECTED_ITENS = Number(process.env.COT72_EXPECTED_ITENS ?? "21");
 const FOB_TOLERANCE = Number(process.env.COT72_FOB_TOLERANCE_US ?? "1");
 const II_TOLERANCE = Number(process.env.COT72_II_TOLERANCE_BRL ?? "50");
 const manifestPath = process.env.COT72_BACKUP_MANIFEST;
+const tenantArgIdx = process.argv.indexOf("--tenant");
+const TENANT_REF = process.env.COT72_TENANT_SLUG ?? process.env.COT72_TENANT_ID ?? (tenantArgIdx >= 0 ? process.argv[tenantArgIdx + 1] : undefined);
 
 function targetFob() {
   if (process.env.COT72_FOB_TARGET_US?.trim()) {
@@ -33,11 +35,30 @@ function targetFob() {
   throw new Error("Defina COT72_FOB_TARGET_MODE=organico|item9-confirmado ou COT72_FOB_TARGET_US=<valor>.");
 }
 
-async function authHeaders() {
+function clerkUserIdFromTenantSlug(tenantSlug) {
+  if (!tenantSlug?.startsWith("user_")) return null;
+  return tenantSlug.slice("user_".length);
+}
+
+function clerkUserIdForTenant(manifest) {
+  const explicit = process.env.COT72_CLERK_USER_ID ?? process.env.CLERK_USER_ID;
+  if (explicit?.trim()) return explicit.trim();
+
+  const tenantSlug = process.env.COT72_TENANT_SLUG ?? manifest?.tenantSlug;
+  const derived = clerkUserIdFromTenantSlug(tenantSlug);
+  if (derived) return derived;
+
+  if (tenantSlug) {
+    throw new Error(`Não consegui derivar usuário Clerk do tenant ${tenantSlug}; defina COT72_CLERK_USER_ID.`);
+  }
+  return null;
+}
+
+async function authHeaders(manifest) {
   const key = process.env.CLERK_SECRET_KEY?.trim();
   if (!key) throw new Error("CLERK_SECRET_KEY ausente");
   const clerk = createClerkClient({ secretKey: key });
-  const uid = (await clerk.users.getUserList({ limit: 1 })).data[0]?.id;
+  const uid = clerkUserIdForTenant(manifest) ?? (await clerk.users.getUserList({ limit: 1 })).data[0]?.id;
   if (!uid) throw new Error("Sem usuário Clerk");
   let sid = (await clerk.sessions.getSessionList({ userId: uid, status: "active", limit: 1 })).data[0]?.id;
   if (!sid) sid = (await clerk.sessions.createSession({ userId: uid })).id;
@@ -47,7 +68,14 @@ async function authHeaders() {
 
 async function main() {
   const alvoFob = targetFob();
-  const h = await authHeaders();
+  const manifest = manifestPath ? JSON.parse(await readFile(manifestPath, "utf8")) : null;
+  if (manifest?.cotacaoId && manifest.cotacaoId !== COT_ID) {
+    throw new Error(`Manifest é da cotação ${manifest.cotacaoId}, não ${COT_ID}.`);
+  }
+  if (TENANT_REF && manifest && ![manifest.tenantSlug, manifest.tenantId].includes(TENANT_REF)) {
+    throw new Error(`Manifest é do tenant ${manifest.tenantSlug ?? manifest.tenantId}, não ${TENANT_REF}`);
+  }
+  const h = await authHeaders(manifest);
   const r = await fetch(`${API}/api/cotacoes/${COT_ID}`, { headers: h });
   const j = await r.json();
   if (!r.ok) {
@@ -126,8 +154,7 @@ async function main() {
   }
 
   let passOutrasCotacoes = true;
-  if (manifestPath) {
-    const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  if (manifestPath && manifest) {
     const beforePath = manifest.paths?.tenantCotacoesBefore;
     const before = JSON.parse(await readFile(beforePath, "utf8"));
     const p = new PrismaClient();

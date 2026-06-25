@@ -7,9 +7,14 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 COT_ID="${1:-cmqlfuhvm000ykw2cue1whldj}"
 export COT72_ID="$COT_ID"
+export COT72_TENANT_SLUG="${COT72_TENANT_SLUG:-user_user_3FMlqwuwlOTkvi28V9sw6hy1dod}"
 export PROOF_API="${PROOF_API:-https://api2.amzofertas.com.br/cia}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 BACKUP_DIR="${COT72_BACKUP_DIR:-/tmp/cot72-backup-${COT_ID}-${STAMP}}"
+
+echo "Cotação alvo: $COT72_ID"
+echo "Tenant alvo:  $COT72_TENANT_SLUG"
+echo ""
 
 echo "=== 1) Backup obrigatório cot 72 ==="
 MANIFEST="$(node tools/backup-cot72-producao.mjs "$COT_ID" "$BACKUP_DIR" --print-manifest)"
@@ -30,6 +35,7 @@ if [[ "${EXECUTE_REAL:-0}" != "1" ]]; then
   echo "Dry-run gerado em: $BACKUP_DIR/dry-run-reclassificar-cot72.md"
   echo "Rollback testado em: $BACKUP_DIR/rollback-test-report.json"
   echo "Para executar de verdade, após revisão humana:"
+  echo "  export COT72_TENANT_SLUG=\"$COT72_TENANT_SLUG\""
   echo "  export COT72_BACKUP_MANIFEST=\"$COT72_BACKUP_MANIFEST\""
   echo "  export COT72_FOB_TARGET_MODE=organico   # ou item9-confirmado"
   echo "  export CONFIRM_COT72_PROD=\"$COT_ID\""
