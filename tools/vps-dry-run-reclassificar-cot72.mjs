@@ -81,6 +81,7 @@ function markdown(preview, manifest) {
     "",
     `- Itens antes/depois: ${preview.antes.totalItens}/${preview.depois.totalItens}`,
     `- Limpeza NCM injetado prevista: ${preview.limpezaNcmInjetado.itensAfetados} itens`,
+    `- Markup antes/depois: ${(Number(preview.antes.markupPct ?? 0) * 100).toFixed(2)}% / ${(Number(preview.depois.markupPct ?? 0) * 100).toFixed(2)}%`,
     `- FOB antes: US$ ${money(preview.antes.fobTotalUS)}`,
     `- FOB depois: US$ ${money(preview.depois.fobTotalUS)}`,
     `- II antes/depois: R$ ${money(preview.antes.iiTotalBRL)} / R$ ${money(preview.depois.iiTotalBRL)}`,

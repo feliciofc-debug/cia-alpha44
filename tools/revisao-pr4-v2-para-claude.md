@@ -142,6 +142,7 @@ O dry-run:
 - monta a reclassificação;
 - calcula totais;
 - gera diff pré/pós por item;
+- reporta `markupPct` antes/depois no JSON e no Markdown (ponto de revisão: cot 72 hoje aparece com 6%);
 - **não grava item/cotação**;
 - **não grava cache de classificação**.
 
