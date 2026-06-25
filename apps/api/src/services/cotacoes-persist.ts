@@ -1107,7 +1107,7 @@ export async function dryRunReclassificarCotacaoPersistida(
       totalItens: itensAntes.length,
       totalUS: numOrNull(row.totalUS),
       totalBRL: numOrNull(row.totalBRL),
-      markupPct: antesDominio.params.markupPct,
+      markupPct: antesDominio.cotacao.params.markupPct,
       updatedAt: row.atualizadoEm.toISOString(),
       fobTotalUS: fobAntes,
       iiTotalBRL: antesDominio.resultado?.entrada.iiTotal ?? null,
