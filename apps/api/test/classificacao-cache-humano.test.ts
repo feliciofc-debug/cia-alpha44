@@ -12,6 +12,7 @@ vi.mock("@cia/db", () => ({
 import { prisma } from "@cia/db";
 import {
   cacheClassificacaoToxico,
+  deveIgnorarCacheSemNcmReal,
   outputConfirmacaoHumana,
   salvarClassificacaoCacheHumano,
   versoesClassificacaoCache,
@@ -72,6 +73,27 @@ describe("salvarClassificacaoCacheHumano — coerência P1.1", () => {
 });
 
 describe("cacheClassificacaoToxico", () => {
+  it("pula lookup de cache quando o fluxo exige miss para linha sem coluna NCM real", () => {
+    expect(
+      deveIgnorarCacheSemNcmReal({
+        ignorarCacheQuandoSemNcmReal: true,
+        temColunaNcmReal: false,
+      }),
+    ).toBe(true);
+    expect(
+      deveIgnorarCacheSemNcmReal({
+        ignorarCacheQuandoSemNcmReal: true,
+        temColunaNcmReal: true,
+      }),
+    ).toBe(false);
+    expect(
+      deveIgnorarCacheSemNcmReal({
+        ignorarCacheQuandoSemNcmReal: false,
+        temColunaNcmReal: false,
+      }),
+    ).toBe(false);
+  });
+
   it("ignora cache planilha-cliente quando a linha atual nao tem coluna NCM real", () => {
     const output = {
       descPt: "Maquina de pipoca",

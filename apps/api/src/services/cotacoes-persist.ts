@@ -1074,6 +1074,7 @@ async function prepararReclassificacaoCotacaoPersistida(
     moedaPlanilha: cotacao.moedaPlanilha,
     cambioEurUsd: cotacao.cambioEurUsd,
     gravarCacheClassificacao: opts?.gravarCacheClassificacao !== false,
+    ignorarCacheClassificacaoSemNcmReal: cotacaoSemColunaNcmReal(row),
   });
 
   const itensNovos = montado.itens.map((it, i) => {
