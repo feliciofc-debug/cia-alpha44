@@ -9,6 +9,15 @@ APP_DIR="${APP_DIR:-/opt/cia-alpha44}"
 ENV_API="/etc/cia-alpha44/api.env"
 SERVICE="cia-api.service"
 
+ensure_env_default() {
+  local key="$1"
+  local value="$2"
+  if ! grep -q "^${key}=" "$ENV_API" 2>/dev/null; then
+    echo "${key}=${value}" >> "$ENV_API"
+    echo "   (+ ${key} em $ENV_API)"
+  fi
+}
+
 echo ">> Backup .env Postgres (se existir)..."
 VPS_ENV_BACKUP=""
 if [[ -f "$APP_DIR/infra/vps/.env" ]]; then
@@ -65,6 +74,9 @@ HOST=0.0.0.0
 LLM_PROVIDER=anthropic
 ANTHROPIC_API_KEY=
 ANTHROPIC_MODEL=claude-sonnet-4-6
+NCM_HELPER_BASE_URL=https://ncm-helper-ai.lovable.app
+CLASSIFICACAO_NCM_PROVIDER=gemini
+CLASSIFICACAO_NCM_VISION=1
 DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@127.0.0.1:5432/${POSTGRES_DB}
 WEB_ORIGIN=http://localhost:5173
 EOF
@@ -72,6 +84,10 @@ EOF
 else
   echo "   (mantido $ENV_API existente — use set-claude-key.sh para a chave)"
 fi
+
+ensure_env_default "NCM_HELPER_BASE_URL" "https://ncm-helper-ai.lovable.app"
+ensure_env_default "CLASSIFICACAO_NCM_PROVIDER" "gemini"
+ensure_env_default "CLASSIFICACAO_NCM_VISION" "1"
 
 mkdir -p /var/lib/cia-alpha44
 BENCH_DST="/var/lib/cia-alpha44/benchmark-fob-kg.json"

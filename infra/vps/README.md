@@ -39,3 +39,28 @@ DATABASE_URL=postgresql://cia_app:SUA_SENHA@127.0.0.1:5432/cia_alpha44
 ## Firewall
 
 Não abra a porta 5432 no firewall público. O bind `127.0.0.1:5432` já restringe ao localhost da VPS.
+
+## Deploy API — flags NCM/visão
+
+O deploy da API usa `/etc/cia-alpha44/api.env` como `EnvironmentFile` do systemd.
+As flags abaixo são defaults não-secretos de produção e devem continuar presentes após
+deploy limpo/recriação do `api.env`:
+
+```bash
+NCM_HELPER_BASE_URL=https://ncm-helper-ai.lovable.app
+CLASSIFICACAO_NCM_PROVIDER=gemini
+CLASSIFICACAO_NCM_VISION=1
+```
+
+`infra/vps/deploy-api.sh` cria essas flags quando o `api.env` ainda não existe e também
+as acrescenta se estiverem ausentes em um arquivo existente, sem sobrescrever valores
+definidos manualmente.
+
+Após deploy, valide sem expor segredos:
+
+```bash
+bash /opt/cia-alpha44/infra/vps/validate-api-env.sh
+```
+
+O bloco `NCM helper / visão` deve mostrar `CLASSIFICACAO_NCM_PROVIDER=gemini` e
+`CLASSIFICACAO_NCM_VISION=1`.
