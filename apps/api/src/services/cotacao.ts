@@ -60,12 +60,6 @@ const CLASSIFY_CONCORRENCIA = Math.min(
   Math.max(1, Number.parseInt(process.env.CLASSIFY_CONCURRENCY ?? "5", 10) || 5),
 );
 
-/**
- * Hit soberano da planilha China precisa ser forte: o resolver já valida catálogo,
- * família e presença no histórico China; abaixo deste score tratamos como ambíguo.
- */
-const SCORE_MIN_HIT_COHERENTE_PLANILHA_CHINA = 0.55;
-
 function outputFromPlanilhaClienteHit(
   input: ClassifyItemInput,
   hit: PlanilhaClienteNcmHit,
@@ -93,7 +87,10 @@ function outputFromPlanilhaClienteHit(
 }
 
 function hitPlanilhaChinaCoerente(hit: PlanilhaChinaNcmHit | null, catalog: NcmCatalog): hit is PlanilhaChinaNcmHit {
-  return Boolean(hit && hit.score >= SCORE_MIN_HIT_COHERENTE_PLANILHA_CHINA && catalog.existe(hit.ncm));
+  // O resolver da planilha China já rejeita match sem token de produto, família incoerente,
+  // NCM fora do histórico China e código ausente no catálogo. Se sobrou hit, ele é a
+  // referência primária do Felicio; Siscomex só entra quando a planilha não retorna nada.
+  return Boolean(hit && catalog.existe(hit.ncm));
 }
 
 function outputFromPlanilhaChinaHit(
