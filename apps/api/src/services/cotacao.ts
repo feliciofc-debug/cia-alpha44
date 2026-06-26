@@ -115,6 +115,55 @@ function outputFromPlanilhaChinaHit(
   };
 }
 
+function posicaoNcm4(ncm: string | null | undefined): string | null {
+  const key = normNcm8(ncm ?? "");
+  return key ? key.slice(0, 4) : null;
+}
+
+function visaoContradizPlanilhaChina(hit: PlanilhaChinaNcmHit, outputVisao: ClassifyItemOutput): boolean {
+  const ncmVisao = outputVisao.ncmCandidatos[0]?.ncm;
+  const posChina = posicaoNcm4(hit.ncm);
+  const posVisao = posicaoNcm4(ncmVisao);
+  return Boolean(posChina && posVisao && posChina !== posVisao);
+}
+
+function outputPlanilhaChinaConfirmadaPorVisao(
+  input: ClassifyItemInput,
+  hit: PlanilhaChinaNcmHit,
+  catalog: NcmCatalog,
+  outputVisao: ClassifyItemOutput,
+): ClassifyItemOutput {
+  const base = outputFromPlanilhaChinaHit(input, hit, catalog);
+  const posChina = posicaoNcm4(hit.ncm);
+  const ncmVisao = outputVisao.ncmCandidatos[0]?.ncm;
+  const confirmacao = `Visão confirmou a família ${posChina ?? hit.ncm} da planilha China${ncmVisao ? ` (sugestão visual ${ncmVisao})` : ""}.`;
+  return {
+    ...base,
+    justificativaRGI: [confirmacao, outputVisao.justificativaRGI].filter(Boolean).join(" "),
+  };
+}
+
+function outputVisaoVetaPlanilhaChina(
+  input: ClassifyItemInput,
+  hit: PlanilhaChinaNcmHit,
+  catalog: NcmCatalog,
+  outputVisao: ClassifyItemOutput,
+): ClassifyItemOutput {
+  const { descPt, avisoTraducao } = resolverDescPtFornecedor(input.descOriginal, outputVisao.descPt);
+  const ncmVisao = normNcm8(outputVisao.ncmCandidatos[0]?.ncm ?? "");
+  const descVisao = ncmVisao ? catalog.descricao(ncmVisao) ?? outputVisao.ncmCandidatos[0]?.descricaoOficial : null;
+  const aviso = `Visão vetou NCM da planilha China ${hit.ncm} (${hit.desc}) por família incompatível; aplicar ${ncmVisao ?? "sugestão visual"} e revisar manualmente.`;
+  return {
+    ...outputVisao,
+    descPt,
+    descDuimp: `${descVisao ?? outputVisao.descDuimp} — ${aviso}`,
+    classificacaoProvedor: "gemini",
+    classificacaoBaixaConfianca: true,
+    justificativaRGI: [aviso, outputVisao.justificativaRGI].filter(Boolean).join(" "),
+    ...(avisoTraducao ? { avisoTraducao } : {}),
+  };
+}
+
 function normalizarDescPtClassificacao(
   descOriginal: string,
   output: ClassifyItemOutput,
@@ -174,6 +223,8 @@ async function classificarEmLotes(
   const { contextoSiscomexParaItem } = await import("../llm/ncm-contexto-siscomex.js");
   const { classificarItens2Passes, executar2PassesComLlm, traduzirDescricoesClassificacao } =
     await import("../llm/classificar-ncm-2passes.js");
+  const { geminiClassificacaoHabilitada, geminiVisaoHabilitada, classificarItensGeminiLote } =
+    await import("../llm/classificar-gemini-lovable.js");
 
   const inputs: ClassifyItemInput[] = linhas.map((l) => {
     const ext = l as LinhaCrua & {
@@ -202,7 +253,10 @@ async function classificarEmLotes(
   stats.trace = [];
   const resultados: ClassifyItemOutput[] = new Array(inputs.length);
   const indicesLlm: number[] = [];
+  const indicesValidacaoChinaVisao: number[] = [];
+  const hitsChinaValidacaoVisao = new Map<number, PlanilhaChinaNcmHit>();
   const gravarCache = opts?.gravarCache !== false;
+  const validarPlanilhaChinaComVisao = geminiClassificacaoHabilitada() && geminiVisaoHabilitada();
   const chamarLlm = state.provider.chamarLlm;
   const traducoes =
     chamarLlm && state.provider.disponivel
@@ -318,6 +372,11 @@ async function classificarEmLotes(
       state.ncmCatalog,
     );
     if (hitPlanilhaChinaCoerente(hitChina, state.ncmCatalog)) {
+      if (validarPlanilhaChinaComVisao && input.fotoBase64) {
+        indicesValidacaoChinaVisao.push(i);
+        hitsChinaValidacaoVisao.set(i, hitChina);
+        continue;
+      }
       resultados[i] = outputFromPlanilhaChinaHit(input, hitChina, state.ncmCatalog);
       stats.hits += 1;
       if (i === 0) {
@@ -385,13 +444,67 @@ async function classificarEmLotes(
     indicesLlm.push(i);
   }
 
+  if (indicesValidacaoChinaVisao.length) {
+    const inputsValidacao = indicesValidacaoChinaVisao.map((idx) => {
+      const hit = hitsChinaValidacaoVisao.get(idx)!;
+      return {
+        ...inputs[idx]!,
+        ncmInformado: hit.ncm,
+      };
+    });
+    const visaoOut = await classificarItensGeminiLote(inputsValidacao, state.ncmCatalog, CLASSIFY_CONCORRENCIA);
+
+    for (let j = 0; j < indicesValidacaoChinaVisao.length; j++) {
+      const idxOrig = indicesValidacaoChinaVisao[j]!;
+      const input = inputs[idxOrig]!;
+      const hit = hitsChinaValidacaoVisao.get(idxOrig)!;
+      const visao = visaoOut[j]!;
+      if (visao.ok && visaoContradizPlanilhaChina(hit, visao.output)) {
+        resultados[idxOrig] = outputVisaoVetaPlanilhaChina(input, hit, state.ncmCatalog, visao.output);
+        stats.misses += 1;
+        if (idxOrig === 0) {
+          stats.trace?.push({
+            idx: idxOrig,
+            descOriginal: input.descOriginal,
+            linhaNcm: linhas[idxOrig]?.ncm ?? null,
+            inputNcmInformado: input.ncmInformado ?? null,
+            ignorarCacheQuandoSemNcmReal: opts?.ignorarCacheQuandoSemNcmReal,
+            decisao: "visao-vetou-planilha-china",
+            provedor: "gemini",
+            ncmPlanilhaChina: hit.ncm,
+            ncm: visao.output.ncmCandidatos[0]?.ncm ?? null,
+          });
+        }
+        continue;
+      }
+
+      resultados[idxOrig] = visao.ok
+        ? outputPlanilhaChinaConfirmadaPorVisao(input, hit, state.ncmCatalog, visao.output)
+        : {
+            ...outputFromPlanilhaChinaHit(input, hit, state.ncmCatalog),
+            classificacaoBaixaConfianca: true,
+            justificativaRGI: `Visão não conseguiu validar a planilha China (${visao.output.avisoTraducao ?? "sem sugestão visual"}); mantido NCM ${hit.ncm} para revisão.`,
+          };
+      stats.hits += 1;
+      if (idxOrig === 0) {
+        stats.trace?.push({
+          idx: idxOrig,
+          descOriginal: input.descOriginal,
+          linhaNcm: linhas[idxOrig]?.ncm ?? null,
+          inputNcmInformado: input.ncmInformado ?? null,
+          ignorarCacheQuandoSemNcmReal: opts?.ignorarCacheQuandoSemNcmReal,
+          decisao: visao.ok ? "planilha-china-confirmada-visao" : "planilha-china-visao-indisponivel",
+          provedor: "planilha-china",
+          ncm: hit.ncm,
+          ncmVisao: visao.output.ncmCandidatos[0]?.ncm ?? null,
+        });
+      }
+    }
+  }
+
   if (indicesLlm.length === 0) {
     return { classificados: resultados, cache: stats };
   }
-
-  const { geminiClassificacaoHabilitada, classificarItensGeminiLote } = await import(
-    "../llm/classificar-gemini-lovable.js"
-  );
 
   let indicesFallback = indicesLlm;
 
