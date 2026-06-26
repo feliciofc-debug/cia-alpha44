@@ -470,8 +470,7 @@ async function classificarEmLotes(
             inputNcmInformado: input.ncmInformado ?? null,
             ignorarCacheQuandoSemNcmReal: opts?.ignorarCacheQuandoSemNcmReal,
             decisao: "visao-vetou-planilha-china",
-            provedor: "gemini",
-            ncmPlanilhaChina: hit.ncm,
+            provedor: `gemini-vetou-planilha-china-${hit.ncm}`,
             ncm: visao.output.ncmCandidatos[0]?.ncm ?? null,
           });
         }
@@ -494,9 +493,10 @@ async function classificarEmLotes(
           inputNcmInformado: input.ncmInformado ?? null,
           ignorarCacheQuandoSemNcmReal: opts?.ignorarCacheQuandoSemNcmReal,
           decisao: visao.ok ? "planilha-china-confirmada-visao" : "planilha-china-visao-indisponivel",
-          provedor: "planilha-china",
+          provedor: visao.ok
+            ? `planilha-china-confirmada-visao-${visao.output.ncmCandidatos[0]?.ncm ?? "sem-ncm"}`
+            : "planilha-china-visao-indisponivel",
           ncm: hit.ncm,
-          ncmVisao: visao.output.ncmCandidatos[0]?.ncm ?? null,
         });
       }
     }
