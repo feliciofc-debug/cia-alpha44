@@ -19,6 +19,22 @@ export interface ClassificacaoCacheStats {
   misses: number;
   humanos: number;
   total: number;
+  trace?: Array<{
+    idx: number;
+    descOriginal: string;
+    linhaNcm: string | null;
+    inputNcmInformado: string | null;
+    ignorarCacheQuandoSemNcmReal?: boolean;
+    temColunaNcmReal?: boolean;
+    devePularCache?: boolean;
+    cacheLookupConsultado?: boolean;
+    cacheEncontrado?: boolean;
+    cacheProvedor?: string | null;
+    cacheToxico?: boolean;
+    decisao: string;
+    provedor?: string | null;
+    ncm?: string | null;
+  }>;
 }
 
 export interface ClassificacaoCacheVersoes {

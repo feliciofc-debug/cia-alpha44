@@ -1112,6 +1112,7 @@ function diagnosticoDryRunCot72(params: {
   const linhaDepois = params.preparado.linhas[0] ?? null;
   const itemClassificado = params.preparado.itensValidados.find((it) => (it.ordem ?? -1) === (itemAntes?.ordem ?? -2)) ?? params.preparado.itensValidados[0] ?? null;
   const limpeza = itemAntes ? params.limpezas.find((it) => it.ordem === itemAntes.ordem) ?? null : null;
+  const traceClassificacao = params.preparado.montado.classificacaoCache.trace?.find((t) => t.idx === 0) ?? null;
 
   return {
     marker: COT72_DRYRUN_DIAGNOSTIC_MARKER,
@@ -1124,6 +1125,7 @@ function diagnosticoDryRunCot72(params: {
       metaDepoisSanitizacao: metaDiag(itemDepoisMeta?.meta),
       limpeza,
       linhaNcmAposSanitizacao: linhaDepois?.ncm ?? null,
+      traceClassificacao,
       fonteDepois: itemClassificado?.ncmFonte ?? null,
       ncmDepois: itemClassificado?.ncm ?? null,
       descPtDepois: itemClassificado?.descPt ?? null,

@@ -129,6 +129,7 @@ function markdown(preview, manifest) {
       `- Meta depois saneamento: status=${diag.item0.metaDepoisSanitizacao?.ncmEmbarqueStatus ?? "null"} ncmEmbarque=${diag.item0.metaDepoisSanitizacao?.ncmEmbarque ?? "null"} ncmPlanilhaOriginal=${diag.item0.metaDepoisSanitizacao?.ncmPlanilhaOriginal ?? "null"} ncmReferencia=${diag.item0.metaDepoisSanitizacao?.ncmReferencia ?? "null"}`,
       `- Limpeza: ${diag.item0.limpeza?.motivo ?? "nao-limpou"}`,
       `- linha.ncm após saneamento: ${diag.item0.linhaNcmAposSanitizacao ?? "null"}`,
+      `- Trace classificação: decisão=${diag.item0.traceClassificacao?.decisao ?? "ausente"} ignorarCacheQuandoSemNcmReal=${String(diag.item0.traceClassificacao?.ignorarCacheQuandoSemNcmReal)} temColunaNcmReal=${String(diag.item0.traceClassificacao?.temColunaNcmReal)} devePularCache=${String(diag.item0.traceClassificacao?.devePularCache)} cacheLookupConsultado=${String(diag.item0.traceClassificacao?.cacheLookupConsultado)} cacheEncontrado=${String(diag.item0.traceClassificacao?.cacheEncontrado)} cacheProvedor=${diag.item0.traceClassificacao?.cacheProvedor ?? "null"} cacheToxico=${String(diag.item0.traceClassificacao?.cacheToxico)}`,
       `- Decisão depois: fonte=${diag.item0.fonteDepois ?? "null"} ncm=${diag.item0.ncmDepois ?? "null"}`,
     );
   }
