@@ -163,6 +163,7 @@ async function classificarEmLotes(
 
   const versoes = versoesClassificacaoCache(state.ncmCatalog);
   const stats = criarStatsClassificacaoCache(inputs.length);
+  stats.trace = [];
   const resultados: ClassifyItemOutput[] = new Array(inputs.length);
   const indicesLlm: number[] = [];
   const gravarCache = opts?.gravarCache !== false;
@@ -180,6 +181,14 @@ async function classificarEmLotes(
 
   for (let i = 0; i < inputs.length; i++) {
     const input = inputs[i]!;
+    const linha = linhas[i]!;
+    const traceBase = {
+      idx: i,
+      descOriginal: input.descOriginal,
+      linhaNcm: linha.ncm ?? null,
+      inputNcmInformado: input.ncmInformado ?? null,
+      ignorarCacheQuandoSemNcmReal: opts?.ignorarCacheQuandoSemNcmReal,
+    };
     if (input.ncmRevisadoHumano && input.ncmConfirmado?.trim()) {
       resultados[i] = outputConfirmacaoHumana({
         descOriginal: input.descOriginal,
@@ -190,19 +199,35 @@ async function classificarEmLotes(
         descDuimp: input.descDuimpConfirmado ?? undefined,
       });
       stats.humanos += 1;
+      if (i === 0) {
+        stats.trace?.push({
+          ...traceBase,
+          decisao: "humano-confirmado",
+          provedor: "humano",
+          ncm: input.ncmConfirmado,
+        });
+      }
       continue;
     }
 
-    const hitCliente = resolverNcmDeclaradoCliente(input, linhas[i]!, state.ncmCatalog);
+    const hitCliente = resolverNcmDeclaradoCliente(input, linha, state.ncmCatalog);
     if (hitCliente) {
       resultados[i] = outputFromPlanilhaClienteHit(input, hitCliente, state.ncmCatalog);
       await salvarCache(input, resultados[i]!);
       stats.hits += 1;
+      if (i === 0) {
+        stats.trace?.push({
+          ...traceBase,
+          decisao: "planilha-cliente-direta",
+          provedor: hitCliente.provedor,
+          ncm: hitCliente.ncm,
+        });
+      }
       continue;
     }
 
     const hitFamilia = resolverNcmHerancaFamiliaFatura(
-      linhas[i]!,
+      linha,
       linhas,
       state.ncmCatalog,
       i,
@@ -211,10 +236,18 @@ async function classificarEmLotes(
       resultados[i] = outputFromPlanilhaClienteHit(input, hitFamilia, state.ncmCatalog);
       await salvarCache(input, resultados[i]!);
       stats.hits += 1;
+      if (i === 0) {
+        stats.trace?.push({
+          ...traceBase,
+          decisao: "planilha-cliente-familia",
+          provedor: hitFamilia.provedor,
+          ncm: hitFamilia.ncm,
+        });
+      }
       continue;
     }
 
-    const temColunaNcmReal = Boolean(normNcm8(linhas[i]?.ncm ?? ""));
+    const temColunaNcmReal = Boolean(normNcm8(linha.ncm ?? ""));
     const devePularCache = deveIgnorarCacheSemNcmReal({
       ignorarCacheQuandoSemNcmReal: opts?.ignorarCacheQuandoSemNcmReal,
       temColunaNcmReal,
@@ -225,16 +258,46 @@ async function classificarEmLotes(
           { descOriginal: input.descOriginal, material: input.material, uso: input.uso },
           versoes,
         );
-    if (cached && !cacheClassificacaoToxico(cached.output, { temColunaNcmReal })) {
+    const cacheProvedor = cached
+      ? String((cached.output as unknown as Record<string, unknown>).classificacaoProvedor ?? "")
+      : null;
+    const cacheToxico = cached ? cacheClassificacaoToxico(cached.output, { temColunaNcmReal }) : false;
+    if (cached && !cacheToxico) {
       resultados[i] = {
         ...cached.output,
         classificacaoCacheOrigem: cached.confirmadoHumano ? "humano" : "llm",
       };
       stats.hits += 1;
+      if (i === 0) {
+        stats.trace?.push({
+          ...traceBase,
+          temColunaNcmReal,
+          devePularCache,
+          cacheLookupConsultado: !devePularCache,
+          cacheEncontrado: true,
+          cacheProvedor,
+          cacheToxico,
+          decisao: "cache",
+          provedor: cacheProvedor,
+          ncm: cached.output.ncmCandidatos?.[0]?.ncm ?? null,
+        });
+      }
       continue;
     }
 
     stats.misses += 1;
+    if (i === 0) {
+      stats.trace?.push({
+        ...traceBase,
+        temColunaNcmReal,
+        devePularCache,
+        cacheLookupConsultado: !devePularCache,
+        cacheEncontrado: Boolean(cached),
+        cacheProvedor,
+        cacheToxico,
+        decisao: "miss-llm-siscomex",
+      });
+    }
     indicesLlm.push(i);
   }
 
