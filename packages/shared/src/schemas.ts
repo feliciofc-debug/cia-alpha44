@@ -120,7 +120,7 @@ export const itemSchema = z.object({
   /** Foto do produto (compliance) — base64 durante sessão ou após parse. */
   fotoBase64: z.string().optional(),
   fotoMime: z.string().optional(),
-  /** Caminho relativo em data/fotos/ após salvar cotação. */
+  /** Caminho relativo ao diretório de fotos da API após salvar cotação. */
   fotoPath: z.string().optional(),
   /** URL da API para exibir foto salva (preenchido pelo backend). */
   fotoUrl: z.string().optional(),

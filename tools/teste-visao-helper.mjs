@@ -17,6 +17,7 @@
 import { PrismaClient } from "@prisma/client";
 import { existsSync, readFileSync } from "node:fs";
 import { extname, isAbsolute, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const COT_ID = process.argv[2] ?? process.env.COT72_ID ?? "cmqlfuhvm000ykw2cue1whldj";
 const ORDENS = (process.env.VISION_TEST_ORDENS ?? "0,9")
@@ -24,9 +25,8 @@ const ORDENS = (process.env.VISION_TEST_ORDENS ?? "0,9")
   .map((v) => Number.parseInt(v.trim(), 10))
   .filter((v) => Number.isInteger(v) && v >= 0);
 
-const FOTOS_DIR = process.env.FOTOS_DIR
-  ? resolve(process.env.FOTOS_DIR)
-  : join(process.cwd(), "data", "fotos");
+const DEFAULT_FOTOS_DIR = fileURLToPath(new URL("../apps/api/data/fotos", import.meta.url));
+const FOTOS_DIR = process.env.FOTOS_DIR ? resolve(process.env.FOTOS_DIR) : DEFAULT_FOTOS_DIR;
 
 const HELPER_URL =
   process.env.NCM_HELPER_SUGERIR_URL?.trim() ||
