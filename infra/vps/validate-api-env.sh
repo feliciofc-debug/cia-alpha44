@@ -21,6 +21,11 @@ grep -c $'\r' "$ENV_API" || echo 0
 echo "WEB_ORIGIN:"
 grep '^WEB_ORIGIN=' "$ENV_API" || echo "(ausente)"
 
+echo "NCM helper / visão:"
+grep '^NCM_HELPER_BASE_URL=' "$ENV_API" || echo "NCM_HELPER_BASE_URL=(ausente)"
+grep '^CLASSIFICACAO_NCM_PROVIDER=' "$ENV_API" || echo "CLASSIFICACAO_NCM_PROVIDER=(ausente)"
+grep '^CLASSIFICACAO_NCM_VISION=' "$ENV_API" || echo "CLASSIFICACAO_NCM_VISION=(ausente)"
+
 echo -n "CLERK prefix: "
 grep -o '^CLERK_SECRET_KEY=sk_[a-z]*_' "$ENV_API" || echo "(ausente)"
 
