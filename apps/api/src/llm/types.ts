@@ -11,6 +11,8 @@ export interface ClassifyItemInput {
   /** Foto do produto ancorada à linha da planilha, quando existir. */
   fotoBase64?: string;
   fotoMime?: string;
+  /** Confiança mínima para aceitar visão divergente da família textual (uso restrito: veto planilha China). */
+  confiancaMinVisaoDivergente?: number;
   /** P3b — confirmação humana prevalece sobre cache/LLM. */
   ncmRevisadoHumano?: boolean;
   ncmConfirmado?: string | null;

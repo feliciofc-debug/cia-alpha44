@@ -234,4 +234,52 @@ describe("ncmEmbarque — upload classificar", () => {
     expect(itens[0]!.ncm).not.toMatch(/^(8471|8517)/);
     expect(itens[0]!.ncmAvisos?.join(" ")).toMatch(/Visão prevaleceu — conferir/i);
   });
+
+  it("visão 0.80 pode vetar lavadora da planilha China quando valida hit com foto", async () => {
+    process.env.CLASSIFICACAO_NCM_PROVIDER = "gemini";
+    process.env.CLASSIFICACAO_NCM_VISION = "1";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            sugestao: {
+              ncm: "84512100",
+              descricaoOficial: "Máquinas de secar roupa, de capacidade não superior a 10 kg",
+              confianca: 0.8,
+              justificativaRGI: "Vejo secadora de roupas portátil na imagem.",
+            },
+            alternativas: [{ ncm: "84211910", descricaoOficial: "Secadores centrífugos" }],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      ),
+    );
+
+    const linhas: LinhaCrua[] = [
+      {
+        descOriginal:
+          "HY-5123;智能烘干机;Secadora inteligente de uso doméstico, capacidade não superior a 10 kg (peso de roupa seca)",
+        ncm: null,
+        qtd: 1000,
+        pesoBrutoKg: 320,
+        pesoLiqKg: 294.4,
+        fobTotalUS: 1789.7,
+        fobUnitarioUS: null,
+        fotoBase64: "Zm90by1kZS1zZWNhZG9yYQ==",
+        fotoMime: "image/png",
+      },
+    ];
+
+    const { itens, classificacaoCache } = await montarItens(linhas, buildStateComPlanilhaChina(), {
+      gravarCacheClassificacao: false,
+    });
+
+    expect(classificacaoCache.trace?.[0]?.decisao).toBe("visao-vetou-planilha-china");
+    expect(itens[0]!.ncmFonte).toBe("gemini");
+    expect(itens[0]!.ncm).toBe("84512100");
+    expect(itens[0]!.ncm).not.toBe("84501200");
+    expect(itens[0]!.ncmAvisos?.join(" ")).toMatch(/Visão prevaleceu — conferir/i);
+  });
 });
