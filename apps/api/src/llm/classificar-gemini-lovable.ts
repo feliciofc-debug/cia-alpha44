@@ -13,6 +13,7 @@ import { mapComConcorrencia } from "../util/map-concorrencia.js";
 import type { ClassifyItemInput, ClassifyItemOutput } from "./types.js";
 
 const AVISO_PENDENTE = "Classificação pendente — revisar";
+const CONFIANCA_MIN_VISAO_DIVERGENTE = 0.9;
 
 export function geminiClassificacaoHabilitada(): boolean {
   const p = (process.env.CLASSIFICACAO_NCM_PROVIDER ?? "gemini").toLowerCase();
@@ -99,17 +100,22 @@ export async function classificarItensGeminiLote(
       };
     }
 
-    if (usarVisao && candidatoDivergeDaFamiliaTextual(input, sug.sugestao.ncm)) {
+    const conf = sug.sugestao.confianca ?? 0.85;
+    const visaoDivergeDaFamiliaTextual = usarVisao && candidatoDivergeDaFamiliaTextual(input, sug.sugestao.ncm);
+
+    if (visaoDivergeDaFamiliaTextual && conf < CONFIANCA_MIN_VISAO_DIVERGENTE) {
       return {
         ok: false,
         output: saidaPendente(
           input,
-          `Imagem divergiu radicalmente da família textual ao sugerir ${sug.sugestao.ncm} — revisar manualmente.`,
+          `Imagem divergiu radicalmente da família textual ao sugerir ${sug.sugestao.ncm} com baixa confiança (${conf.toFixed(2)}) — revisar manualmente.`,
         ),
       };
     }
 
-    const conf = sug.sugestao.confianca ?? 0.85;
+    const avisoVisaoPrevaleceu = visaoDivergeDaFamiliaTextual
+      ? `Visão prevaleceu — conferir: sugestão visual ${sug.sugestao.ncm} com confiança ${conf.toFixed(2)} diverge da família textual.`
+      : undefined;
     const candidatos = [
       {
         ncm: sug.sugestao.ncm,
@@ -142,6 +148,7 @@ export async function classificarItensGeminiLote(
         confiancaPasse2: conf,
         classificacaoBaixaConfianca: conf < 0.6,
         classificacaoProvedor: "gemini",
+        ...(avisoVisaoPrevaleceu ? { avisoAtributo: avisoVisaoPrevaleceu } : {}),
         ...(avisoTraducao ? { avisoTraducao } : {}),
       },
     };
