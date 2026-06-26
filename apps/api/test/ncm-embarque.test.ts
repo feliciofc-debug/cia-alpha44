@@ -232,6 +232,6 @@ describe("ncmEmbarque — upload classificar", () => {
     expect(itens[0]!.ncmFonte).toBe("gemini");
     expect(itens[0]!.ncm).toMatch(/^8423/);
     expect(itens[0]!.ncm).not.toMatch(/^(8471|8517)/);
-    expect(itens[0]!.ncmAvisos?.join(" ")).toMatch(/Visão vetou NCM da planilha China/i);
+    expect(itens[0]!.ncmAvisos?.join(" ")).toMatch(/Visão prevaleceu — conferir/i);
   });
 });

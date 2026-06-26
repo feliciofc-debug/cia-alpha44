@@ -152,7 +152,7 @@ function outputVisaoVetaPlanilhaChina(
   const { descPt, avisoTraducao } = resolverDescPtFornecedor(input.descOriginal, outputVisao.descPt);
   const ncmVisao = normNcm8(outputVisao.ncmCandidatos[0]?.ncm ?? "");
   const descVisao = ncmVisao ? catalog.descricao(ncmVisao) ?? outputVisao.ncmCandidatos[0]?.descricaoOficial : null;
-  const aviso = `Visão vetou NCM da planilha China ${hit.ncm} (${hit.desc}) por família incompatível; aplicar ${ncmVisao ?? "sugestão visual"} e revisar manualmente.`;
+  const aviso = `Visão prevaleceu — conferir: vetou NCM da planilha China ${hit.ncm} (${hit.desc}) por família incompatível; aplicar ${ncmVisao ?? "sugestão visual"} e revisar manualmente.`;
   return {
     ...outputVisao,
     descPt,

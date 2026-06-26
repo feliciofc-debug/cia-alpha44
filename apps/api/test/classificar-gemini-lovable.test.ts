@@ -123,13 +123,13 @@ describe("classificar-gemini-lovable", () => {
     );
   });
 
-  it("não aplica visão que pula para capítulo incoerente com a família textual", async () => {
+  it("não aplica visão de baixa confiança que pula para capítulo incoerente com a família textual", async () => {
     process.env.CLASSIFICACAO_NCM_VISION = "1";
     sugerirMock.mockResolvedValue({
       ok: true,
       sugestao: {
         ncm: "39241000",
-        confianca: 0.9,
+        confianca: 0.89,
         descricaoOficial: "Serviços de mesa e outros utensílios de mesa ou de cozinha, de plástico",
       },
     });
@@ -150,6 +150,36 @@ describe("classificar-gemini-lovable", () => {
     expect(r!.ok).toBe(false);
     expect(r!.output.ncmCandidatos).toHaveLength(0);
     expect(r!.output.descDuimp).toMatch(/divergiu radicalmente/i);
+  });
+
+  it("aplica visão divergente de alta confiança com aviso de conferência", async () => {
+    process.env.CLASSIFICACAO_NCM_VISION = "1";
+    sugerirMock.mockResolvedValue({
+      ok: true,
+      sugestao: {
+        ncm: "85098090",
+        confianca: 0.95,
+        descricaoOficial: "Outros aparelhos eletromecânicos com motor elétrico incorporado, de uso doméstico",
+        justificativaRGI: "Vejo pedicuro elétrico na imagem.",
+      },
+    });
+
+    const [r] = await classificarItensGeminiLote(
+      [
+        {
+          descOriginal: "HY-80036;电动磨脚皮器",
+          descPtConfirmado: "Lixadeira elétrica para pés",
+          fotoBase64: Buffer.from("fake-image").toString("base64"),
+          fotoMime: "image/jpeg",
+        },
+      ],
+      catalog,
+      1,
+    );
+
+    expect(r!.ok).toBe(true);
+    expect(r!.output.ncmCandidatos[0]!.ncm).toBe("85098090");
+    expect(r!.output.avisoAtributo).toMatch(/Visão prevaleceu — conferir/i);
   });
 
   it("classificarItensGeminiLote ok=false quando Lovable falha", async () => {
