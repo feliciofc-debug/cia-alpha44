@@ -2,7 +2,12 @@
  * Classificação NCM via Gemini/Lovable — após planilha cliente e cache; antes do fluxo legado.
  */
 
-import { resolverDescPtFornecedor, type NcmCatalog } from "@cia/pipeline";
+import {
+  detectarFamilias,
+  ncmCoerenteComFamilia,
+  resolverDescPtFornecedor,
+  type NcmCatalog,
+} from "@cia/pipeline";
 import { sugerirNcm } from "../services/ncm-helper.js";
 import { mapComConcorrencia } from "../util/map-concorrencia.js";
 import type { ClassifyItemInput, ClassifyItemOutput } from "./types.js";
@@ -13,6 +18,11 @@ export function geminiClassificacaoHabilitada(): boolean {
   const p = (process.env.CLASSIFICACAO_NCM_PROVIDER ?? "gemini").toLowerCase();
   if (p === "off" || p === "legacy" || p === "anthropic" || p === "2passes") return false;
   return p === "gemini" || p === "lovable" || p === "auto";
+}
+
+export function geminiVisaoHabilitada(): boolean {
+  const v = String(process.env.CLASSIFICACAO_NCM_VISION ?? "").toLowerCase();
+  return v === "1" || v === "true" || v === "on";
 }
 
 function saidaPendente(input: ClassifyItemInput, aviso?: string): ClassifyItemOutput {
@@ -31,10 +41,30 @@ function saidaPendente(input: ClassifyItemInput, aviso?: string): ClassifyItemOu
 }
 
 function inputParaSugerir(input: ClassifyItemInput): string {
-  const partes = [input.descOriginal.trim()];
+  const { descPt } = resolverDescPtFornecedor(input.descOriginal, input.descPtConfirmado);
+  const partes = [descPt.trim()];
   if (input.material?.trim()) partes.push(`Material: ${input.material.trim()}`);
   if (input.uso?.trim()) partes.push(`Uso: ${input.uso.trim()}`);
+  if (input.fotoBase64 && geminiVisaoHabilitada()) {
+    partes.push(
+      "Imagem anexada: use somente para refinar atributos dentro da família textual; se divergir de capítulo/família, sinalize revisão.",
+    );
+  }
   return partes.join(" · ");
+}
+
+function candidatoDivergeDaFamiliaTextual(input: ClassifyItemInput, ncm: string): boolean {
+  const { descPt } = resolverDescPtFornecedor(input.descOriginal, input.descPtConfirmado);
+  const texto = `${input.descOriginal} ${descPt} ${input.uso ?? ""}`.toLowerCase();
+  const prefixosExplicitos: string[] = [];
+  if (/balan[cç]a|pesagem|scale|挂钩秤/.test(texto)) prefixosExplicitos.push("8423");
+  if (/air\s*fryer|fritadeira|pipoqueir|pipoca|popcorn/.test(texto)) prefixosExplicitos.push("8516");
+  if (prefixosExplicitos.length && !prefixosExplicitos.some((p) => ncm.startsWith(p))) {
+    return true;
+  }
+  const det = detectarFamilias({ descOriginal: `${input.descOriginal} ${descPt}`, uso: input.uso });
+  const familia = det.conflito ? null : (det.familias[0]?.familia ?? null);
+  return Boolean(familia && !ncmCoerenteComFamilia(ncm, familia));
 }
 
 /** Classifica lote via Lovable/Gemini (paralelo). Retorna ok=false → caller faz fallback legado. */
@@ -44,6 +74,7 @@ export async function classificarItensGeminiLote(
   concurrency = 6,
 ): Promise<Array<{ ok: boolean; output: ClassifyItemOutput }>> {
   return mapComConcorrencia(inputs, concurrency, async (input) => {
+    const usarVisao = geminiVisaoHabilitada() && Boolean(input.fotoBase64);
     const sug = await sugerirNcm(
       {
         descricao: inputParaSugerir(input),
@@ -51,6 +82,12 @@ export async function classificarItensGeminiLote(
         uso: input.uso ?? null,
         ncmAtual: input.ncmInformado ?? null,
         max: 4,
+        ...(usarVisao
+          ? {
+              imagemBase64: input.fotoBase64,
+              imagemMime: input.fotoMime ?? "image/jpeg",
+            }
+          : {}),
       },
       catalog,
     );
@@ -59,6 +96,16 @@ export async function classificarItensGeminiLote(
       return {
         ok: false,
         output: saidaPendente(input, sug.erro ?? "Gemini/Lovable indisponível"),
+      };
+    }
+
+    if (usarVisao && candidatoDivergeDaFamiliaTextual(input, sug.sugestao.ncm)) {
+      return {
+        ok: false,
+        output: saidaPendente(
+          input,
+          `Imagem divergiu radicalmente da família textual ao sugerir ${sug.sugestao.ncm} — revisar manualmente.`,
+        ),
       };
     }
 

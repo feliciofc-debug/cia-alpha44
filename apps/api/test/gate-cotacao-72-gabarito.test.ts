@@ -60,6 +60,7 @@ const FONTES_NCM_OK = new Set([
   "siscomex",
   "planilha-cliente",
   "planilha-cliente-familia",
+  "planilha-china",
   "gemini",
 ]);
 
@@ -164,24 +165,25 @@ describe("gate cotação 72 — gabarito Felicio", () => {
     expect(linhas.length).toBeGreaterThanOrEqual(22);
   });
 
-  it("código não usa classificador planilha-china", () => {
+  it("código não usa planilha China como planilha-cliente falsa", () => {
     const cotacaoSrc = readFileSync(join(__dir, "../src/services/cotacao.ts"), "utf8");
     const resolveSrc = readFileSync(
       join(__dir, "../../../packages/pipeline/src/resolve-ncm.ts"),
       "utf8",
     );
-    expect(cotacaoSrc).not.toContain("resolverNcmClassificacaoPlanilhaChina");
-    expect(cotacaoSrc).not.toContain('"planilha-china"');
-    expect(resolveSrc).not.toContain('"planilha-china"');
+    expect(cotacaoSrc).toContain("resolverNcmClassificacaoPlanilhaChina");
+    expect(cotacaoSrc).toContain('"planilha-china"');
+    expect(resolveSrc).toContain('"planilha-china"');
+    expect(cotacaoSrc).not.toContain('provedor: "planilha-cliente" /* planilha China */');
   });
 
-  it("itens gabarito — ncmFonte ∈ {ia, siscomex, planilha-cliente, …} e sem NCMs de regressão", () => {
+  it("itens gabarito — ncmFonte auditável e sem planilha-cliente falsa", () => {
     const itens = itensGabaritoMotor();
     expect(itens.length).toBe(FIXTURE.gabarito.linhas);
 
     for (const it of itens) {
       expect(FONTES_NCM_OK.has(it.ncmFonte!)).toBe(true);
-      expect(it.ncmFonte).not.toBe("planilha-china");
+      expect(it.ncmFonte).not.toBe("planilha-cliente");
       if (it.ncm && FIXTURE.ncmsRegressao.includes(it.ncm)) {
         expect(FIXTURE.itens.some((g) => g.ncm === it.ncm)).toBe(true);
       }

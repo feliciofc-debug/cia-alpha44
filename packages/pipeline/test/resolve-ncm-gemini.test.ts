@@ -26,6 +26,18 @@ describe("resolveNcm — Gemini validado Siscomex", () => {
     expect(r.ncm).toBe("84798999");
   });
 
+  it("planilha-china retorna fonte própria, sem virar planilha-cliente", () => {
+    const r = resolveNcm(catalog, {
+      fonteClassificacao: "planilha-china",
+      candidatosIa: [{ ncm: "84231000", confianca: 0.9 }],
+      descOriginal: "Balança de gancho portátil",
+      descPt: "Balança de gancho portátil",
+    });
+    expect(r.fonte).toBe("planilha-china");
+    expect(r.ncm).toBe("84231000");
+    expect(r.valido).toBe(true);
+  });
+
   it("prevalece sobre NCM da coluna embarque quando fonte gemini (fallback)", () => {
     const r = resolveNcm(catalog, {
       ncmPlanilha: "84732910",

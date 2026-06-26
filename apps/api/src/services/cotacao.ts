@@ -20,16 +20,20 @@ import {
   resolverNcmDeclaradoCliente,
   resolverNcmHerancaFamiliaFatura,
   classificarSiscomexUltimoRecurso,
+  carregarItensPlanilhaChinaOperacional,
   normNcm8,
+  resolverNcmClassificacaoPlanilhaChina,
   type LinhaCrua,
   type NcmCatalog,
   type PlanilhaClienteNcmHit,
+  type PlanilhaChinaNcmHit,
   resolverDescPtFornecedor,
 } from "@cia/pipeline";
 import type { Cotacao, Item } from "@cia/shared";
 import type { AppState } from "../state.js";
 import type { ClassifyItemInput, ClassifyItemOutput } from "../llm/types.js";
 import { mapComConcorrencia } from "../util/map-concorrencia.js";
+import { traduzirDescricaoClassificacaoMock } from "../llm/traducao-classificacao-mock.js";
 import {
   criarStatsClassificacaoCache,
   cacheClassificacaoToxico,
@@ -56,6 +60,12 @@ const CLASSIFY_CONCORRENCIA = Math.min(
   Math.max(1, Number.parseInt(process.env.CLASSIFY_CONCURRENCY ?? "5", 10) || 5),
 );
 
+/**
+ * Hit soberano da planilha China precisa ser forte: o resolver já valida catálogo,
+ * família e presença no histórico China; abaixo deste score tratamos como ambíguo.
+ */
+const SCORE_MIN_HIT_COHERENTE_PLANILHA_CHINA = 0.55;
+
 function outputFromPlanilhaClienteHit(
   input: ClassifyItemInput,
   hit: PlanilhaClienteNcmHit,
@@ -66,7 +76,7 @@ function outputFromPlanilhaClienteHit(
     hit.provedor === "planilha-cliente"
       ? "NCM declarado na planilha do cliente"
       : "NCM herdado de linha da mesma família na fatura";
-  const { descPt, avisoTraducao } = resolverDescPtFornecedor(input.descOriginal);
+  const { descPt, avisoTraducao } = resolverDescPtFornecedor(input.descOriginal, input.descPtConfirmado);
   return {
     descPt,
     descDuimp: `${descOficial} — ${rotulo}.`,
@@ -78,6 +88,32 @@ function outputFromPlanilhaClienteHit(
       },
     ],
     classificacaoProvedor: hit.provedor,
+    ...(avisoTraducao ? { avisoTraducao } : {}),
+  };
+}
+
+function hitPlanilhaChinaCoerente(hit: PlanilhaChinaNcmHit | null, catalog: NcmCatalog): hit is PlanilhaChinaNcmHit {
+  return Boolean(hit && hit.score >= SCORE_MIN_HIT_COHERENTE_PLANILHA_CHINA && catalog.existe(hit.ncm));
+}
+
+function outputFromPlanilhaChinaHit(
+  input: ClassifyItemInput,
+  hit: PlanilhaChinaNcmHit,
+  catalog: NcmCatalog,
+): ClassifyItemOutput {
+  const descOficial = catalog.descricao(hit.ncm) ?? hit.desc;
+  const { descPt, avisoTraducao } = resolverDescPtFornecedor(input.descOriginal, input.descPtConfirmado);
+  return {
+    descPt,
+    descDuimp: `${descOficial} — NCM equivalente da planilha Importação China (score ${hit.score.toFixed(2)}).`,
+    ncmCandidatos: [
+      {
+        ncm: hit.ncm,
+        descricaoOficial: descOficial,
+        confianca: Math.min(0.96, Math.max(0.7, hit.score)),
+      },
+    ],
+    classificacaoProvedor: "planilha-china",
     ...(avisoTraducao ? { avisoTraducao } : {}),
   };
 }
@@ -100,6 +136,7 @@ function fonteClassificacaoDeProvedor(
   if (
     provedor === "planilha-cliente" ||
     provedor === "planilha-cliente-familia" ||
+    provedor === "planilha-china" ||
     provedor === "siscomex" ||
     provedor === "gemini"
   ) {
@@ -131,7 +168,7 @@ async function classificarItemComFallback(
   );
 }
 
-/** Classifica em paralelo (2 passes por item) — cache P3b + tradução em lote + fallback legado. */
+/** Classifica em paralelo — humano → tradução → planilha China → cache → Gemini/visão → Siscomex. */
 async function classificarEmLotes(
   state: AppState,
   linhas: LinhaCrua[],
@@ -154,6 +191,8 @@ async function classificarEmLotes(
       material: l.material,
       uso: l.uso,
       contexto: contextoSiscomexParaItem(state.ncmCatalog, l.descOriginal, l.ncm),
+      fotoBase64: l.fotoBase64,
+      fotoMime: l.fotoMime,
       ncmRevisadoHumano: ext.ncmRevisadoHumano,
       ncmConfirmado: ext.ncmConfirmado,
       descPtConfirmado: ext.descPt,
@@ -167,6 +206,29 @@ async function classificarEmLotes(
   const resultados: ClassifyItemOutput[] = new Array(inputs.length);
   const indicesLlm: number[] = [];
   const gravarCache = opts?.gravarCache !== false;
+  const chamarLlm = state.provider.chamarLlm;
+  const traducoes =
+    chamarLlm && state.provider.disponivel
+      ? await traduzirDescricoesClassificacao(inputs, chamarLlm)
+      : {
+          descricoes: inputs.map(
+            (input) =>
+              resolverDescPtFornecedor(
+                input.descOriginal,
+                traduzirDescricaoClassificacaoMock(input.descOriginal),
+              ).descPt,
+          ),
+          traducaoIndisponivel: !state.provider.disponivel,
+        };
+  for (let i = 0; i < inputs.length; i++) {
+    const descPt = inputs[i]!.descPtConfirmado?.trim() || traducoes.descricoes[i]!;
+    inputs[i] = {
+      ...inputs[i]!,
+      descPtConfirmado: descPt,
+      contexto: contextoSiscomexParaItem(state.ncmCatalog, descPt, inputs[i]!.ncmInformado),
+    };
+  }
+  const planilhaChinaItens = carregarItensPlanilhaChinaOperacional();
   const salvarCache = async (
     input: Pick<ClassifyItemInput, "descOriginal" | "material" | "uso">,
     output: ClassifyItemOutput,
@@ -247,6 +309,31 @@ async function classificarEmLotes(
       continue;
     }
 
+    const hitChina = resolverNcmClassificacaoPlanilhaChina(
+      {
+        descOriginal: input.descPtConfirmado ?? input.descOriginal,
+        ncm: null,
+        material: input.material,
+        uso: input.uso,
+      },
+      planilhaChinaItens,
+      state.benchmarkIndex,
+      state.ncmCatalog,
+    );
+    if (hitPlanilhaChinaCoerente(hitChina, state.ncmCatalog)) {
+      resultados[i] = outputFromPlanilhaChinaHit(input, hitChina, state.ncmCatalog);
+      stats.hits += 1;
+      if (i === 0) {
+        stats.trace?.push({
+          ...traceBase,
+          decisao: "planilha-china",
+          provedor: "planilha-china",
+          ncm: hitChina.ncm,
+        });
+      }
+      continue;
+    }
+
     const temColunaNcmReal = Boolean(normNcm8(linha.ncm ?? ""));
     const devePularCache = deveIgnorarCacheSemNcmReal({
       ignorarCacheQuandoSemNcmReal: opts?.ignorarCacheQuandoSemNcmReal,
@@ -295,7 +382,7 @@ async function classificarEmLotes(
         cacheEncontrado: Boolean(cached),
         cacheProvedor,
         cacheToxico,
-        decisao: "miss-llm-siscomex",
+        decisao: "miss-gemini-siscomex",
       });
     }
     indicesLlm.push(i);
@@ -336,20 +423,15 @@ async function classificarEmLotes(
     return { classificados: resultados, cache: stats };
   }
 
-  const chamarLlm = state.provider.chamarLlm;
   const inputsLlm = indicesFallback.map((i) => inputs[i]!);
-  const batchTrad =
-    chamarLlm && state.provider.disponivel
-      ? await traduzirDescricoesClassificacao(inputsLlm, chamarLlm)
-      : null;
 
   const llmOut = await mapComConcorrencia(inputsLlm, CLASSIFY_CONCORRENCIA, async (input, j) => {
     const idxOrig = indicesFallback[j]!;
     try {
-      if (chamarLlm && batchTrad) {
+      if (chamarLlm) {
         const pre = {
-          descricoes: [batchTrad.descricoes[j]!],
-          traducaoIndisponivel: batchTrad.traducaoIndisponivel,
+          descricoes: [input.descPtConfirmado ?? traducoes.descricoes[idxOrig]!],
+          traducaoIndisponivel: traducoes.traducaoIndisponivel,
         };
         const [doisPasses] = await executar2PassesComLlm(state.ncmCatalog, [input], chamarLlm, pre);
         if (doisPasses) {
@@ -384,7 +466,11 @@ async function classificarEmLotes(
 
   for (let i = 0; i < resultados.length; i++) {
     if (resultados[i]?.ncmCandidatos?.length) continue;
-    const fb = classificarSiscomexUltimoRecurso(linhas[i]!, state.ncmCatalog);
+    const linhaPt = {
+      ...linhas[i]!,
+      descOriginal: inputs[i]!.descPtConfirmado ?? linhas[i]!.descOriginal,
+    };
+    const fb = classificarSiscomexUltimoRecurso(linhaPt, state.ncmCatalog);
     if (fb) {
       resultados[i] = fb;
       await salvarCache(inputs[i]!, fb);

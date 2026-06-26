@@ -131,6 +131,7 @@ export const itemSchema = z.object({
       "planilha",
       "planilha-cliente",
       "planilha-cliente-familia",
+      "planilha-china",
       "gemini",
       "ia",
       "siscomex",

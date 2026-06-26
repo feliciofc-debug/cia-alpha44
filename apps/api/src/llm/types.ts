@@ -6,10 +6,14 @@ export interface ClassifyItemInput {
   contexto?: string | null;
   material?: string | null;
   uso?: string | null;
+  /** Tradução PT resolvida antes da classificação automática. */
+  descPtConfirmado?: string | null;
+  /** Foto do produto ancorada à linha da planilha, quando existir. */
+  fotoBase64?: string;
+  fotoMime?: string;
   /** P3b — confirmação humana prevalece sobre cache/LLM. */
   ncmRevisadoHumano?: boolean;
   ncmConfirmado?: string | null;
-  descPtConfirmado?: string | null;
   descDuimpConfirmado?: string | null;
 }
 
@@ -39,6 +43,7 @@ export interface ClassifyItemOutput {
   classificacaoProvedor?:
     | "planilha-cliente"
     | "planilha-cliente-familia"
+    | "planilha-china"
     | "siscomex"
     | "gemini"
     | "anthropic"
