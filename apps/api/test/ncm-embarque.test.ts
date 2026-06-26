@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   buildBenchmarkIndex,
   defaultBenchmarkPlanilhaPath,
@@ -11,6 +11,7 @@ import {
   type LinhaCrua,
 } from "@cia/pipeline";
 import { montarItens } from "../src/services/cotacao.js";
+import { limparCacheNcmHelper } from "../src/services/ncm-helper.js";
 import type { AppState } from "../src/state.js";
 
 vi.mock("@cia/db", () => ({
@@ -55,6 +56,12 @@ function buildStateComPlanilhaChina(): AppState {
 describe("ncmEmbarque — upload classificar", () => {
   beforeEach(() => {
     process.env.CLASSIFICACAO_NCM_PROVIDER = "off";
+    delete process.env.CLASSIFICACAO_NCM_VISION;
+    limparCacheNcmHelper();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it("persiste ncmEmbarque da coluna embarque quando informado", async () => {
@@ -179,5 +186,52 @@ describe("ncmEmbarque — upload classificar", () => {
     expect(itens[0]!.ncmFonte).toBe("planilha-china");
     expect(itens[0]!.ncm).toBe("85167910");
     expect(itens[0]!.ncm).not.toBe("69022010");
+  });
+
+  it("visão com foto pode vetar família grotesca da planilha China", async () => {
+    process.env.CLASSIFICACAO_NCM_PROVIDER = "gemini";
+    process.env.CLASSIFICACAO_NCM_VISION = "1";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            sugestao: {
+              ncm: "84231000",
+              descricaoOficial: "Balanças para pessoas, incluindo as balanças para bebês; balanças de uso doméstico",
+              confianca: 0.94,
+              justificativaRGI: "Vejo balança de gancho/suspensa na imagem.",
+            },
+            alternativas: [],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      ),
+    );
+
+    const linhas: LinhaCrua[] = [
+      {
+        descOriginal: "HY-97;挂钩秤;Balança de gancho portátil",
+        ncm: null,
+        qtd: 100,
+        pesoBrutoKg: 10,
+        pesoLiqKg: 9,
+        fobTotalUS: 50,
+        fobUnitarioUS: null,
+        fotoBase64: "Zm90by1kZS1iYWxhbmNh",
+        fotoMime: "image/png",
+      },
+    ];
+
+    const { itens, classificacaoCache } = await montarItens(linhas, buildStateComPlanilhaChina(), {
+      gravarCacheClassificacao: false,
+    });
+
+    expect(classificacaoCache.trace?.[0]?.decisao).toBe("visao-vetou-planilha-china");
+    expect(itens[0]!.ncmFonte).toBe("gemini");
+    expect(itens[0]!.ncm).toMatch(/^8423/);
+    expect(itens[0]!.ncm).not.toMatch(/^(8471|8517)/);
+    expect(itens[0]!.ncmAvisos?.join(" ")).toMatch(/Visão vetou NCM da planilha China/i);
   });
 });
