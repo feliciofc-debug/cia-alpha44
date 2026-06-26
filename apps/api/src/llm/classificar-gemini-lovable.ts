@@ -102,13 +102,15 @@ export async function classificarItensGeminiLote(
 
     const conf = sug.sugestao.confianca ?? 0.85;
     const visaoDivergeDaFamiliaTextual = usarVisao && candidatoDivergeDaFamiliaTextual(input, sug.sugestao.ncm);
+    const confiancaMinVisaoDivergente =
+      input.confiancaMinVisaoDivergente ?? CONFIANCA_MIN_VISAO_DIVERGENTE;
 
-    if (visaoDivergeDaFamiliaTextual && conf < CONFIANCA_MIN_VISAO_DIVERGENTE) {
+    if (visaoDivergeDaFamiliaTextual && conf < confiancaMinVisaoDivergente) {
       return {
         ok: false,
         output: saidaPendente(
           input,
-          `Imagem divergiu radicalmente da família textual ao sugerir ${sug.sugestao.ncm} com baixa confiança (${conf.toFixed(2)}) — revisar manualmente.`,
+          `Imagem divergiu radicalmente da família textual ao sugerir ${sug.sugestao.ncm} com confiança abaixo do corte (${conf.toFixed(2)} < ${confiancaMinVisaoDivergente.toFixed(2)}) — revisar manualmente.`,
         ),
       };
     }

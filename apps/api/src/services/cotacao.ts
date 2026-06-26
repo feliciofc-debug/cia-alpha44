@@ -59,6 +59,7 @@ const CLASSIFY_CONCORRENCIA = Math.min(
   6,
   Math.max(1, Number.parseInt(process.env.CLASSIFY_CONCURRENCY ?? "5", 10) || 5),
 );
+const CONFIANCA_MIN_VISAO_VETO_PLANILHA_CHINA = 0.75;
 
 function outputFromPlanilhaClienteHit(
   input: ClassifyItemInput,
@@ -450,6 +451,7 @@ async function classificarEmLotes(
       return {
         ...inputs[idx]!,
         ncmInformado: hit.ncm,
+        confiancaMinVisaoDivergente: CONFIANCA_MIN_VISAO_VETO_PLANILHA_CHINA,
       };
     });
     const visaoOut = await classificarItensGeminiLote(inputsValidacao, state.ncmCatalog, CLASSIFY_CONCORRENCIA);
