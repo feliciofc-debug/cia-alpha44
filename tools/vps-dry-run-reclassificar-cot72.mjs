@@ -83,6 +83,7 @@ function markdown(preview, manifest) {
     `**API:** ${API}`,
     `**Backup manifest:** ${manifestPath}`,
     `**Backup SHA JSON:** ${manifest.sha256?.cotacaoJson ?? "—"}`,
+    `**Diagnóstico runtime:** ${preview.diagnosticoCot72?.marker ?? "ausente"}`,
     `**Gerado em:** ${new Date().toISOString()}`,
     "",
     "## Resumo",
@@ -111,6 +112,25 @@ function markdown(preview, manifest) {
     );
   } else {
     linhas.push("- HY-5123 não encontrado no dry-run.");
+  }
+
+  if (preview.diagnosticoCot72?.item0) {
+    const diag = preview.diagnosticoCot72;
+    linhas.push(
+      "",
+      "## Diagnóstico runtime item 0",
+      "",
+      `- Marker: ${diag.marker}`,
+      `- Cotação sem coluna NCM real: ${diag.cotacaoSemColunaNcmReal ? "SIM" : "não"}`,
+      `- Cache hits/misses/humanos/total: ${diag.classificacaoCache?.hits ?? "—"}/${diag.classificacaoCache?.misses ?? "—"}/${diag.classificacaoCache?.humanos ?? "—"}/${diag.classificacaoCache?.total ?? "—"}`,
+      `- Ordem: ${diag.item0.ordem}`,
+      `- Produto: ${diag.item0.descOriginal ?? "—"}`,
+      `- Meta antes: status=${diag.item0.metaAntes?.ncmEmbarqueStatus ?? "null"} ncmEmbarque=${diag.item0.metaAntes?.ncmEmbarque ?? "null"} ncmPlanilhaOriginal=${diag.item0.metaAntes?.ncmPlanilhaOriginal ?? "null"} ncmFonte=${diag.item0.metaAntes?.ncmFonte ?? "null"}`,
+      `- Meta depois saneamento: status=${diag.item0.metaDepoisSanitizacao?.ncmEmbarqueStatus ?? "null"} ncmEmbarque=${diag.item0.metaDepoisSanitizacao?.ncmEmbarque ?? "null"} ncmPlanilhaOriginal=${diag.item0.metaDepoisSanitizacao?.ncmPlanilhaOriginal ?? "null"} ncmReferencia=${diag.item0.metaDepoisSanitizacao?.ncmReferencia ?? "null"}`,
+      `- Limpeza: ${diag.item0.limpeza?.motivo ?? "nao-limpou"}`,
+      `- linha.ncm após saneamento: ${diag.item0.linhaNcmAposSanitizacao ?? "null"}`,
+      `- Decisão depois: fonte=${diag.item0.fonteDepois ?? "null"} ncm=${diag.item0.ncmDepois ?? "null"}`,
+    );
   }
 
   linhas.push(

@@ -59,6 +59,7 @@ import { ensureTenant } from "../auth/tenant.js";
 
 const COT72_PRODUCAO_ID = "cmqlfuhvm000ykw2cue1whldj";
 const COT72_MARKUP_REGRA_ATUAL = 0.04;
+const COT72_DRYRUN_DIAGNOSTIC_MARKER = "cot72-dryrun-diagnostic-2026-06-25";
 
 export class PersistenciaIndisponivelError extends Error {
   constructor() {
@@ -479,6 +480,18 @@ function normalizarCotacaoLegadaCot72(cotacao: Cotacao, cotacaoId: string): Cota
       ...cotacao.params,
       markupPct: COT72_MARKUP_REGRA_ATUAL,
     },
+  };
+}
+
+function metaDiag(metaRaw: unknown) {
+  const meta = metaRaw && typeof metaRaw === "object" ? (metaRaw as ItemMetaPersistido) : {};
+  return {
+    ncmFonte: meta.ncmFonte ?? null,
+    ncmEmbarqueStatus: meta.ncmEmbarqueStatus ?? null,
+    ncmEmbarque: meta.ncmEmbarque ?? null,
+    ncmPlanilhaOriginal: meta.ncmPlanilhaOriginal ?? null,
+    ncmReferencia: meta.ncmReferencia ?? null,
+    ncmRevisadoHumano: meta.ncmRevisadoHumano === true,
   };
 }
 
@@ -1082,7 +1095,39 @@ async function prepararReclassificacaoCotacaoPersistida(
   );
   const canal = canalPredominante(itensValidados);
 
-  return { cotacao, itensDb, montado, itensNovos, calc, itensValidados, canal };
+  return { cotacao, itensDb, linhas, montado, itensNovos, calc, itensValidados, canal };
+}
+
+function diagnosticoDryRunCot72(params: {
+  rowOriginal: CotacaoComRelacoes;
+  rowSimulado: CotacaoComRelacoes;
+  preparado: Awaited<ReturnType<typeof prepararReclassificacaoCotacaoPersistida>>;
+  limpezas: ReturnType<typeof rowComLimpezaNcmInjetado>["limpezas"];
+}) {
+  const itemAntes = [...params.rowOriginal.itens].sort((a, b) => a.ordem - b.ordem)[0] ?? null;
+  const itemDepoisMeta = itemAntes
+    ? params.rowSimulado.itens.find((it) => it.id === itemAntes.id) ?? null
+    : null;
+  const linhaDepois = params.preparado.linhas[0] ?? null;
+  const itemClassificado = params.preparado.itensValidados.find((it) => (it.ordem ?? -1) === (itemAntes?.ordem ?? -2)) ?? params.preparado.itensValidados[0] ?? null;
+  const limpeza = itemAntes ? params.limpezas.find((it) => it.ordem === itemAntes.ordem) ?? null : null;
+
+  return {
+    marker: COT72_DRYRUN_DIAGNOSTIC_MARKER,
+    cotacaoSemColunaNcmReal: cotacaoSemColunaNcmReal(params.rowOriginal),
+    classificacaoCache: params.preparado.montado.classificacaoCache,
+    item0: {
+      ordem: itemAntes?.ordem ?? null,
+      descOriginal: itemAntes?.descOriginal ?? null,
+      metaAntes: metaDiag(itemAntes?.meta),
+      metaDepoisSanitizacao: metaDiag(itemDepoisMeta?.meta),
+      limpeza,
+      linhaNcmAposSanitizacao: linhaDepois?.ncm ?? null,
+      fonteDepois: itemClassificado?.ncmFonte ?? null,
+      ncmDepois: itemClassificado?.ncm ?? null,
+      descPtDepois: itemClassificado?.descPt ?? null,
+    },
+  };
 }
 
 export async function dryRunReclassificarCotacaoPersistida(
@@ -1101,6 +1146,13 @@ export async function dryRunReclassificarCotacaoPersistida(
   const preparado = await prepararReclassificacaoCotacaoPersistida(rowSimulado, state, {
     gravarCacheClassificacao: false,
   });
+  const diagnosticoCot72 =
+    cotacaoId === COT72_PRODUCAO_ID
+      ? diagnosticoDryRunCot72({ rowOriginal: row, rowSimulado, preparado, limpezas })
+      : null;
+  if (diagnosticoCot72) {
+    console.info(`[cot72-dry-run-diagnostic] ${JSON.stringify(diagnosticoCot72)}`);
+  }
 
   const itensAntes = [...antesDominio.itens].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
   const itensDepois = [...preparado.itensValidados].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
@@ -1125,6 +1177,7 @@ export async function dryRunReclassificarCotacaoPersistida(
     cotacaoId,
     tenantSlug,
     provider: preparado.montado.provider,
+    ...(diagnosticoCot72 ? { diagnosticoCot72 } : {}),
     limpezaNcmInjetado: {
       itensAfetados: limpezas.length,
       itens: limpezas,
