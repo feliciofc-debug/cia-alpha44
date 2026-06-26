@@ -33,6 +33,7 @@ import { mapComConcorrencia } from "../util/map-concorrencia.js";
 import {
   criarStatsClassificacaoCache,
   cacheClassificacaoToxico,
+  deveIgnorarCacheSemNcmReal,
   lookupClassificacaoCacheDetalhe,
   outputConfirmacaoHumana,
   salvarClassificacaoCacheLlm,
@@ -134,7 +135,7 @@ async function classificarItemComFallback(
 async function classificarEmLotes(
   state: AppState,
   linhas: LinhaCrua[],
-  opts?: { gravarCache?: boolean },
+  opts?: { gravarCache?: boolean; ignorarCacheQuandoSemNcmReal?: boolean },
 ): Promise<{ classificados: ClassifyItemOutput[]; cache: ClassificacaoCacheStats }> {
   const { contextoSiscomexParaItem } = await import("../llm/ncm-contexto-siscomex.js");
   const { classificarItens2Passes, executar2PassesComLlm, traduzirDescricoesClassificacao } =
@@ -213,11 +214,17 @@ async function classificarEmLotes(
       continue;
     }
 
-    const cached = await lookupClassificacaoCacheDetalhe(
-      { descOriginal: input.descOriginal, material: input.material, uso: input.uso },
-      versoes,
-    );
     const temColunaNcmReal = Boolean(normNcm8(linhas[i]?.ncm ?? ""));
+    const devePularCache = deveIgnorarCacheSemNcmReal({
+      ignorarCacheQuandoSemNcmReal: opts?.ignorarCacheQuandoSemNcmReal,
+      temColunaNcmReal,
+    });
+    const cached = devePularCache
+      ? null
+      : await lookupClassificacaoCacheDetalhe(
+          { descOriginal: input.descOriginal, material: input.material, uso: input.uso },
+          versoes,
+        );
     if (cached && !cacheClassificacaoToxico(cached.output, { temColunaNcmReal })) {
       resultados[i] = {
         ...cached.output,
@@ -330,6 +337,7 @@ export interface MontarItensOpts {
   cambioEurUsdData?: string | null;
   cambioEurUsdFonte?: string | null;
   gravarCacheClassificacao?: boolean;
+  ignorarCacheClassificacaoSemNcmReal?: boolean;
 }
 
 export interface MontarItensMetaCambio {
@@ -393,6 +401,7 @@ export async function montarItens(
   const { linhas: linhasNorm, metas: metasFob } = preencherFobKgPlanilha(linhasMoeda, state.benchmarkIndex);
   const { classificados, cache: classificacaoCache } = await classificarEmLotes(state, linhasNorm, {
     gravarCache: opts?.gravarCacheClassificacao !== false,
+    ignorarCacheQuandoSemNcmReal: opts?.ignorarCacheClassificacaoSemNcmReal === true,
   });
 
   const itens: Item[] = [];

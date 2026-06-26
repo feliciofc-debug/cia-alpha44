@@ -56,6 +56,13 @@ export interface ClassificacaoCacheLookup {
   confirmadoHumano: boolean;
 }
 
+export function deveIgnorarCacheSemNcmReal(opts?: {
+  ignorarCacheQuandoSemNcmReal?: boolean;
+  temColunaNcmReal?: boolean;
+}): boolean {
+  return opts?.ignorarCacheQuandoSemNcmReal === true && opts.temColunaNcmReal === false;
+}
+
 /**
  * Entradas antigas ou incompatíveis com o contexto atual — nunca reutilizar como classificador NCM.
  * `planilha-cliente*` só é confiável quando a linha atual tem coluna NCM real.
