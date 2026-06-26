@@ -2,8 +2,15 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const FOTOS_DIR = process.env.FOTOS_DIR || path.join(process.cwd(), "data", "fotos");
+const DEFAULT_FOTOS_DIR = fileURLToPath(new URL("../../data/fotos", import.meta.url));
+
+export const FOTOS_DIR = process.env.FOTOS_DIR ? path.resolve(process.env.FOTOS_DIR) : DEFAULT_FOTOS_DIR;
+
+export function caminhoFotoItem(relPath: string): string {
+  return path.isAbsolute(relPath) ? relPath : path.join(FOTOS_DIR, relPath);
+}
 
 function extPorMime(mime: string): string {
   if (mime.includes("png")) return "png";
@@ -20,7 +27,7 @@ export async function salvarFotoItem(
 ): Promise<string> {
   const ext = extPorMime(mime);
   const rel = `${cotacaoId}/${ordem}.${ext}`;
-  const full = path.join(FOTOS_DIR, rel);
+  const full = caminhoFotoItem(rel);
   await fs.mkdir(path.dirname(full), { recursive: true });
   await fs.writeFile(full, Buffer.from(base64, "base64"));
   return rel;
@@ -28,7 +35,7 @@ export async function salvarFotoItem(
 
 export async function lerFotoItem(relPath: string): Promise<{ buffer: Buffer; mime: string } | null> {
   try {
-    const full = path.join(FOTOS_DIR, relPath);
+    const full = caminhoFotoItem(relPath);
     const buffer = await fs.readFile(full);
     const ext = path.extname(relPath).toLowerCase();
     const mime =
@@ -46,7 +53,7 @@ export async function lerFotoItem(relPath: string): Promise<{ buffer: Buffer; mi
 }
 
 export async function excluirFotosCotacao(cotacaoId: string): Promise<void> {
-  const dir = path.join(FOTOS_DIR, cotacaoId);
+  const dir = caminhoFotoItem(cotacaoId);
   await fs.rm(dir, { recursive: true, force: true });
 }
 
