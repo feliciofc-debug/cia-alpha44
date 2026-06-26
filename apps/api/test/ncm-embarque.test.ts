@@ -158,4 +158,26 @@ describe("ncmEmbarque — upload classificar", () => {
     expect(itens[0]!.ncm).toMatch(/^8516/);
     expect(itens[0]!.ncmEmbarqueStatus).toBe("sem-ncm-coluna");
   });
+
+  it("item 9 cot72: referência média da planilha China vence Siscomex", async () => {
+    const linhas: LinhaCrua[] = [
+      {
+        descOriginal:
+          "HY-5104;6件套硅胶空气炸锅（180g);HY-5104 — Kit 6 peças de silicone para Air Fryer (180g)",
+        ncm: null,
+        qtd: 7500,
+        pesoBrutoKg: 1400,
+        pesoLiqKg: 1288,
+        fobTotalUS: 653.66,
+        fobUnitarioUS: null,
+      },
+    ];
+
+    const { itens, classificacaoCache } = await montarItens(linhas, buildStateComPlanilhaChina());
+
+    expect(classificacaoCache.trace?.[0]?.decisao).toBe("planilha-china");
+    expect(itens[0]!.ncmFonte).toBe("planilha-china");
+    expect(itens[0]!.ncm).toBe("85167910");
+    expect(itens[0]!.ncm).not.toBe("69022010");
+  });
 });
