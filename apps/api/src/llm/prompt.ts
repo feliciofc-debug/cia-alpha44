@@ -8,7 +8,7 @@ export const SYSTEM_PROMPT = montarSystemPromptClassificacao();
 export function buildUserPrompt(itens: ClassifyItemInput[]): string {
   const lista = itens.map((it, i) => ({
     i,
-    descricao: it.descOriginal,
+    descricao: it.descPtConfirmado ?? it.descOriginal,
     ncmInformado: it.ncmInformado ?? null,
     contextoSiscomex: it.contexto ?? null,
   }));

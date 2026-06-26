@@ -89,6 +89,8 @@ function cacheKeySugerir(input: {
   uso?: string | null;
   ncmAtual?: string | null;
   max?: number;
+  imagemBase64?: string | null;
+  imagemMime?: string | null;
 }): string {
   return JSON.stringify({
     d: input.descricao.trim().toLowerCase(),
@@ -96,6 +98,7 @@ function cacheKeySugerir(input: {
     u: input.uso?.trim() ?? "",
     n: ncm8Limpo(input.ncmAtual ?? ""),
     max: input.max ?? 4,
+    img: input.imagemBase64 ? `${input.imagemMime ?? "image/jpeg"}:${input.imagemBase64.length}` : "",
   });
 }
 
@@ -134,6 +137,8 @@ export async function sugerirNcm(
     uso?: string | null;
     ncmAtual?: string | null;
     max?: number;
+    imagemBase64?: string | null;
+    imagemMime?: string | null;
   },
   catalog: NcmCatalog,
 ): Promise<SugerirNcmResult> {
@@ -153,6 +158,15 @@ export async function sugerirNcm(
     uso: input.uso ?? null,
     ncmAtual: input.ncmAtual ? ncm8Limpo(input.ncmAtual) : null,
     max: input.max ?? 4,
+    ...(input.imagemBase64
+      ? {
+          imagem: {
+            base64: input.imagemBase64,
+            mime: input.imagemMime ?? "image/jpeg",
+            regra: "Use a imagem apenas para refinar atributos dentro da família textual; divergência radical deve ser revisão humana.",
+          },
+        }
+      : {}),
   });
 
   if (!raw.ok || !("sugestao" in raw) || !raw.sugestao?.ncm) {

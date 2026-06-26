@@ -1,9 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   buildBenchmarkIndex,
+  defaultBenchmarkPlanilhaPath,
+  historicoFromPlanilhaSeed,
   loadComexSeed,
+  loadBenchmarkPlanilha,
   criarNcmCatalog,
   loadNcmVigenteCache,
+  substituirHistoricoBenchmark,
   type LinhaCrua,
 } from "@cia/pipeline";
 import { montarItens } from "../src/services/cotacao.js";
@@ -22,6 +26,24 @@ function buildState(): AppState {
   const comex = loadComexSeed();
   return {
     benchmarkIndex: buildBenchmarkIndex(comex.itens, comex.contexto),
+    ncmCatalog: criarNcmCatalog(loadNcmVigenteCache()),
+    tecSource: { buscar: () => null, buscarAsync: async () => null },
+    siscomex: { lookup: () => null },
+    ocr: null,
+    provider: { nome: "mock", disponivel: false, classify: async () => [] },
+  } as unknown as AppState;
+}
+
+function buildStateComPlanilhaChina(): AppState {
+  const seed = loadBenchmarkPlanilha(defaultBenchmarkPlanilhaPath());
+  if (!seed) throw new Error("Seed da planilha China não encontrado");
+  substituirHistoricoBenchmark(historicoFromPlanilhaSeed(seed));
+  const comex = loadComexSeed();
+  return {
+    benchmarkIndex: buildBenchmarkIndex(comex.itens, comex.contexto, {
+      planilhaPeriodo: seed.periodoReferencia ?? null,
+      comexstatPeriodo: comex.periodoReferencia ?? null,
+    }),
     ncmCatalog: criarNcmCatalog(loadNcmVigenteCache()),
     tecSource: { buscar: () => null, buscarAsync: async () => null },
     siscomex: { lookup: () => null },
@@ -115,5 +137,25 @@ describe("ncmEmbarque — upload classificar", () => {
     const { itens } = await montarItens(linhas, buildState());
     expect(itens[0]!.ncmFonte).not.toBe("planilha-cliente");
     expect(itens[0]!.ncmAvisos?.some((a) => /declarado na planilha do cliente/i.test(a))).toBeFalsy();
+  });
+
+  it("sem coluna NCM: hit coerente da planilha China vence antes do Gemini", async () => {
+    const linhas: LinhaCrua[] = [
+      {
+        descOriginal: "HY-5110 — Pipoqueira Preta 220V Plug Redondo",
+        ncm: null,
+        qtd: 100,
+        pesoBrutoKg: 10,
+        pesoLiqKg: 9,
+        fobTotalUS: 50,
+        fobUnitarioUS: null,
+      },
+    ];
+
+    const { itens } = await montarItens(linhas, buildStateComPlanilhaChina());
+
+    expect(itens[0]!.ncmFonte).toBe("planilha-china");
+    expect(itens[0]!.ncm).toMatch(/^8516/);
+    expect(itens[0]!.ncmEmbarqueStatus).toBe("sem-ncm-coluna");
   });
 });

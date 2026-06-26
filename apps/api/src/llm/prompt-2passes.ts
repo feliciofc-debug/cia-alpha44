@@ -7,8 +7,10 @@ import { REGRA_8708_8714, REGRA_NOTA2_SECAO_XVII, RGI_RESUMO } from "./ncm-regra
 export const PROMPT_PASSE2_VERSION = "PROMPT_PASSE2_V4";
 /** Versão do prompt de tradução pré-classificação (P2b). */
 export const PROMPT_TRANSLATE_VERSION = "TR_V2";
+/** Versão da ordem do pipeline (traduzir → planilha China → Gemini/visão). */
+export const PROMPT_PIPELINE_VERSION = "PIPE_TR_CHINA_VISION_V1";
 /** Versão unificada para cache de classificação (P3b) — invalida cache ao bump. */
-export const CLASSIFICACAO_PROMPT_VERSION = `${PROMPT_PASSE2_VERSION}_${PROMPT_TRANSLATE_VERSION}`;
+export const CLASSIFICACAO_PROMPT_VERSION = `${PROMPT_PASSE2_VERSION}_${PROMPT_TRANSLATE_VERSION}_${PROMPT_PIPELINE_VERSION}`;
 
 /** Produtos de referência para prova manual com LLM real (3 itens). */
 export const PRODUTOS_PROVA_CLASSIFICACAO = [

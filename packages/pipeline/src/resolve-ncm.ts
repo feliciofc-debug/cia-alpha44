@@ -23,6 +23,7 @@ export type NcmFonte =
   | "planilha"
   | "planilha-cliente"
   | "planilha-cliente-familia"
+  | "planilha-china"
   | "gemini"
   | "ia"
   | "siscomex"
@@ -35,6 +36,7 @@ export interface ResolveNcmInput {
   fonteClassificacao?:
     | "planilha-cliente"
     | "planilha-cliente-familia"
+    | "planilha-china"
     | "siscomex"
     | "gemini"
     | "ia"
@@ -243,6 +245,23 @@ export function resolveNcm(catalog: NcmCatalog, input: ResolveNcmInput): Resolve
       };
     }
     avisos.push("NCM planilha cliente inválido ou incoerente — tentando classificação automática.");
+  }
+
+  if (input.fonteClassificacao === "planilha-china") {
+    const chinaCandidatos = filtrarCandidatosValidos(catalog, input.candidatosIa ?? []);
+    const chinaTop = chinaCandidatos[0];
+    if (chinaTop && catalog.existe(chinaTop.ncm)) {
+      avisos.push(`NCM equivalente da planilha Importação China: ${chinaTop.ncm}.`);
+      return {
+        ncm: chinaTop.ncm,
+        fonte: "planilha-china",
+        valido: true,
+        descricaoOficial: catalog.descricao(chinaTop.ncm),
+        avisos,
+        ncmCandidatos: chinaCandidatos,
+      };
+    }
+    avisos.push("Planilha Importação China sem NCM válido — tentando classificação automática.");
   }
 
   if (input.fonteClassificacao === "siscomex") {

@@ -580,10 +580,10 @@ type LinhaCruaReclassificar = LinhaCrua & {
 };
 
 /** Reconstrói linhas do upload a partir dos itens salvos — NCM da planilha cliente, não do classificador tóxico. */
-function linhasCruasFromItensPersistidos(itens: ItemRowPersist[]): LinhaCruaReclassificar[] {
-  return [...itens]
+async function linhasCruasFromItensPersistidos(itens: ItemRowPersist[]): Promise<LinhaCruaReclassificar[]> {
+  const linhas = await Promise.all([...itens]
     .sort((a, b) => a.ordem - b.ordem)
-    .map((it) => {
+    .map(async (it) => {
       const meta = (it.meta as ItemMetaPersistido | null) ?? {};
       const dominio = itemDominioFromRow(it);
       const humano = confirmacaoNcmVigente(dominio);
@@ -601,6 +601,13 @@ function linhasCruasFromItensPersistidos(itens: ItemRowPersist[]): LinhaCruaRecl
         // Não reutilizar meta.fobEmbarqueUS — pode estar corrompido de classificação antiga.
         fobTotalUS: null,
       };
+      if (it.fotoPath) {
+        const foto = await lerFotoItem(it.fotoPath);
+        if (foto) {
+          linha.fotoBase64 = foto.buffer.toString("base64");
+          linha.fotoMime = foto.mime;
+        }
+      }
       if (humano) {
         linha.ncmRevisadoHumano = true;
         linha.ncmConfirmado = it.ncm;
@@ -608,7 +615,8 @@ function linhasCruasFromItensPersistidos(itens: ItemRowPersist[]): LinhaCruaRecl
         linha.descDuimp = it.descDuimp;
       }
       return linha;
-    });
+    }));
+  return linhas;
 }
 
 async function persistirItensPosReclassificacao(
@@ -1069,7 +1077,7 @@ async function prepararReclassificacaoCotacaoPersistida(
 ) {
   const { cotacao: cotacaoPersistida, itens: itensDb } = mapRowParaDominio(row);
   const cotacao = normalizarCotacaoLegadaCot72(cotacaoPersistida, row.id);
-  const linhas = linhasCruasFromItensPersistidos(row.itens);
+  const linhas = await linhasCruasFromItensPersistidos(row.itens);
   const montado = await montarItens(linhas, state, {
     moedaPlanilha: cotacao.moedaPlanilha,
     cambioEurUsd: cotacao.cambioEurUsd,
