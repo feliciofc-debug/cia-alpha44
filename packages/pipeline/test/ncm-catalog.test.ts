@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { criarNcmCatalog, loadNcmVigente, type NcmVigenteCache } from "../src/ncm-catalog.js";
+import { criarNcmCatalog, loadNcmVigente, normNcm8, type NcmVigenteCache } from "../src/ncm-catalog.js";
 
 /** Fixture mínima — ramo 9405 com folha genérica "Outros" e ancestrais descritivos. */
 const FIXTURE: NcmVigenteCache = {
@@ -30,6 +30,12 @@ const FIXTURE: NcmVigenteCache = {
 };
 
 describe("ncm-catalog hierárquico", () => {
+  it("normNcm8 não transforma ausência de NCM em 00000000", () => {
+    expect(normNcm8("")).toBeNull();
+    expect(normNcm8("sem ncm")).toBeNull();
+    expect(normNcm8("1234")).toBe("00001234");
+  });
+
   it("descricao retorna folha e descricaoCompleta retorna caminho", () => {
     const cat = criarNcmCatalog(FIXTURE);
     expect(cat.descricao("94051190")).toBe(

@@ -36,7 +36,9 @@ export interface NcmCatalog {
 }
 
 export function normNcm8(ncm: string): string | null {
-  const d = ncm.replace(/\D/g, "").padStart(8, "0").slice(0, 8);
+  const digits = ncm.replace(/\D/g, "");
+  if (!digits) return null;
+  const d = digits.padStart(8, "0").slice(0, 8);
   return d.length === 8 ? d : null;
 }
 
