@@ -4,6 +4,11 @@
  */
 
 const REGRAS: Array<[RegExp, string]> = [
+  [/电动滑板车/gi, "Patinete elétrico"],
+  [/锂电池|电池/gi, "Bateria"],
+  [/控制器/gi, "Controlador elétrico"],
+  [/充电器/gi, "Carregador elétrico"],
+  [/电机/gi, "Motor elétrico"],
   [/Akku-Bohrschrauber/gi, "Parafusadeira sem fio 18V com baterias e maleta"],
   [/Schraubendreher-Set/gi, "Jogo de chaves de fenda 32 peças cromo-vanádio"],
   [/Thermoskanne[^,]*/gi, "Garrafa térmica aço inox 1L isolamento vácuo dupla parede"],
