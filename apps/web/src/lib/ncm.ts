@@ -89,6 +89,11 @@ export function nomeProdutoItem(it: Item, maxLen = 48): string {
   return (it.descPt || it.descOriginal || "Item").trim().slice(0, maxLen);
 }
 
+export function modeloProdutoItem(it: Item): string {
+  const modelo = (it.descOriginal || "").split(";")[0]?.trim().slice(0, 32);
+  return modelo || "sem modelo";
+}
+
 export function severidadeNcmItem(it: Item): SeveridadeNcmResolucao {
   if (ncmInformadoParaFechamento(it)) return "ok";
   return "bloqueia";
@@ -118,16 +123,34 @@ export function pendenciasNcmOrdenadas(itens: Item[]): PendenciaNcmItem[] {
     }));
 }
 
+export function pendenciasCompatibilidadeOrdenadas(itens: Item[]): PendenciaNcmItem[] {
+  return itens
+    .map((item, idx) => ({ idx, ordem: item.ordem ?? idx + 1, item }))
+    .filter(({ item }) => ncmInformadoParaFechamento(item) && item.compatibilidadeProduto === "incompativel")
+    .map(({ idx, ordem, item }) => ({
+      idx,
+      ordem,
+      item,
+      nome: `${modeloProdutoItem(item)} — ${nomeProdutoItem(item)}`,
+      motivo:
+        item.motivoCompatibilidade ??
+        "Possível incompatibilidade entre o produto descrito e o NCM informado.",
+      motivoCurto: "NCM × produto incompatível",
+      severidade: "revisar" as const,
+    }));
+}
+
 export function contagemEstadosNcm(itens: Item[]): {
   bloqueando: number;
   revisar: number;
   ok: number;
 } {
   const pendencias = pendenciasNcmOrdenadas(itens);
+  const revisar = pendenciasCompatibilidadeOrdenadas(itens);
   return {
     bloqueando: pendencias.length,
-    revisar: 0,
-    ok: Math.max(0, itens.length - pendencias.length),
+    revisar: revisar.length,
+    ok: Math.max(0, itens.length - pendencias.length - revisar.length),
   };
 }
 
@@ -183,5 +206,7 @@ export function avisoCompatibilidadePdf(itens: Item[]): string | null {
 }
 
 export function itensResolucaoNcm(itens: Item[]): Array<{ idx: number; ordem: number; item: Item }> {
-  return pendenciasNcmOrdenadas(itens).map(({ idx, ordem, item }) => ({ idx, ordem, item }));
+  return [...pendenciasNcmOrdenadas(itens), ...pendenciasCompatibilidadeOrdenadas(itens)].map(
+    ({ idx, ordem, item }) => ({ idx, ordem, item }),
+  );
 }
