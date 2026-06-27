@@ -15,10 +15,10 @@ export function temCaractereCjk(texto: string): boolean {
 export function parseModeloFornecedor(descOriginal: string): string {
   const trimmed = descOriginal.trim();
   const primeiro = trimmed.split(";")[0]?.trim();
-  if (primeiro && /^[A-Z0-9-]+$/i.test(primeiro)) return primeiro;
-  const m = trimmed.match(/^([A-Z0-9-]+)\s*—/);
+  if (primeiro && !temCaractereCjk(primeiro) && /^[A-Z0-9][A-Z0-9._/-]*$/i.test(primeiro)) return primeiro;
+  const m = trimmed.match(/^([A-Z0-9][A-Z0-9._/-]*)\s*—/i);
   if (m) return m[1]!;
-  return trimmed.slice(0, 20);
+  return "";
 }
 
 function escapeRe(s: string): string {

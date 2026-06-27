@@ -3,6 +3,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import sharp from "sharp";
 
 const DEFAULT_FOTOS_DIR = fileURLToPath(new URL("../../data/fotos", import.meta.url));
 
@@ -19,17 +20,32 @@ function extPorMime(mime: string): string {
   return "jpg";
 }
 
+async function normalizarFotoProduto(buffer: Buffer, mime: string): Promise<{ buffer: Buffer; mime: string }> {
+  if (!mime.startsWith("image/")) return { buffer, mime };
+  try {
+    const normalizada = await sharp(buffer, { failOn: "none" })
+      .rotate()
+      .flatten({ background: "#ffffff" })
+      .jpeg({ quality: 88 })
+      .toBuffer();
+    return { buffer: normalizada, mime: "image/jpeg" };
+  } catch {
+    return { buffer, mime };
+  }
+}
+
 export async function salvarFotoItem(
   cotacaoId: string,
   ordem: number,
   base64: string,
   mime: string,
 ): Promise<string> {
-  const ext = extPorMime(mime);
+  const foto = await normalizarFotoProduto(Buffer.from(base64, "base64"), mime);
+  const ext = extPorMime(foto.mime);
   const rel = `${cotacaoId}/${ordem}.${ext}`;
   const full = caminhoFotoItem(rel);
   await fs.mkdir(path.dirname(full), { recursive: true });
-  await fs.writeFile(full, Buffer.from(base64, "base64"));
+  await fs.writeFile(full, foto.buffer);
   return rel;
 }
 

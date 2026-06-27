@@ -33,6 +33,20 @@ describe("traducao-pt", () => {
     expect(avisoTraducao).toBe(AVISO_TRADUCAO_PT_INDISPONIVEL);
   });
 
+  it("não usa chinês puro como modelo nem duplica descrição quando falta tradução", () => {
+    const { descPt, avisoTraducao } = resolverDescPtFornecedor("电动滑板车");
+
+    expect(descPt).toBe("电动滑板车");
+    expect(descPt).not.toBe("电动滑板车 — 电动滑板车");
+    expect(avisoTraducao).toBe(AVISO_TRADUCAO_PT_INDISPONIVEL);
+  });
+
+  it("traduz chinês puro sem prefixar falso modelo", () => {
+    const { descPt } = resolverDescPtFornecedor("电池", "Bateria");
+
+    expect(descPt).toBe("Bateria");
+  });
+
   it("usa candidato LLM sem CJK quando planilha não tem PT embutido", () => {
     const { descPt } = resolverDescPtFornecedor(
       "DE-WZ-1001 — Akku-Bohrschrauber 18V",
