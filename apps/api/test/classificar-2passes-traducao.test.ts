@@ -3,6 +3,7 @@ import { criarNcmCatalog, listarNcm8DaPosicao, loadNcmVigente } from "@cia/pipel
 import {
   AVISO_TRADUCAO_INDISPONIVEL,
   executar2PassesComLlm,
+  traduzirDescricoesClassificacao,
 } from "../src/llm/classificar-ncm-2passes.js";
 import {
   SYSTEM_PASSE1,
@@ -13,6 +14,26 @@ import {
 const catalog = criarNcmCatalog(loadNcmVigente());
 
 describe("executar2PassesComLlm — falha de tradução", () => {
+  it("traduz chinês puro arbitrário via chamada LLM sem usar o texto como modelo", async () => {
+    const chamadas: string[] = [];
+    const chamarLlm = async (system: string, _user: string) => {
+      chamadas.push(system);
+      if (system === SYSTEM_TRANSLATE) {
+        return JSON.stringify({ itens: [{ i: 0, descPt: "Produto novo para teste" }] });
+      }
+      throw new Error(`system inesperado: ${system}`);
+    };
+
+    const r = await traduzirDescricoesClassificacao(
+      [{ descOriginal: "未知商品", material: "plástico", uso: "uso doméstico" }],
+      chamarLlm,
+    );
+
+    expect(chamadas).toContain(SYSTEM_TRANSLATE);
+    expect(r.descricoes[0]).toBe("Produto novo para teste");
+    expect(r.traducaoIndisponivel).toBe(false);
+  });
+
   it(
     "timeout na tradução DE usa heurística mock + aviso, classifica item",
     async () => {
