@@ -3,7 +3,7 @@ import { useAuth } from "./auth/auth.tsx";
 import { api, type AnaliseCompleta, type Meta } from "./lib/api.ts";
 import { brl, fmtNcm, pct, usdKg } from "./lib/format.ts";
 import { fobKgItem } from "./lib/fob-kg.ts";
-import { contarItensComFoto, fotoItemSrc } from "./lib/item-foto.ts";
+import { contarItensComFoto, itemTemFoto, useFotoItemSrc } from "./lib/item-foto.ts";
 import { extrairResumoFinanceiro, type ResumoFinanceiro } from "./lib/financeiro.ts";
 import {
   aplicarEditorNaCotacao,
@@ -19,7 +19,7 @@ import { PainelKpisView } from "./painel-kpis.tsx";
 import { BenchmarkReferenciaView } from "./benchmark-referencia-view.tsx";
 import { PreviewOrcamentoCliente } from "./preview-orcamento-cliente.tsx";
 import { cotacaoParaSalvar, itensParaSalvar } from "./lib/cotacao-payload.ts";
-import { pdfBloqueadoPorNcm, mensagemBloqueioPdf, avisoCompatibilidadePdf, itemPodeConfirmarNcmIndividual, itemPodeDesfazerNcm, itensPendentesConfirmacaoNcm, itensResolucaoNcm, metaConfirmacaoNcm, limparConfirmacaoNcm, idxPorOrdem, ordemDoItem, pendenciasNcmOrdenadas, mesclarItensInvalidosPdfAudit, ncmInformadoParaFechamento } from "./lib/ncm.ts";
+import { pdfBloqueadoPorNcm, mensagemBloqueioPdf, avisoCompatibilidadePdf, itemPodeConfirmarNcmIndividual, itemPodeDesfazerNcm, itensPendentesConfirmacaoNcm, itensResolucaoNcm, metaConfirmacaoNcm, limparConfirmacaoNcm, idxPorOrdem, ordemDoItem, pendenciasNcmOrdenadas, pendenciasCompatibilidadeOrdenadas, mesclarItensInvalidosPdfAudit, ncmInformadoParaFechamento } from "./lib/ncm.ts";
 import { BUILD_SHA } from "./lib/build-info.ts";
 import { PdfDownloadError, type ItemInvalidoPdf } from "./lib/pdf-erro.ts";
 import { avisoMoedaCotacao } from "@cia/shared";
@@ -62,6 +62,19 @@ function IconLixeira() {
     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
       <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
+  );
+}
+
+function FotoItemTabela({ item }: { item: Item }) {
+  const foto = useFotoItemSrc(item);
+  if (!itemTemFoto(item)) return <span className="text-[10px] text-slate-600">—</span>;
+  if (!foto) return <span className="text-[10px] text-slate-500">carregando…</span>;
+  return (
+    <img
+      src={foto}
+      alt=""
+      className="h-12 w-12 rounded border border-white/10 object-contain bg-white"
+    />
   );
 }
 
@@ -346,6 +359,7 @@ function AnalisePainel({
   const qtdFotos = contarItensComFoto(itens);
   const ncmBloqueiaPdf = pdfBloqueadoPorNcm(itens);
   const pendenciasNcm = pendenciasNcmOrdenadas(itens);
+  const pendenciasCompatibilidade = pendenciasCompatibilidadeOrdenadas(itens);
   const motivoBloqueioPdf = mensagemBloqueioPdf(itens);
   const avisoCompatPdf = avisoCompatibilidadePdf(itens);
   const avisoMoedaEur = avisoMoedaCotacao(analise.cotacao);
@@ -427,20 +441,11 @@ function AnalisePainel({
           <tbody>
             {itens.map((it, i) => {
               const fobKg = fobKgItem(it);
-              const foto = fotoItemSrc(it);
               const ordem = it.ordem ?? i;
               return (
                 <tr key={ordem} className="border-t border-white/5 text-slate-300">
                   <td className="p-2 align-top">
-                    {foto ? (
-                      <img
-                        src={foto}
-                        alt=""
-                        className="h-12 w-12 rounded border border-white/10 object-contain bg-white"
-                      />
-                    ) : (
-                      <span className="text-[10px] text-slate-600">—</span>
-                    )}
+                    <FotoItemTabela item={it} />
                   </td>
                   <td className="max-w-xs p-2">
                     <div className="truncate font-medium text-white">{it.descPt || it.descOriginal}</div>
@@ -831,11 +836,17 @@ function AnalisePainel({
               type="button"
               className="w-full rounded-xl border border-orange-500/40 bg-orange-500/10 px-4 py-3 text-left text-sm text-orange-200 transition hover:bg-orange-500/20 focus:outline-none focus:ring-2 focus:ring-orange-400/50"
               onClick={() => {
-                setResolucaoAberta(true);
-                setAba("tecnica");
+                irParaResolucaoNcm(pendenciasCompatibilidade[0]?.idx);
               }}
             >
               {avisoCompatPdf}
+              <ul className="mt-2 space-y-1 text-xs text-orange-100">
+                {pendenciasCompatibilidade.map((p) => (
+                  <li key={p.ordem}>
+                    #{p.idx + 1} · {p.nome} · NCM {fmtNcm(p.item.ncm || "00000000")} — {p.motivo}
+                  </li>
+                ))}
+              </ul>
               <span className="mt-1 block text-xs font-semibold text-orange-100 underline">Clique para revisar →</span>
             </button>
           )}
@@ -906,6 +917,13 @@ function AnalisePainel({
           {avisoCompatPdf && (
             <div className="rounded-xl border border-orange-500/40 bg-orange-500/10 px-4 py-3 text-sm text-orange-200">
               {avisoCompatPdf}
+              <ul className="mt-2 space-y-1 text-xs text-orange-100">
+                {pendenciasCompatibilidade.map((p) => (
+                  <li key={p.ordem}>
+                    #{p.idx + 1} · {p.nome} · NCM {fmtNcm(p.item.ncm || "00000000")} — {p.motivo}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
           <PreviewOrcamentoCliente

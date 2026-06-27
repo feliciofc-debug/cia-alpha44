@@ -75,6 +75,14 @@ function usdKg(n: number | null): string {
   return `US$ ${n.toFixed(4)}/kg`;
 }
 
+function modeloItem(it: Item): string {
+  return (it.descOriginal || "").split(";")[0]?.trim().slice(0, 32) || "sem modelo";
+}
+
+function itensIncompativeis(itens: Item[]): Item[] {
+  return itens.filter((it) => it.compatibilidadeProduto === "incompativel");
+}
+
 async function gerarPdfCliente(payload: PayloadPdf): Promise<Buffer> {
   if (!payload.resultado) {
     throw new Error("Cotação sem resultado fiscal — recalcule antes de gerar o PDF do cliente.");
@@ -170,6 +178,24 @@ function gerarPdfTrade(payload: PayloadPdf): Promise<Buffer> {
       doc.text(`Benchmark: US$/kg ${it.benchmark.mediaFobKg.toFixed(4)} (${it.benchmark.fonte})`);
     }
     doc.moveDown(0.6);
+  }
+
+  const incompativeis = itensIncompativeis(itens);
+  if (incompativeis.length) {
+    if (doc.y > 650) doc.addPage();
+    doc.moveDown(0.5);
+    doc.fontSize(11).font("Helvetica-Bold").fillColor("#c2410c").text("Itens incompatíveis NCM × produto");
+    doc.fillColor("#000000").moveDown(0.4);
+    for (const it of incompativeis) {
+      if (doc.y > 720) doc.addPage();
+      const ordem = it.ordem ?? itens.indexOf(it) + 1;
+      doc.fontSize(9).font("Helvetica-Bold").text(
+        `#${ordem} · ${modeloItem(it)} · NCM ${formatNcm(it.ncm || "00000000")}`,
+      );
+      doc.font("Helvetica").text((it.descPt || it.descOriginal || "—").slice(0, 110));
+      doc.fontSize(8).fillColor("#7c2d12").text(it.motivoCompatibilidade || "Motivo não informado.");
+      doc.fillColor("#000000").moveDown(0.5);
+    }
   }
 
   if (cotacao.despesas?.length) {

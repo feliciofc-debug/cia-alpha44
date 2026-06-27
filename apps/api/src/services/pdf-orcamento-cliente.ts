@@ -115,6 +115,14 @@ function ncmMercadorias(itens: Item[]): string {
   return ncms.slice(0, 3).join(" / ") + (ncms.length > 3 ? " …" : "");
 }
 
+function modeloItem(it: Item): string {
+  return (it.descOriginal || "").split(";")[0]?.trim().slice(0, 32) || "sem modelo";
+}
+
+function itensIncompativeis(itens: Item[]): Item[] {
+  return itens.filter((it) => it.compatibilidadeProduto === "incompativel");
+}
+
 function desenharFotosCertificacao(
   doc: PdfDoc,
   fotos: Buffer[],
@@ -355,6 +363,44 @@ export async function gerarPdfOrcamentoClienteModelo(payload: PayloadOrcamentoCl
     contentW * 0.48,
     { bold: false, align: "right" },
   );
+
+  const incompativeis = itensIncompativeis(itens);
+  if (incompativeis.length) {
+    doc.addPage();
+    let iy = m;
+    headerCell(doc, "ITENS PARA CONFERÊNCIA — NCM × PRODUTO", m, iy, contentW, {
+      bold: true,
+      fontSize: 11,
+      color: "#c2410c",
+    });
+    iy += 20;
+    for (const it of incompativeis) {
+      if (iy > 760) {
+        doc.addPage();
+        iy = m;
+      }
+      const ordem = it.ordem ?? itens.indexOf(it) + 1;
+      textoPdf(
+        doc,
+        `#${ordem} · ${modeloItem(it)} · NCM ${formatNcm(it.ncm || "00000000")}`,
+        m,
+        iy,
+        contentW,
+        { fontSize: 8, bold: true, color: "#000000" },
+      );
+      iy += 10;
+      textoPdf(doc, (it.descPt || it.descOriginal || "—").slice(0, 130), m, iy, contentW, {
+        fontSize: 7.5,
+        color: "#000000",
+      });
+      iy += 10;
+      textoPdf(doc, it.motivoCompatibilidade || "Motivo não informado.", m, iy, contentW, {
+        fontSize: 7,
+        color: "#7c2d12",
+      });
+      iy += 18;
+    }
+  }
 
   return pdfParaBuffer(doc);
 }

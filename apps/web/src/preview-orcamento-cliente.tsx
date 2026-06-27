@@ -1,5 +1,5 @@
 import { fmtNcm } from "./lib/format.ts";
-import { fotoItemSrc } from "./lib/item-foto.ts";
+import { itemTemFoto, useFotoItemSrc } from "./lib/item-foto.ts";
 import type { Cotacao, Despesa, Item, ResultadoCotacao } from "./lib/types.ts";
 import { PdfDownloadBar } from "./pdf-download-bar.tsx";
 import type { PendenciaNcmItem } from "./lib/ncm.ts";
@@ -89,27 +89,48 @@ function Linha({ label, valor }: { label: string; valor: string }) {
   );
 }
 
-function fotoSrc(it: Item): string | null {
-  return fotoItemSrc(it);
+function FotoCertificacaoItem({ item, alt }: { item: Item; alt: string }) {
+  const src = useFotoItemSrc(item);
+  if (!src) {
+    return <div className="h-14 w-full rounded border border-black/10 bg-slate-100" aria-label={`${alt} carregando`} />;
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="h-14 w-full rounded border border-black/10 object-contain bg-white"
+    />
+  );
+}
+
+function FotoMercadoria({ item }: { item: Item }) {
+  const src = useFotoItemSrc(item);
+  if (!src) return null;
+  return (
+    <img
+      src={src}
+      alt="Produto"
+      className="mt-2 h-10 max-w-[88px] rounded border border-black/10 object-contain"
+    />
+  );
 }
 
 function FotosCertificacao({ itens }: { itens: Item[] }) {
-  const urls = itens.map(fotoSrc).filter((u): u is string => Boolean(u));
-  if (urls.length === 0) {
+  const itensComFoto = itens.filter(itemTemFoto).slice(0, 6);
+  if (itensComFoto.length === 0) {
     return <p className="text-[10px] text-slate-500">Sem foto na planilha</p>;
   }
-  const cols = urls.length <= 2 ? urls.length : 3;
+  const cols = itensComFoto.length <= 2 ? itensComFoto.length : 3;
   return (
     <div
       className="grid gap-1"
       style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
     >
-      {urls.slice(0, 6).map((src, i) => (
-        <img
-          key={i}
-          src={src}
+      {itensComFoto.map((item, i) => (
+        <FotoCertificacaoItem
+          key={item.ordem ?? i}
+          item={item}
           alt={`Produto ${i + 1}`}
-          className="h-14 w-full rounded border border-black/10 object-contain bg-white"
         />
       ))}
     </div>
@@ -177,7 +198,7 @@ export function PreviewOrcamentoCliente({
   const desc = (itens[0]?.descPt || itens[0]?.descOriginal || "—").toUpperCase();
   const ncm = [...new Set(itens.map((it) => fmtNcm(it.ncm || "00000000")))].join(" / ");
   const pctMarkup = `${(cotacao.params.markupPct * 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}%`;
-  const fotoMercadoria = itens.map(fotoSrc).find(Boolean);
+  const fotoMercadoriaItem = itens.find(itemTemFoto);
 
   return (
     <div className="overflow-hidden rounded-xl border border-white/10 bg-white text-black shadow-xl">
@@ -240,13 +261,7 @@ export function PreviewOrcamentoCliente({
             <>
               <p className="font-bold">{desc}</p>
               <p className="mt-2">NCM: {ncm}</p>
-              {fotoMercadoria ? (
-                <img
-                  src={fotoMercadoria}
-                  alt="Produto"
-                  className="mt-2 h-10 max-w-[88px] rounded border border-black/10 object-contain"
-                />
-              ) : null}
+              {fotoMercadoriaItem ? <FotoMercadoria item={fotoMercadoriaItem} /> : null}
             </>
           }
         />

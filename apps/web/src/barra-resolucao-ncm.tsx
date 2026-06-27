@@ -6,6 +6,7 @@ import {
   itemPodeConfirmarNcmIndividual,
   itemPodeDesfazerNcm,
   itensPendentesConfirmacaoNcm,
+  pendenciasCompatibilidadeOrdenadas,
   pendenciasNcmOrdenadas,
   type PendenciaNcmItem,
 } from "./lib/ncm.ts";
@@ -188,9 +189,8 @@ export function BarraResolucaoNcm({
   alterandoNcm?: number | null;
   destaqueIdx?: number | null;
 }) {
-  const pendencias = useMemo(() => pendenciasNcmOrdenadas(itens), [itens]);
-  const bloqueadores = useMemo(() => pendencias.filter((p) => p.severidade === "bloqueia"), [pendencias]);
-  const revisar = useMemo(() => pendencias.filter((p) => p.severidade === "revisar"), [pendencias]);
+  const bloqueadores = useMemo(() => pendenciasNcmOrdenadas(itens), [itens]);
+  const revisar = useMemo(() => pendenciasCompatibilidadeOrdenadas(itens), [itens]);
   const contagem = useMemo(() => contagemEstadosNcm(itens), [itens]);
   const elegiveis = useMemo(() => itensPendentesConfirmacaoNcm(itens).length, [itens]);
   const operacaoBloqueada = Boolean(
@@ -213,7 +213,9 @@ export function BarraResolucaoNcm({
     return () => window.clearTimeout(t);
   }, [destaqueIdx]);
 
-  if (!pendencias.length && !resumoNcmLote) return null;
+  const totalPendencias = bloqueadores.length + revisar.length;
+
+  if (!totalPendencias && !resumoNcmLote) return null;
 
   function renderCard(p: PendenciaNcmItem) {
     const it = p.item;
@@ -250,7 +252,7 @@ export function BarraResolucaoNcm({
           className="rounded-lg bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-md hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-400"
           onClick={onToggle}
         >
-          {aberta ? "▲ Ocultar resolução" : `▶ Resolver pendências (${pendencias.length})`}
+          {aberta ? "▲ Ocultar resolução" : `▶ Resolver pendências (${totalPendencias})`}
         </button>
         {elegiveis > 0 && onConfirmarTodosNcm && (
           <button

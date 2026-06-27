@@ -11,7 +11,7 @@ import {
   parseRespostaJuizCompatibilidade,
 } from "../src/llm/prompt-compatibilidade.js";
 import { OVERLAP_ALTO } from "../src/siscomex/heuristica-termos.js";
-import { avisoCompatibilidadePdf } from "../../web/src/lib/ncm.ts";
+import { avisoCompatibilidadePdf, pendenciasCompatibilidadeOrdenadas } from "../../web/src/lib/ncm.ts";
 import type { Item } from "../../web/src/lib/types.ts";
 
 const catalog = criarNcmCatalog(loadNcmVigente());
@@ -176,5 +176,30 @@ describe("avisoCompatibilidadePdf", () => {
     expect(msg).toBe(
       "2 item(ns) com possível incompatibilidade NCM × produto (informativo — não bloqueia o PDF).",
     );
+  });
+
+  it("lista detalhes dos itens incompatíveis para revisão na UI", () => {
+    const itens = [
+      {
+        ordem: 4,
+        descOriginal: "HY-80036;电动磨脚皮器",
+        descPt: "Pedicuro elétrico",
+        ncm: "85098090",
+        compatibilidadeProduto: "incompativel",
+        motivoCompatibilidade: "Produto de uso pessoal incompatível com NCM informado.",
+      } as Item,
+      { ordem: 5, compatibilidadeProduto: "compativel" } as Item,
+    ];
+
+    const pendencias = pendenciasCompatibilidadeOrdenadas(itens);
+
+    expect(pendencias).toHaveLength(1);
+    expect(pendencias[0]).toMatchObject({
+      idx: 0,
+      ordem: 4,
+      nome: "HY-80036 — Pedicuro elétrico",
+      motivo: "Produto de uso pessoal incompatível com NCM informado.",
+      severidade: "revisar",
+    });
   });
 });
