@@ -51,10 +51,10 @@ export function calibrarFobKg(input: CalibradorInput): Calibracao {
   const soPonderada = benchmarkSoPonderado(benchmark);
   const avisoPond = benchmark.avisoBenchmark ?? (soPonderada ? AVISO_BENCHMARK_SO_PONDERADA : "");
 
-  if (fobKgFonte === FOB_KG_FONTE_PRECO_CUSTO && fobKgOriginal > 0) {
+  if (fobKgFonte === FOB_KG_FONTE_PRECO_CUSTO) {
     return {
-      fobKgOriginal,
-      fobKgCalibrado: fobKgOriginal,
+      fobKgOriginal: fobKgOriginal > 0 ? fobKgOriginal : null,
+      fobKgCalibrado: fobKgOriginal > 0 ? fobKgOriginal : 0,
       desvioBenchmarkPct: null,
       ajustado: false,
       justificativa: "Base FOB = valor de custo da unidade (veículo).",
