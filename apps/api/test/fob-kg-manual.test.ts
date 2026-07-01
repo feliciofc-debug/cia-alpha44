@@ -141,6 +141,25 @@ describe("fobKgManual — override soberano", () => {
     expect(calibracao.justificativa).toMatch(/valor de custo da unidade/i);
   });
 
+  it("preco-custo com peso zero não reetiqueta calibragem como planilha China", () => {
+    const benchInnove = {
+      ...benchmark,
+      fonte: "Histórico próprio" as const,
+      fobKgMedioDI: 2.2828,
+      mediaFobKg: 2.2828,
+    };
+    const calibracao = calibrarFobKg({
+      fobKgOriginal: null,
+      benchmark: benchInnove,
+      fobTotalUS: 218,
+      pesoLiqKg: 0,
+      fobKgFonte: FOB_KG_FONTE_PRECO_CUSTO,
+    });
+    expect(calibracao.fobKgOriginal).toBeNull();
+    expect(calibracao.fobKgCalibrado).toBe(0);
+    expect(calibracao.justificativa).toMatch(/valor de custo da unidade/i);
+  });
+
   it("avisoValoracao quando manual abaixo do piso — informativo", () => {
     const benchComPiso = {
       ...benchmark,
