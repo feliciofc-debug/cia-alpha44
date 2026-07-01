@@ -10,41 +10,19 @@ import {
 
 describe("preco-custo — moto e patinete", () => {
   it("detecta moto elétrica", () => {
-    expect(detectarPrecoCusto("Moto elétrica 2000W", "87116000")).toBe("moto_eletrica");
-    expect(detectarPrecoCusto("Electric motorcycle 72V", "87119000")).toBe("moto_eletrica");
+    expect(detectarPrecoCusto("Moto elétrica 2000W")).toBe("moto_eletrica");
+    expect(detectarPrecoCusto("Electric motorcycle 72V")).toBe("moto_eletrica");
   });
 
   it("detecta patinete elétrico", () => {
-    expect(detectarPrecoCusto("Patinete elétrico Xiaomi", "87116000")).toBe("patinete_eletrico");
-    expect(detectarPrecoCusto("E-scooter kick scooter", "87116000")).toBe("patinete_eletrico");
-  });
-
-  it("exige consenso de pelo menos 2 sinais", () => {
-    expect(detectarPrecoCusto("Patinete elétrico Xiaomi")).toBeNull();
-    expect(
-      detectarPrecoCusto({
-        descOriginal: "SKU-1",
-        descPt: "Patinete elétrico dobrável",
-        ncm: "87116000",
-        pesoLiqKg: null,
-        qtd: 1,
-      }),
-    ).toBe("patinete_eletrico");
-    expect(
-      detectarPrecoCusto({
-        descOriginal: "SKU-2",
-        descVisao: "Vejo um patinete elétrico na foto",
-        ncm: "87116000",
-        pesoLiqKg: null,
-        qtd: 1,
-      }),
-    ).toBe("patinete_eletrico");
+    expect(detectarPrecoCusto("Patinete elétrico Xiaomi")).toBe("patinete_eletrico");
+    expect(detectarPrecoCusto("E-scooter kick scooter")).toBe("patinete_eletrico");
   });
 
   it("aplica US$ 300/un × qtd para moto", () => {
     const r = aplicarPrecoCustoLinha({
       descOriginal: "Moto elétrica modelo X",
-      ncm: "87116000",
+      ncm: null,
       qtd: 10,
       pesoBrutoKg: 500,
       pesoLiqKg: 450,
@@ -58,7 +36,7 @@ describe("preco-custo — moto e patinete", () => {
   it("aplica US$ 109/un × qtd para patinete", () => {
     const r = aplicarPrecoCustoLinha({
       descOriginal: "Patinete elétrico PRO",
-      ncm: "87116000",
+      ncm: "95030099",
       qtd: 50,
       pesoBrutoKg: 1150,
       pesoLiqKg: 1000,

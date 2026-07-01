@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { useAuth } from "./auth/auth.tsx";
 import { api, type AnaliseCompleta, type Meta } from "./lib/api.ts";
 import { brl, fmtNcm, pct, usdKg } from "./lib/format.ts";
-import { fobKgItem, precoCustoUnitarioItem } from "./lib/fob-kg.ts";
+import { fobKgItem } from "./lib/fob-kg.ts";
 import { contarItensComFoto, itemTemFoto, useFotoItemSrc } from "./lib/item-foto.ts";
 import { extrairResumoFinanceiro, type ResumoFinanceiro } from "./lib/financeiro.ts";
 import {
@@ -668,15 +668,6 @@ function AnalisePainel({
                         onCommit={onAlterarFobKg}
                         onLimpar={(o) => void onAlterarFobKg(o, null)}
                       />
-                    ) : precoCustoUnitarioItem(it) != null ? (
-                      <>
-                        <span className="font-medium text-amber-300">
-                          US$ {precoCustoUnitarioItem(it)!.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/un
-                        </span>
-                        <span className="block text-[10px] font-semibold text-amber-300" title={it.fobKgAvisos?.join(" ")}>
-                          Base FOB = valor de custo (veículo)
-                        </span>
-                      </>
                     ) : fobKg.principal != null ? (
                       <>
                         <span className={fobKg.ajustado ? "font-medium text-amber-300" : ""}>{usdKg(fobKg.principal)}</span>
@@ -696,8 +687,8 @@ function AnalisePainel({
                       </span>
                     )}
                     {it.fobKgFonte && !it.fobPendente && !onAlterarFobKg && (
-                      <span className="mt-0.5 block max-w-[10rem] truncate text-[10px] text-slate-500" title={it.fobKgAvisos?.join(" ") || it.fobKgFonte}>
-                        {it.fobKgFonte === "preco-custo" ? "preço-custo veículo" : it.fobKgFonte}
+                      <span className="mt-0.5 block max-w-[10rem] truncate text-[10px] text-slate-500" title={it.fobKgFonte}>
+                        {it.fobKgFonte}
                       </span>
                     )}
                   </td>

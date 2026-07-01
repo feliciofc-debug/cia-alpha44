@@ -3,7 +3,6 @@
 import { quantidadeTotalLinha, type EntradaPesoLinha } from "./peso-total-linha.js";
 
 export const AVISO_QTD_CAIXA_COMPARTILHADA = "qtd derivada da caixa compartilhada — conferir";
-export const AVISO_QTD_INTERVALO_DESCRICAO = "qtd derivada de intervalo na descrição — conferir";
 
 export interface LinhaQtdInput extends EntradaPesoLinha {
   descOriginal?: string;
@@ -46,20 +45,6 @@ export function extrairVpeQuantidade(descricao: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-/** Extrai intervalo explícito no fim da descrição, ex.: "— 1-500" ou "— 501-710". */
-export function extrairQuantidadeIntervaloDesc(descricao: string): number | null {
-  if (!descricao) return null;
-  const segmentos = descricao.split("—").map((s) => s.trim());
-  const ultimo = segmentos[segmentos.length - 1] ?? "";
-  const m = ultimo.match(/^(\d{1,6})\s*[-–]\s*(\d{1,6})$/);
-  if (!m) return null;
-  const ini = Number(m[1]);
-  const fim = Number(m[2]);
-  if (!Number.isFinite(ini) || !Number.isFinite(fim) || fim < ini) return null;
-  const qtd = fim - ini + 1;
-  return qtd > 0 ? qtd : null;
-}
-
 /** Peça/acessório que pode herdar caixa compartilhada (não veículo completo). */
 export function ehAcessorioCompartilhado(descricao: string, uso?: string | null): boolean {
   if (uso === "配件") return true;
@@ -99,11 +84,6 @@ export function resolverQuantidadesPlanilha(linhas: LinhaQtdInput[]): LinhaQtdRe
 
     const avisosQtd: string[] = [];
     let qtd = qtdPermitida(l);
-    const qtdIntervalo = extrairQuantidadeIntervaloDesc(desc);
-    if (qtdIntervalo != null && (qtd == null || qtdIntervalo > qtd)) {
-      qtd = qtdIntervalo;
-      avisosQtd.push(`${AVISO_QTD_INTERVALO_DESCRICAO} (${qtdIntervalo})`);
-    }
 
     if (qtd == null) {
       const vpe = extrairVpeQuantidade(desc);

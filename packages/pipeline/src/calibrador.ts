@@ -10,7 +10,7 @@ import {
   benchmarkSoPonderado,
   referenciaPrimariaBenchmark,
 } from "./benchmark-metrics.js";
-import { FOB_KG_FONTE_LINHA, FOB_KG_FONTE_PRECO_CUSTO } from "./resolver-fob-kg.js";
+import { FOB_KG_FONTE_LINHA } from "./resolver-fob-kg.js";
 
 export interface CalibradorInput {
   /** Alias aceito pela API (`fobKgOriginal`). */
@@ -50,16 +50,6 @@ export function calibrarFobKg(input: CalibradorInput): Calibracao {
   const refPrim = referenciaPrimariaBenchmark(benchmark);
   const soPonderada = benchmarkSoPonderado(benchmark);
   const avisoPond = benchmark.avisoBenchmark ?? (soPonderada ? AVISO_BENCHMARK_SO_PONDERADA : "");
-
-  if (fobKgFonte === FOB_KG_FONTE_PRECO_CUSTO) {
-    return {
-      fobKgOriginal: fobKgOriginal > 0 ? fobKgOriginal : null,
-      fobKgCalibrado: fobKgOriginal > 0 ? fobKgOriginal : 0,
-      desvioBenchmarkPct: null,
-      ajustado: false,
-      justificativa: "Base FOB = valor de custo da unidade (veículo).",
-    };
-  }
 
   /** Planilha operacional INNOVE (IMPORTAÇÕES DA CHINA) — média DI soberana sobre embarque. */
   if (benchmark.fonte === "Histórico próprio" && refPrim != null && refPrim > 0) {

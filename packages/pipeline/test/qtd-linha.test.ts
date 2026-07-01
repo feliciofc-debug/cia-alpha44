@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   AVISO_QTD_CAIXA_COMPARTILHADA,
   extrairCaixaCompartilhadaDesc,
-  extrairQuantidadeIntervaloDesc,
   resolverQuantidadesPlanilha,
   aplicarQuantidadesLinhas,
 } from "../src/qtd-linha.js";
@@ -12,30 +11,6 @@ describe("qtd-linha — caixa compartilhada", () => {
     expect(extrairCaixaCompartilhadaDesc("ACC-ES-SSA001 — 减震器 — 711.0")).toBe("711");
     expect(extrairCaixaCompartilhadaDesc("ACC-ES-042 — 控制器 — 712.0")).toBe("712");
     expect(extrairCaixaCompartilhadaDesc("ACC-ES-BC002 — 刹车线")).toBeNull();
-    expect(extrairQuantidadeIntervaloDesc("ES-T19 — 滑板车 — 1-500")).toBe(500);
-    expect(extrairQuantidadeIntervaloDesc("ES-T19 — 滑板车 — 501-710")).toBe(210);
-    expect(extrairQuantidadeIntervaloDesc("ACC-ES-SSA001 — 减震器 — 711.0")).toBeNull();
-  });
-
-  it("intervalo explícito na descrição prevalece sobre qtd de caixas menor", () => {
-    const out = aplicarQuantidadesLinhas([
-      {
-        descricao: "ES-T19A-10BLK — 滑板车T1 MAX 10寸500W款（黑色） — 1-500",
-        qtdCaixas: 2,
-        qtdPorCaixa: 1,
-        fobUnitarioUS: 109,
-      },
-      {
-        descricao: "ES-T19A-10WHI — 滑板车T1 MAX 10寸500W款（白色） — 501-710",
-        qtd: 2,
-        fobUnitarioUS: 109,
-      },
-    ]);
-    expect(out[0]!.qtd).toBe(500);
-    expect(out[0]!.fobTotalUS).toBe(54500);
-    expect(out[0]!.avisosQtd[0]).toMatch(/intervalo/);
-    expect(out[1]!.qtd).toBe(210);
-    expect(out[1]!.fobTotalUS).toBe(22890);
   });
 
   it("ordem (1) qtd total e (2) caixas×por-caixa", () => {

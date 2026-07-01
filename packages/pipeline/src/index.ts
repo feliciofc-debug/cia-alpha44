@@ -44,11 +44,9 @@ export {
   resolverQuantidadesPlanilha,
   aplicarQuantidadesLinhas,
   extrairCaixaCompartilhadaDesc,
-  extrairQuantidadeIntervaloDesc,
   extrairVpeQuantidade,
   ehAcessorioCompartilhado,
   AVISO_QTD_CAIXA_COMPARTILHADA,
-  AVISO_QTD_INTERVALO_DESCRICAO,
 } from "./qtd-linha.js";
 export {
   PRECO_CUSTO_MOTO_USD,
@@ -57,7 +55,6 @@ export {
   RE_USO_PECA,
   aplicarPrecoCustoLinha,
   aplicarPrecoCustoLinhas,
-  avisoPrecoCusto,
   detectarPrecoCusto,
   isUsoPeca,
   pesoCompativelVeiculo,
