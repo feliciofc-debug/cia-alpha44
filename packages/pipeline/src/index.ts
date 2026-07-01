@@ -55,6 +55,7 @@ export {
   RE_USO_PECA,
   aplicarPrecoCustoLinha,
   aplicarPrecoCustoLinhas,
+  avisoPrecoCusto,
   detectarPrecoCusto,
   isUsoPeca,
   pesoCompativelVeiculo,

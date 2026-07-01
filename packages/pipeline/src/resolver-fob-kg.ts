@@ -34,6 +34,7 @@ import type { LinhaCrua } from "./linha.js";
 import { pesoBrutoPlanilhaFob, resolvePesoLiqRateio } from "./linha.js";
 import { linhaPesoAbsurdo, ncmSuspeitoLixo, embarqueSuspeitoVsPlanilha } from "./fob-escala.js";
 import {
+  avisoPrecoCusto,
   detectarPrecoCusto,
   precoCustoUnitarioUSD,
   type TipoPrecoCusto,
@@ -86,7 +87,7 @@ function metaPrecoCusto(tipo: TipoPrecoCusto): FobKgMeta {
   return {
     fobKgFonte: FOB_KG_FONTE_PRECO_CUSTO,
     fobKgBase: "indeterminado",
-    fobKgAvisos: [`Preço de custo interno (${tipo === "moto_eletrica" ? "moto" : "patinete"} elétrico).`],
+    fobKgAvisos: [avisoPrecoCusto(tipo)],
   };
 }
 
@@ -329,6 +330,7 @@ function resolverItemInterno(
 
   const tipo = detectarPrecoCusto({
     descOriginal: it.descOriginal,
+    descPt: it.descPt,
     ncm: it.ncm,
     uso: it.uso,
     pesoLiqKg: it.pesoLiqKg,

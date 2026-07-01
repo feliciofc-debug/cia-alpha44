@@ -322,6 +322,28 @@ describe("aplicarRegrasFobItens — recálculo patinete", () => {
     expect(out!.fobTotalUS).toBeCloseTo(724 * 109, 0);
   });
 
+  it("reaplica preco-custo com NCM final + descrição PT quando parser não detectou antes", () => {
+    const index = buildBenchmarkIndex([]);
+    const [out] = aplicarRegrasFobItens(
+      [
+        itemBase({
+          descOriginal: "SKU-SEM-TEXTO-VEICULO",
+          descPt: "Patinete elétrico dobrável",
+          ncm: "87116000",
+          qtd: 1,
+          pesoLiqKg: 0,
+          fobTotalUS: 2.2828,
+          fobUnitarioUS: 2.2828,
+          fobKgFonte: FOB_KG_FONTE_LINHA,
+        }),
+      ],
+      index,
+    );
+    expect(out!.fobKgFonte).toBe(FOB_KG_FONTE_PRECO_CUSTO);
+    expect(out!.fobUnitarioUS).toBe(PRECO_CUSTO_PATINETE_USD);
+    expect(out!.fobTotalUS).toBe(PRECO_CUSTO_PATINETE_USD);
+  });
+
   it("peça com descPt patinete e uso 配件 → fonte linha (nunca preco-custo)", () => {
     const index = buildBenchmarkIndex([]);
     const [out] = aplicarRegrasFobItens(

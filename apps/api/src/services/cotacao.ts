@@ -6,13 +6,17 @@ import {
   analisarRisco,
   anexarMetaFobItem,
   aplicarPlanilhaChinaCotacao,
+  avisoPrecoCusto,
   calibrarFobKg,
   confiancaNcmFinal,
   criarNcmCatalog,
   detectarFamilia,
+  detectarPrecoCusto,
+  FOB_KG_FONTE_PRECO_CUSTO,
   loadNcmVigenteCache,
   lookupBenchmark,
   preencherFobKgPlanilha,
+  precoCustoUnitarioUSD,
   resolveNcm,
   pesoLiqReal,
   textoClassificacaoIa,
@@ -23,6 +27,7 @@ import {
   carregarItensPlanilhaChinaOperacional,
   normNcm8,
   resolverNcmClassificacaoPlanilhaChina,
+  type FobKgMeta,
   type LinhaCrua,
   type NcmCatalog,
   type PlanilhaClienteNcmHit,
@@ -175,6 +180,19 @@ function normalizarDescPtClassificacao(
     descPt,
     avisoTraducao: avisoTraducao ?? output.avisoTraducao,
   };
+}
+
+function textoVisaoPrecoCusto(linha: LinhaCrua, output?: ClassifyItemOutput): string | null {
+  if (!linha.fotoBase64 || !output) return null;
+  const usouVisao =
+    output.classificacaoProvedor === "gemini" ||
+    /vis[aã]o|visual|imagem/i.test(
+      [output.justificativaRGI, output.avisoAtributo, output.descDuimp].filter(Boolean).join(" "),
+    );
+  if (!usouVisao) return null;
+  return [output.descPt, output.descDuimp, output.justificativaRGI, output.avisoAtributo]
+    .filter(Boolean)
+    .join(" ");
 }
 
 function fonteClassificacaoDeProvedor(
@@ -736,59 +754,83 @@ export async function montarItens(
     }
     const descPtResolvido = resolverDescPtFornecedor(l.descOriginal, c?.descPt);
 
-    itens.push(
-      anexarMetaFobItem(
-        {
-          descOriginal: l.descOriginal,
-          descPt: descPtResolvido.descPt,
-          descDuimp: c?.descDuimp ?? "",
-          uso: l.uso ?? undefined,
-          material: l.material ?? undefined,
-          ncm,
-          ncmConfianca:
-            confiancaNcmFinal(ncm, candidatosBrutos, c?.confiancaPasse2) ?? undefined,
-          ncmCandidatos: resolvido.ncmCandidatos,
-          ncmValido: ncmInformadoParaFechamento({ ncm } as Item),
-          ncmFonte: resolvido.fonte,
-          ...(c?.classificacaoCacheOrigem
-            ? { ncmClassificacaoCache: c.classificacaoCacheOrigem }
-            : {}),
-          ncmDescricaoOficial: resolvido.descricaoOficial ?? undefined,
-          ncmPlanilhaOriginal: resolvido.ncmPlanilhaOriginal ?? undefined,
-          ncmEmbarqueStatus,
-          ...(ncmEmbarque != null ? { ncmEmbarque } : { ncmEmbarque: null }),
-          ncmAvisos: [
+    let itemBase: Item = {
+      descOriginal: l.descOriginal,
+      descPt: descPtResolvido.descPt,
+      descDuimp: c?.descDuimp ?? "",
+      uso: l.uso ?? undefined,
+      material: l.material ?? undefined,
+      ncm,
+      ncmConfianca:
+        confiancaNcmFinal(ncm, candidatosBrutos, c?.confiancaPasse2) ?? undefined,
+      ncmCandidatos: resolvido.ncmCandidatos,
+      ncmValido: ncmInformadoParaFechamento({ ncm } as Item),
+      ncmFonte: resolvido.fonte,
+      ...(c?.classificacaoCacheOrigem
+        ? { ncmClassificacaoCache: c.classificacaoCacheOrigem }
+        : {}),
+      ncmDescricaoOficial: resolvido.descricaoOficial ?? undefined,
+      ncmPlanilhaOriginal: resolvido.ncmPlanilhaOriginal ?? undefined,
+      ncmEmbarqueStatus,
+      ...(ncmEmbarque != null ? { ncmEmbarque } : { ncmEmbarque: null }),
+      ncmAvisos: [
+        ...resolvido.avisos,
+        ...validacao.avisos,
+        ...avisosClassificacao,
+        ...(descPtResolvido.avisoTraducao ? [descPtResolvido.avisoTraducao] : []),
+      ].length
+        ? [
             ...resolvido.avisos,
             ...validacao.avisos,
             ...avisosClassificacao,
             ...(descPtResolvido.avisoTraducao ? [descPtResolvido.avisoTraducao] : []),
-          ].length
-            ? [
-                ...resolvido.avisos,
-                ...validacao.avisos,
-                ...avisosClassificacao,
-                ...(descPtResolvido.avisoTraducao ? [descPtResolvido.avisoTraducao] : []),
-              ]
-            : undefined,
-          ...(familia ? { familiaProdutoId: familia.id } : {}),
-          pesoBrutoKg: l.pesoBrutoKg,
-          pesoLiqKg: pesoLiq,
-          qtd: l.qtd,
-          fobUnitarioUS: l.fobUnitarioUS,
-          fobTotalUS: fobTotal,
-          ...(fobTotal > 0 ? { fobEmbarqueUS: fobTotal } : {}),
-          aliquotas: tec?.aliquotas ?? { ii: 0, ipi: 0, pis: 0.021, cofins: 0.0965, icmsEntrada: 0 },
-          aliquotasRastro: tec?.rastros,
-          aliquotasOverride: false,
-          anuencia: [],
-          antidumping: false,
-          ...(l.fotoBase64
-            ? { fotoBase64: l.fotoBase64, fotoMime: l.fotoMime ?? "image/jpeg" }
-            : {}),
-        },
-        metasFob[i] ?? { fobKgFonte: "linha" },
-      ),
-    );
+          ]
+        : undefined,
+      ...(familia ? { familiaProdutoId: familia.id } : {}),
+      pesoBrutoKg: l.pesoBrutoKg,
+      pesoLiqKg: pesoLiq,
+      qtd: l.qtd,
+      fobUnitarioUS: l.fobUnitarioUS,
+      fobTotalUS: fobTotal,
+      ...(fobTotal > 0 ? { fobEmbarqueUS: fobTotal } : {}),
+      aliquotas: tec?.aliquotas ?? { ii: 0, ipi: 0, pis: 0.021, cofins: 0.0965, icmsEntrada: 0 },
+      aliquotasRastro: tec?.rastros,
+      aliquotasOverride: false,
+      anuencia: [],
+      antidumping: false,
+      ...(l.fotoBase64
+        ? { fotoBase64: l.fotoBase64, fotoMime: l.fotoMime ?? "image/jpeg" }
+        : {}),
+    };
+
+    let metaFob: FobKgMeta = metasFob[i] ?? { fobKgFonte: "linha" };
+    const tipoPrecoCusto = detectarPrecoCusto({
+      descOriginal: l.descOriginal,
+      descPt: descPtResolvido.descPt,
+      descVisao: textoVisaoPrecoCusto(l, c),
+      ncm,
+      uso: l.uso,
+      pesoLiqKg: itemBase.pesoLiqKg,
+      pesoBrutoKg: itemBase.pesoBrutoKg,
+      qtd: itemBase.qtd,
+    });
+    if (tipoPrecoCusto) {
+      const unit = precoCustoUnitarioUSD(tipoPrecoCusto);
+      const qtdPreco = itemBase.qtd != null && itemBase.qtd > 0 ? itemBase.qtd : 1;
+      itemBase = {
+        ...itemBase,
+        qtd: qtdPreco,
+        fobUnitarioUS: unit,
+        fobTotalUS: unit * qtdPreco,
+      };
+      metaFob = {
+        fobKgFonte: FOB_KG_FONTE_PRECO_CUSTO,
+        fobKgBase: "indeterminado",
+        fobKgAvisos: [avisoPrecoCusto(tipoPrecoCusto)],
+      };
+    }
+
+    itens.push(anexarMetaFobItem(itemBase, metaFob));
   }
 
   const { avaliarCompatibilidadeLote } = await import("../siscomex/compatibilidade-produto.js");
