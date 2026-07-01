@@ -32,5 +32,8 @@ jobs:
       - name: Build API
         run: npm run build:api
 
+      - name: Gate pre-deploy (cotação 72 travada)
+        run: npm run gate:pre-deploy
+
       - name: Build Web
         run: npm run build:web
