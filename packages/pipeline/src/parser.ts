@@ -21,6 +21,7 @@ import {
   RE_DESC_EN_MULTILINGUE,
   RE_DESC_DE_MULTILINGUE,
   RE_DESC_PT_MULTILINGUE,
+  RE_NCM_MULTILINGUE,
   type EntradaMapeamentoIA,
   type MapeamentoColunasIA,
 } from "./parser-sinonimos.js";
@@ -296,6 +297,15 @@ const COLUNA_IGNORAR = /产品图片|product\s*image|^\s*颜色|colour|color|使
 
 function detectarTipo(header: string): { tipo: ColunaDetectada; confianca: number } {
   return detectarTipoMultilingue(header);
+}
+
+function garantirColunaNcm(colunas: ColunaMapeada[]): ColunaMapeada[] {
+  if (colunas.some((c) => c.tipo === "ncm")) return colunas;
+  const idx = colunas.findIndex((c) => RE_NCM_MULTILINGUE.test(c.header));
+  if (idx < 0) return colunas;
+  return colunas.map((c, i) =>
+    i === idx ? { ...c, tipo: "ncm", confianca: Math.max(c.confianca, 0.9) } : c,
+  );
 }
 
 function num(v: unknown): number | null {
@@ -594,12 +604,13 @@ function parseRows(
       const { tipo, confianca } = detectarTipo(header);
       return { indice, header, tipo, confianca };
     });
+  colunas = garantirColunaNcm(colunas);
 
   let usouSinonimos = false;
   if (indiceDescricao(colunas) === undefined) {
     const remapeadas = mapearColunasPorSinonimos(headerCells.map((h) => String(h ?? "")));
     if (indiceDescricao(remapeadas) !== undefined) {
-      colunas = remapeadas;
+      colunas = garantirColunaNcm(remapeadas);
       usouSinonimos = true;
       avisos.push(AVISO_MAPEAMENTO_SINONIMOS);
     }

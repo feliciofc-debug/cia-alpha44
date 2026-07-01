@@ -4,6 +4,9 @@
 
 import type { ColunaDetectada, ColunaMapeada } from "./parser.js";
 
+export const RE_NCM_MULTILINGUE =
+  /(?:\bn\s*[\.\-\s]*c\s*[\.\-\s]*m\b|\bh\s*[\.\-\s]*s\s*[\.\-\s]*code\b|\bh\s*[\.\-\s]*s\s*[\.\-\s]*编码|tariff|zolltarif|taric|税号|海关编码|商品编码|税则号|c[oó]d(?:igo)?\.?\s*fiscal)/i;
+
 /** Padrões estendidos — mesma ordem de prioridade que parser.ts (bruto antes de líquido). */
 export const PADROES_MULTILINGUE: { tipo: ColunaDetectada; re: RegExp }[] = [
   {
@@ -27,7 +30,7 @@ export const PADROES_MULTILINGUE: { tipo: ColunaDetectada; re: RegExp }[] = [
     tipo: "preco",
     re: /price|preço|preco|preis|stückpreis|stuckpreis|einzelpreis|unitario|unit[aá]rio|precio|prix|单价|unit|usd\/kg|eur\)/i,
   },
-  { tipo: "ncm", re: /ncm|hs\s*code|tariff|zolltarif|taric|税号|海关编码/i },
+  { tipo: "ncm", re: RE_NCM_MULTILINGUE },
   { tipo: "dimensoes", re: /dim|size|maß|mass|medida|规格|measure|tamanho/i },
 ];
 
