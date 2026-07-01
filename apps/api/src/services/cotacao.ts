@@ -921,7 +921,9 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
     });
     const flags = it.fobPendente ? [...(risco.flags ?? []), "FOB_PENDENTE"] : risco.flags;
     const fobKgFonteEfetiva =
-      benchmark.fonte === "Histórico próprio"
+      it.fobKgFonte === FOB_KG_FONTE_PRECO_CUSTO
+        ? it.fobKgFonte
+        : benchmark.fonte === "Histórico próprio"
         ? (benchmark.rastroFonte ?? "planilha-operacional")
         : benchmark.fonte === "ComexStat"
           ? (benchmark.rastroFonte ?? "comexstat")

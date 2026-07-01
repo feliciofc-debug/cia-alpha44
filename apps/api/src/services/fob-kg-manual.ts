@@ -2,6 +2,7 @@ import type { AvisoValoracao, Benchmark, Item } from "@cia/shared";
 import type { calibrarFobKg } from "@cia/pipeline";
 import {
   analisarEscalaFobItem,
+  FOB_KG_FONTE_PRECO_CUSTO,
   fobKgBenchmark,
   fobTotalPlanilhaPeso,
   pesoBrutoPlanilhaFob,
@@ -28,6 +29,9 @@ function fobKgBenchmarkOperacional(benchmark?: Benchmark): number | null {
 /** FOB total US$ metodologia empresa: PREÇO FOB/KG × peso bruto. */
 export function fobTotalPlanilhaItem(it: Item, benchmark?: Benchmark): number {
   if (it.fobPendente) return 0;
+  if (it.fobKgManual == null && it.fobKgFonte === FOB_KG_FONTE_PRECO_CUSTO) {
+    return it.fobTotalUS > 0 ? it.fobTotalUS : 0;
+  }
   const bench = benchmark ?? it.benchmark;
   const pesoRef = pesoFobPlanilhaItem(it, bench);
   return fobTotalPlanilhaPeso(pesoRef, bench, it.fobKgManual);
@@ -37,6 +41,7 @@ export function fobTotalPlanilhaItem(it: Item, benchmark?: Benchmark): number {
 export function fobKgReferenciaItem(it: Item): number | null {
   if (it.fobPendente) return null;
   if (it.fobKgManual != null && it.fobKgManual > 0) return it.fobKgManual;
+  if (it.fobKgFonte === FOB_KG_FONTE_PRECO_CUSTO) return null;
   const planilha = fobKgBenchmarkOperacional(it.benchmark);
   if (planilha != null) return planilha;
   if (it.calibracao?.fobKgCalibrado != null && it.calibracao.fobKgCalibrado > 0) {
