@@ -1,5 +1,6 @@
 /** Ingestão unificada: Excel, CSV, PDF e imagem → linhas para cotação. */
 
+import { createHash } from "node:crypto";
 import {
   aplicarPrecoCustoLinha,
   detectarPrecoCusto,
@@ -56,6 +57,28 @@ function aplicarPrecosCusto(parsed: ParsedSupplierFile): ParsedSupplierFile {
   return { ...parsed, linhas, avisos };
 }
 
+function logDeteccaoNcmUpload(filename: string, bytes: Uint8Array, parsed: ParsedSupplierFile): void {
+  const sha256 = createHash("sha256").update(bytes).digest("hex");
+  const colunasNcm = parsed.colunas
+    .filter((c) => c.campo === "ncm")
+    .map((c) => ({ colIndex: c.colIndex, header: c.header, confianca: c.confianca }));
+  const metaNcm = parsed.metaNcmEmbarque;
+
+  console.info(
+    "[upload:ncm-detection]",
+    JSON.stringify({
+      arquivo: filename,
+      sha256,
+      abaUsada: parsed.abaUsada,
+      headerRowIndex: parsed.headerRowIndex,
+      colunaNcmDetectada: metaNcm?.colunaDetectada ?? colunasNcm.length > 0,
+      colunasNcm,
+      linhasComNcmColuna: metaNcm?.linhasComNcmColuna ?? parsed.linhas.filter((l) => l.ncm != null).length,
+      totalLinhas: metaNcm?.totalLinhas ?? parsed.totalLinhas,
+    }),
+  );
+}
+
 export async function ingerirArquivo(
   filename: string,
   bytes: Uint8Array,
@@ -70,6 +93,7 @@ export async function ingerirArquivo(
   if (fonte === "planilha") {
     const mapearColunasIA = llm ? resolverMapearColunasPlanilha(llm) : undefined;
     const parsed = aplicarPrecosCusto(await parseSupplierFile(bytes, { mapearColunasIA }));
+    logDeteccaoNcmUpload(filename, bytes, parsed);
     const convertido = await converterLinhasEurParaUsd(parsed);
     return { ...convertido, arquivo: filename, fonte };
   }
