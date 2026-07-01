@@ -1,5 +1,12 @@
 import type { Item } from "./types.ts";
 
+export function precoCustoUnitarioItem(it: Item): number | null {
+  if (it.fobKgFonte !== "preco-custo") return null;
+  if (it.fobUnitarioUS != null && it.fobUnitarioUS > 0) return it.fobUnitarioUS;
+  if (it.qtd != null && it.qtd > 0 && it.fobTotalUS > 0) return it.fobTotalUS / it.qtd;
+  return null;
+}
+
 function fobKgPlanilhaOperacional(it: Item): number | null {
   if (!it.benchmark) return null;
   if (it.benchmark.fonte === "Histórico próprio") {
@@ -75,6 +82,7 @@ export function fmtFobKgPlanilha(n: number): string {
 /** Rótulo da fonte FOB/kg efetiva na cotação. */
 export function fobKgFonteLabel(it: Item): string | null {
   if (it.fobPendente) return null;
+  if (it.fobKgFonte === "preco-custo") return "Base FOB = valor de custo (veículo)";
   if (it.benchmark?.fonte === "Histórico próprio") {
     return "Planilha China (PREÇO FOB/KG)";
   }
