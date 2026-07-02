@@ -125,7 +125,10 @@ function aplicarPrecoCustoLinhaComMeta(l: LinhaCrua): ResultadoResolverFobLinha 
     qtd: l.qtd,
   });
   if (!tipo) return null;
-  const unit = precoCustoUnitarioUSD(tipo);
+  const unit =
+    l.fobUnitarioUS != null && l.fobUnitarioUS > 0
+      ? l.fobUnitarioUS
+      : precoCustoUnitarioUSD(tipo);
   const qtd = l.qtd != null && l.qtd > 0 ? l.qtd : 1;
   return {
     linha: { ...l, qtd, fobUnitarioUS: unit, fobTotalUS: unit * qtd },
@@ -336,7 +339,10 @@ function resolverItemInterno(
     qtd: it.qtd,
   });
   if (tipo) {
-    const unit = precoCustoUnitarioUSD(tipo);
+    const unit =
+      it.fobUnitarioUS != null && it.fobUnitarioUS > 0
+        ? it.fobUnitarioUS
+        : precoCustoUnitarioUSD(tipo);
     const qtd = it.qtd != null && it.qtd > 0 ? it.qtd : 1;
     return {
       item: { ...it, qtd, fobUnitarioUS: unit, fobTotalUS: unit * qtd },

@@ -22,7 +22,7 @@ describe("preco-custo — moto e patinete", () => {
   it("aplica US$ 300/un × qtd para moto", () => {
     const r = aplicarPrecoCustoLinha({
       descOriginal: "Moto elétrica modelo X",
-      ncm: null,
+      ncm: "87119000",
       qtd: 10,
       pesoBrutoKg: 500,
       pesoLiqKg: 450,
@@ -33,14 +33,28 @@ describe("preco-custo — moto e patinete", () => {
     expect(r.fobTotalUS).toBe(3000);
   });
 
-  it("aplica US$ 109/un × qtd para patinete", () => {
+  it("aplica custo unitário informado × qtd para patinete", () => {
     const r = aplicarPrecoCustoLinha({
       descOriginal: "Patinete elétrico PRO",
-      ncm: "95030099",
+      ncm: "87116000",
       qtd: 50,
       pesoBrutoKg: 1150,
       pesoLiqKg: 1000,
       fobUnitarioUS: 80,
+      fobTotalUS: 4000,
+    });
+    expect(r.fobUnitarioUS).toBe(80);
+    expect(r.fobTotalUS).toBe(4000);
+  });
+
+  it("usa US$ 109/un quando patinete não tem custo unitário informado", () => {
+    const r = aplicarPrecoCustoLinha({
+      descOriginal: "Patinete elétrico PRO",
+      ncm: "87116000",
+      qtd: 50,
+      pesoBrutoKg: 1150,
+      pesoLiqKg: 1000,
+      fobUnitarioUS: null,
       fobTotalUS: 4000,
     });
     expect(r.fobUnitarioUS).toBe(PRECO_CUSTO_PATINETE_USD);
@@ -123,8 +137,8 @@ describe("preco-custo — guard-rails peça vs produto completo", () => {
       fobUnitarioUS: 140.58,
       fobTotalUS: 70290,
     });
-    expect(r.fobUnitarioUS).toBe(PRECO_CUSTO_PATINETE_USD);
-    expect(r.fobTotalUS).toBe(500 * PRECO_CUSTO_PATINETE_USD);
+    expect(r.fobUnitarioUS).toBe(140.58);
+    expect(r.fobTotalUS).toBe(500 * 140.58);
   });
 
   it("amortecedor 0,12 US$ → cascata normal (nunca preco-custo)", () => {

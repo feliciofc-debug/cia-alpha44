@@ -12,6 +12,7 @@ import { buscarCambioPtax } from "./services/cambio.js";
 import { calcularCotacao, montarItens } from "./services/cotacao.js";
 import {
   atualizarCotacao,
+  alterarCustoUnitarioVeiculoItem,
   alterarFobKgItem,
   alterarNcmItem,
   buscarCotacao,
@@ -612,6 +613,37 @@ export async function buildServer() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Falha ao alterar FOB/kg.";
       if (msg.includes("fobKgManual inválido")) return reply.status(400).send({ erro: msg });
+      return persistenciaErro(reply, e);
+    }
+  });
+
+  app.patch("/api/cotacoes/:id/itens/:ordem/custo-unitario-veiculo", async (req, reply) => {
+    try {
+      const { id, ordem } = req.params as { id: string; ordem: string };
+      const idx = Number(ordem);
+      if (!Number.isFinite(idx) || idx < 0) {
+        return reply.status(400).send({ erro: "Ordem de item inválida." });
+      }
+      const body = z
+        .object({
+          custoUnitarioUS: z.number().positive(),
+        })
+        .safeParse(req.body ?? {});
+      if (!body.success) return reply.status(400).send({ erro: "Body inválido — use { custoUnitarioUS: number }." });
+      const atualizada = await alterarCustoUnitarioVeiculoItem(
+        id,
+        tenantSlug(req),
+        idx,
+        body.data.custoUnitarioUS,
+        getState(),
+      );
+      if (!atualizada) return reply.status(404).send({ erro: "Cotação ou item não encontrado." });
+      return atualizada;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Falha ao alterar custo unitário.";
+      if (msg.includes("custoUnitarioUS inválido") || msg.includes("não identificado como veículo")) {
+        return reply.status(400).send({ erro: msg });
+      }
       return persistenciaErro(reply, e);
     }
   });

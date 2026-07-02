@@ -310,4 +310,51 @@ describe("alterarNcmItem — edição soberana do operador", () => {
     expect(novo.itens[0]?.ncm).toBe("84238900");
     expect(novo.itens[0]?.ncmClassificacaoCache).toBe("humano");
   });
+
+  it("custo unitário de veículo atualiza FOB = custo × quantidade e recalcula", async () => {
+    const state = carregarState();
+    seedCotacao({
+      ...makeItem("ES-T19A-10BLK — 滑板车T1 MAX"),
+      ncm: "87116000",
+      qtd: 500,
+      pesoBrutoKg: 11500,
+      pesoLiqKg: 10000,
+      fobUnitarioUS: 140.58,
+      fobTotalUS: 70290,
+      meta: { uso: "骑行", ncmFonte: "planilha-cliente" },
+    });
+    const { alterarCustoUnitarioVeiculoItem } = await import("../src/services/cotacoes-persist.js");
+
+    const out = await alterarCustoUnitarioVeiculoItem(COTACAO_ID, TENANT, 0, 109, state);
+
+    expect(out).not.toBeNull();
+    expect(store.row!.itens[0]!.fobUnitarioUS).toBe(109);
+    expect(store.row!.itens[0]!.fobTotalUS).toBeCloseTo(54500, 2);
+    expect(out!.itens[0]!.fobUnitarioUS).toBe(109);
+    expect(out!.itens[0]!.fobTotalUS).toBeCloseTo(54500, 2);
+    expect(out!.avisoCustoVeiculo).toContain("Base FOB = valor de custo");
+  });
+
+  it("custo unitário rejeita item não-veículo e não grava", async () => {
+    const state = carregarState();
+    seedCotacao({
+      ...makeItem("ACC-ES-SSA001 — 减震器"),
+      ncm: "87141000",
+      qtd: 4,
+      pesoBrutoKg: 16.4,
+      pesoLiqKg: 16,
+      fobUnitarioUS: 0.12,
+      fobTotalUS: 0.48,
+      meta: { uso: "配件", ncmFonte: "planilha-cliente" },
+    });
+    const { alterarCustoUnitarioVeiculoItem } = await import("../src/services/cotacoes-persist.js");
+
+    await expect(alterarCustoUnitarioVeiculoItem(COTACAO_ID, TENANT, 0, 109, state)).rejects.toThrow(
+      /não identificado como veículo/i,
+    );
+
+    expect(store.row!.itens[0]!.fobUnitarioUS).toBe(0.12);
+    expect(store.row!.itens[0]!.fobTotalUS).toBe(0.48);
+    expect(store.itemUpdates).toBe(0);
+  });
 });

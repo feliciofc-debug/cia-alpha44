@@ -111,7 +111,7 @@ describe("peso display — blindagem fiscal (totais inalterados)", () => {
     const index = buildBenchmarkIndex([]);
     const { linhas } = preencherFobKgPlanilha(json.linhas, index);
     const comRegras = aplicarRegrasFobItens(
-      linhas.map((l) => ({
+      linhas.map((l, i) => ({
         descOriginal: l.descOriginal,
         descPt: l.descOriginal,
         descDuimp: "",
@@ -120,8 +120,8 @@ describe("peso display — blindagem fiscal (totais inalterados)", () => {
         pesoLiqKg: pesoLiqReal(l),
         pesoBrutoKg: l.pesoBrutoKg,
         qtd: l.qtd,
-        fobUnitarioUS: l.fobUnitarioUS,
-        fobTotalUS: l.fobTotalUS ?? 0,
+        fobUnitarioUS: i < 2 ? 109 : l.fobUnitarioUS,
+        fobTotalUS: i < 2 ? 109 * (l.qtd ?? 1) : (l.fobTotalUS ?? 0),
         aliquotas: { ii: 0.18, ipi: 0.35, pis: 0.021, cofins: 0.0965, icmsEntrada: 0 },
         aliquotasOverride: false,
         anuencia: [],

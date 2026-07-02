@@ -218,10 +218,10 @@ describe("fatura 16 — 27/27 base bruta", () => {
   });
 });
 
-describe("fatura 92 — FOB DI patinetes (preco-custo só produto completo)", () => {
+describe("fatura 92 — FOB DI patinetes (custo unitário só produto completo)", () => {
   beforeEach(() => substituirHistoricoBenchmark([]));
 
-  it("710 patinetes × US$ 109 ≈ US$ 77,4k — partes mantêm FOB da linha", () => {
+  it("710 patinetes × custo informado — partes mantêm FOB da linha", () => {
     const index = buildBenchmarkIndex([]);
     const linhas: LinhaCrua[] = [
       {
@@ -290,18 +290,18 @@ describe("fatura 92 — FOB DI patinetes (preco-custo só produto completo)", ()
 
     const recalc = aplicarRegrasFobItens(itens, index);
     const fobPatinetes = recalc.slice(0, 2).reduce((s, it) => s + it.fobTotalUS, 0);
-    expect(fobPatinetes).toBeCloseTo(710 * PRECO_CUSTO_PATINETE_USD, 0);
+    expect(fobPatinetes).toBeCloseTo(710 * 140.58, 0);
     expect(recalc[2]!.fobKgFonte).not.toBe(FOB_KG_FONTE_PRECO_CUSTO);
     expect(recalc[2]!.fobTotalUS).toBeCloseTo(0.48, 2);
     expect(recalc[3]!.fobTotalUS).toBeCloseTo(1, 2);
-    expect(fobPatinetes).toBeLessThan(79400);
+    expect(fobPatinetes).toBeCloseTo(99811.8, 1);
   });
 });
 
 describe("aplicarRegrasFobItens — recálculo patinete", () => {
   beforeEach(() => substituirHistoricoBenchmark([]));
 
-  it("reaplica preco-custo no recálculo", () => {
+  it("reaplica custo unitário informado no recálculo", () => {
     const index = buildBenchmarkIndex([]);
     const [out] = aplicarRegrasFobItens(
       [
@@ -312,6 +312,27 @@ describe("aplicarRegrasFobItens — recálculo patinete", () => {
           pesoLiqKg: 14480,
           fobTotalUS: 1,
           fobUnitarioUS: 1,
+          uso: "骑行",
+        }),
+      ],
+      index,
+    );
+    expect(out!.fobKgFonte).toBe(FOB_KG_FONTE_PRECO_CUSTO);
+    expect(out!.fobUnitarioUS).toBe(1);
+    expect(out!.fobTotalUS).toBeCloseTo(724, 0);
+  });
+
+  it("usa default operacional quando veículo não tem custo unitário informado", () => {
+    const index = buildBenchmarkIndex([]);
+    const [out] = aplicarRegrasFobItens(
+      [
+        itemBase({
+          descOriginal: "PATINETE ELÉTRICO",
+          ncm: "87116000",
+          qtd: 724,
+          pesoLiqKg: 14480,
+          fobTotalUS: 1,
+          fobUnitarioUS: null,
           uso: "骑行",
         }),
       ],

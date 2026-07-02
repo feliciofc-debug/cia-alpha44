@@ -22,13 +22,15 @@ export interface DetectarPrecoCustoInput {
   pesoLiqKg?: number | null;
   pesoBrutoKg?: number | null;
   qtd?: number | null;
+  /** Sinal externo de visão/foto já validado como veículo. */
+  visaoVeiculo?: boolean | null;
 }
 
 const RE_MOTO =
   /moto\s*el[eé]tr|motocicleta\s*el[eé]tr|electric\s*motorcycle|e-?motorcycle|motorcycle|ciclomotor|摩托车/i;
 
 const RE_PATINETE =
-  /patinete|kick\s*scooter|e-?scooter|scooter\s*el[eé]tr|hoverboard|self\s*balance|电动滑板|滑板车|平衡车/i;
+  /patinete|kick\s*scooter|e-?scooter|electric\s*scooter|scooter\s*el[eé]tr|hoverboard|self\s*balance|电动滑板|滑板车|电动车|平衡车/i;
 
 /** Uso / descrição indica peça ou acessório — preço-custo não se aplica. */
 export const RE_USO_PECA =
@@ -65,16 +67,21 @@ function tipoPorDescOriginal(desc: string): TipoPrecoCusto | null {
   return null;
 }
 
-function tipoPorNcm(ncm: string | null | undefined, desc: string): TipoPrecoCusto | null {
+function tipoPorNcm(ncm: string | null | undefined): TipoPrecoCusto | null {
   const key = ncm8(ncm);
   if (key.startsWith("871160")) return "patinete_eletrico";
   if (key.startsWith("8711")) return "moto_eletrica";
-  if (key.startsWith("9503") && RE_PATINETE.test(desc)) return "patinete_eletrico";
   return null;
 }
 
 export function precoCustoUnitarioUSD(tipo: TipoPrecoCusto): number {
   return tipo === "moto_eletrica" ? PRECO_CUSTO_MOTO_USD : PRECO_CUSTO_PATINETE_USD;
+}
+
+function custoUnitarioVeiculoUSD(l: Pick<LinhaCrua, "fobUnitarioUS">, tipo: TipoPrecoCusto): number {
+  return l.fobUnitarioUS != null && l.fobUnitarioUS > 0
+    ? l.fobUnitarioUS
+    : precoCustoUnitarioUSD(tipo);
 }
 
 /**
@@ -93,7 +100,15 @@ export function detectarPrecoCusto(
   const desc = ctx.descOriginal.trim();
   if (!desc) return null;
 
-  const tipo = tipoPorDescOriginal(desc) ?? tipoPorNcm(ctx.ncm, desc);
+  if (typeof input === "string") return tipoPorDescOriginal(desc) ?? tipoPorNcm(ctx.ncm);
+
+  const tipoDesc = tipoPorDescOriginal(desc);
+  const tipoNcm = tipoPorNcm(ctx.ncm);
+  const tipoVisao = ctx.visaoVeiculo ? (tipoDesc ?? tipoNcm ?? "patinete_eletrico") : null;
+  const sinais = [tipoNcm, tipoDesc, tipoVisao].filter(Boolean) as TipoPrecoCusto[];
+  if (sinais.length < 2) return null;
+
+  const tipo = sinais.includes("patinete_eletrico") ? "patinete_eletrico" : "moto_eletrica";
   if (!tipo) return null;
   if (!pesoCompativelVeiculo(ctx)) return null;
   return tipo;
@@ -111,7 +126,7 @@ export function aplicarPrecoCustoLinha(l: LinhaCrua): LinhaCrua {
   });
   if (!tipo) return l;
 
-  const unit = precoCustoUnitarioUSD(tipo);
+  const unit = custoUnitarioVeiculoUSD(l, tipo);
   const qtd = l.qtd != null && l.qtd > 0 ? l.qtd : 1;
 
   return {

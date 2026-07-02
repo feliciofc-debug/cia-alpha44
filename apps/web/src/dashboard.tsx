@@ -27,7 +27,7 @@ import { PdfDownloadBar } from "./pdf-download-bar.tsx";
 import { BarraResolucaoNcm } from "./barra-resolucao-ncm.tsx";
 import { DisclaimerConciliacaoIa, SeloConciliacaoNcm } from "./ncm-conciliacao-ui.tsx";
 import { aplicarOverrideManualAliquota, desfazerOverrideManualAliquota, type ChaveTributoRastro } from "@cia/shared";
-import { InputFobKgItem } from "./fob-kg-edit.tsx";
+import { InputCustoUnitarioVeiculo, InputFobKgItem } from "./fob-kg-edit.tsx";
 import { FobKgLinhaNcm } from "./fob-kg-linha-ncm.tsx";
 import { DetalheRastroAliquota } from "./lib/aliquota-rastro-ui.tsx";
 import type { ClienteResumo, DashboardKpis, DashboardSeries } from "./lib/types.ts";
@@ -55,6 +55,13 @@ function resumoCanais(itens: Item[]) {
     m[c] = (m[c] ?? 0) + 1;
   }
   return m;
+}
+
+function itemVeiculoCusto(it: Item): boolean {
+  const desc = `${it.descOriginal} ${it.descPt ?? ""}`;
+  const ncmVeiculo = (it.ncm ?? "").replace(/\D/g, "").startsWith("8711");
+  const descVeiculo = /moto|patinete|hoverboard|scooter|滑板车|电动车/i.test(desc);
+  return it.fobKgFonte === "preco-custo" || (ncmVeiculo && descVeiculo);
 }
 
 function IconLixeira() {
@@ -320,6 +327,8 @@ function AnalisePainel({
   alterandoNcm,
   onAlterarFobKg,
   alterandoFobKg,
+  onAlterarCustoUnitarioVeiculo,
+  alterandoCustoVeiculo,
   avisosValoracaoFob,
   onConfirmarIcmsSaida,
   confirmandoIcms,
@@ -355,6 +364,8 @@ function AnalisePainel({
   alterandoNcm?: number | null;
   onAlterarFobKg?: (ordem: number, fobKgManual: number | null) => void | Promise<void>;
   alterandoFobKg?: number | null;
+  onAlterarCustoUnitarioVeiculo?: (ordem: number, custoUnitarioUS: number) => void | Promise<void>;
+  alterandoCustoVeiculo?: number | null;
   avisosValoracaoFob?: Record<number, AvisoValoracao | null>;
   onConfirmarIcmsSaida?: () => void | Promise<void>;
   confirmandoIcms?: boolean;
@@ -743,6 +754,14 @@ function AnalisePainel({
                         )}
                       </span>
                     )}
+                    {onAlterarCustoUnitarioVeiculo && itemVeiculoCusto(it) && (
+                      <InputCustoUnitarioVeiculo
+                        item={it}
+                        ordem={ordem}
+                        disabled={alterandoCustoVeiculo === ordem}
+                        onCommit={onAlterarCustoUnitarioVeiculo}
+                      />
+                    )}
                   </td>
                   <td className="p-2 whitespace-nowrap align-top">
                     {onAlterarFobKg ? (
@@ -1122,6 +1141,7 @@ export function Dashboard() {
   const [reclassificandoNcm, setReclassificandoNcm] = useState(false);
   const [alterandoNcm, setAlterandoNcm] = useState<number | null>(null);
   const [alterandoFobKg, setAlterandoFobKg] = useState<number | null>(null);
+  const [alterandoCustoVeiculo, setAlterandoCustoVeiculo] = useState<number | null>(null);
   const [avisosValoracaoFob, setAvisosValoracaoFob] = useState<Record<number, AvisoValoracao | null>>({});
   const ncmBusyRef = useRef(false);
   const [irParaOrcamento, setIrParaOrcamento] = useState(0);
@@ -1681,6 +1701,45 @@ export function Dashboard() {
     }
   }
 
+  async function alterarCustoUnitarioVeiculoHandler(ordem: number, custoUnitarioUS: number) {
+    const base = cotacaoAtiva();
+    if (!base) return;
+    const idx = idxPorOrdem(base.itens, ordem);
+    if (idx < 0) return;
+    setAlterandoCustoVeiculo(ordem);
+    setErro("");
+    setAvisoOperacao("");
+    try {
+      const idSalvo = detalhe?.id ?? salvaId;
+      const itemAtual = base.itens[idx]!;
+      const qtd = itemAtual.qtd != null && itemAtual.qtd > 0 ? itemAtual.qtd : 1;
+      const itEditado = {
+        ...itemAtual,
+        fobUnitarioUS: custoUnitarioUS,
+        fobTotalUS: custoUnitarioUS * qtd,
+        ordem,
+      };
+      const itensLocal = base.itens.map((it, i) => (i === idx ? itEditado : it));
+      const draft = editorDraft ?? editorFromCotacao(base.cotacao, "cliente" in base ? base.cotacao.cliente : cliente);
+      const cotacao = { ...aplicarEditorNaCotacao(base.cotacao, draft), itens: itensLocal };
+
+      if (idSalvo) {
+        const atualizada = await api.alterarCustoUnitarioVeiculoItem(idSalvo, ordem, custoUnitarioUS);
+        if (atualizada.avisoCustoVeiculo) setAvisoOperacao(atualizada.avisoCustoVeiculo);
+        sincronizarCotacaoSalva(atualizada);
+        return;
+      }
+
+      const { resultado, itens } = await api.calcular(cotacao);
+      setAvisoOperacao("Base FOB = valor de custo (veículo) — confirme o custo unitário.");
+      if (analise) setAnalise({ ...analise, cotacao, resultado, itens });
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao alterar custo unitário do veículo.");
+    } finally {
+      setAlterandoCustoVeiculo(null);
+    }
+  }
+
   async function baixarPdfClienteOrcamento() {
     const idSalvo = detalhe?.id ?? salvaId;
     await baixarPdfComTratamentoNcm(async () => {
@@ -2142,6 +2201,8 @@ export function Dashboard() {
                 alterandoNcm={alterandoNcm}
                 onAlterarFobKg={alterarFobKgItemHandler}
                 alterandoFobKg={alterandoFobKg}
+                onAlterarCustoUnitarioVeiculo={alterarCustoUnitarioVeiculoHandler}
+                alterandoCustoVeiculo={alterandoCustoVeiculo}
                 avisosValoracaoFob={avisosValoracaoFob}
                 onConfirmarIcmsSaida={() => void confirmarIcmsSaida()}
                 confirmandoIcms={confirmandoIcms}
@@ -2251,6 +2312,8 @@ export function Dashboard() {
                   alterandoNcm={alterandoNcm}
                   onAlterarFobKg={alterarFobKgItemHandler}
                   alterandoFobKg={alterandoFobKg}
+                  onAlterarCustoUnitarioVeiculo={alterarCustoUnitarioVeiculoHandler}
+                  alterandoCustoVeiculo={alterandoCustoVeiculo}
                   avisosValoracaoFob={avisosValoracaoFob}
                   onConfirmarIcmsSaida={() => void confirmarIcmsSaida()}
                   confirmandoIcms={confirmandoIcms}

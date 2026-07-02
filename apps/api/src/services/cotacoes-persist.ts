@@ -12,6 +12,7 @@ import {
   analisarEscalaFobItem,
   bloquearPersistenciaFobCorrupto,
   detectarFamilia,
+  detectarPrecoCusto,
   fobKgParaPreenchimento,
   lookupBenchmark,
   validarNcmParaCacheHumano,
@@ -1539,6 +1540,78 @@ export async function alterarFobKgItem(
       : null;
 
   return { ...recalculada, ordem, fobKgFinal, avisoValoracao };
+}
+
+/** Custo unitário de veículo — soberano para FOB = custo × quantidade. */
+export async function alterarCustoUnitarioVeiculoItem(
+  cotacaoId: string,
+  tenantSlug: string,
+  ordem: number,
+  custoUnitarioUS: number,
+  state: AppState,
+) {
+  if (!dbAtivo()) throw new PersistenciaIndisponivelError();
+
+  if (!Number.isFinite(custoUnitarioUS) || custoUnitarioUS <= 0) {
+    throw new Error("custoUnitarioUS inválido.");
+  }
+
+  const row = await buscarCotacaoRow(cotacaoId, tenantSlug);
+  if (!row) return null;
+
+  const itemRow = row.itens.find((i) => i.ordem === ordem);
+  if (!itemRow) return null;
+
+  const metaAtual = (itemRow.meta as ItemMetaPersistido | null) ?? {};
+  const base = mesclarItemMeta(
+    {
+      descOriginal: itemRow.descOriginal,
+      descPt: itemRow.descPt,
+      descDuimp: itemRow.descDuimp,
+      ncm: itemRow.ncm,
+      pesoLiqKg: num(itemRow.pesoLiqKg),
+      pesoBrutoKg: numOrNull(itemRow.pesoBrutoKg),
+      qtd: numOrNull(itemRow.qtd),
+      fobUnitarioUS: numOrNull(itemRow.fobUnitarioUS),
+      fobTotalUS: num(itemRow.fobTotalUS),
+    } as Item,
+    metaAtual,
+  );
+
+  const tipoVeiculo = detectarPrecoCusto({
+    descOriginal: base.descOriginal,
+    ncm: base.ncm,
+    uso: base.uso,
+    pesoLiqKg: base.pesoLiqKg,
+    pesoBrutoKg: base.pesoBrutoKg,
+    qtd: base.qtd,
+  });
+  if (!tipoVeiculo) {
+    throw new Error("Item não identificado como veículo para FOB por custo unitário.");
+  }
+
+  const valor = Number(custoUnitarioUS.toFixed(4));
+  const qtd = base.qtd != null && base.qtd > 0 ? base.qtd : 1;
+
+  await prisma.item.update({
+    where: { id: itemRow.id },
+    data: {
+      fobUnitarioUS: valor,
+      fobTotalUS: Number((valor * qtd).toFixed(4)),
+    },
+  });
+
+  const recalculada = await recalcularCotacaoPersistida(cotacaoId, tenantSlug, state, row);
+  if (!recalculada) return null;
+
+  const itemAtualizado = recalculada.itens.find((it) => (it.ordem ?? -1) === ordem);
+  return {
+    ...recalculada,
+    ordem,
+    custoUnitarioUS: valor,
+    fobTotalUS: itemAtualizado?.fobTotalUS ?? valor * qtd,
+    avisoCustoVeiculo: "Base FOB = valor de custo (veículo) — confirme o custo unitário.",
+  };
 }
 
 export async function excluirCotacao(id: string, tenantSlug: string): Promise<boolean> {

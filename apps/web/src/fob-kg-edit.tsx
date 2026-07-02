@@ -113,3 +113,74 @@ export function InputFobKgItem({
     </div>
   );
 }
+
+export function InputCustoUnitarioVeiculo({
+  item,
+  ordem,
+  disabled,
+  onCommit,
+}: {
+  item: Item;
+  ordem: number;
+  disabled?: boolean;
+  onCommit: (ordem: number, custoUnitarioUS: number) => void | Promise<void>;
+}) {
+  const valorAtual = item.fobUnitarioUS != null && item.fobUnitarioUS > 0 ? item.fobUnitarioUS : null;
+  const [local, setLocal] = useState(valorAtual != null ? String(valorAtual) : "");
+  const [editando, setEditando] = useState(false);
+
+  useEffect(() => {
+    if (editando) return;
+    setLocal(valorAtual != null ? String(valorAtual) : "");
+  }, [valorAtual, editando]);
+
+  function parseValor(): number | null {
+    const raw = local.trim().replace(",", ".");
+    if (!raw) return null;
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return n;
+  }
+
+  return (
+    <div className="mt-1 min-w-[7rem] rounded border border-amber-500/30 bg-amber-950/20 p-1">
+      <span className="block text-[10px] font-semibold text-amber-300">Custo unit. (US)</span>
+      <div className="mt-0.5 flex flex-wrap items-center gap-1">
+        <input
+          type="number"
+          min={0}
+          step={0.01}
+          disabled={disabled}
+          title="Custo unitário do veículo — FOB = custo × quantidade"
+          className="w-[5.5rem] rounded border border-amber-500/50 bg-ink-900/80 px-1 py-0.5 text-xs font-medium text-amber-100 disabled:opacity-50"
+          value={local}
+          onFocus={() => setEditando(true)}
+          onChange={(e) => setLocal(e.target.value)}
+          onBlur={() => setEditando(false)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              const v = parseValor();
+              if (v != null) void onCommit(ordem, v);
+              (e.target as HTMLInputElement).blur();
+            }
+          }}
+        />
+        <button
+          type="button"
+          className="rounded bg-amber-600/90 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+          disabled={disabled || parseValor() == null}
+          title="Gravar custo unitário do veículo"
+          onClick={() => {
+            const v = parseValor();
+            if (v != null) void onCommit(ordem, v);
+          }}
+        >
+          Salvar
+        </button>
+      </div>
+      <span className="mt-0.5 block text-[10px] text-amber-200/80">
+        Base FOB = valor de custo (veículo) — confirme o custo unitário
+      </span>
+    </div>
+  );
+}
