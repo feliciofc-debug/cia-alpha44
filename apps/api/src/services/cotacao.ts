@@ -361,6 +361,28 @@ async function classificarEmLotes(
       continue;
     }
 
+    // HUMANO SOBERANO: NCM confirmado por humano (cache) vem antes da planilha China/visão.
+    const cachedHumanoSoberano = await lookupClassificacaoCacheDetalhe(
+      { descOriginal: input.descOriginal, material: input.material, uso: input.uso },
+      versoes,
+    );
+    if (cachedHumanoSoberano?.confirmadoHumano) {
+      resultados[i] = {
+        ...cachedHumanoSoberano.output,
+        classificacaoCacheOrigem: "humano",
+      };
+      stats.hits += 1;
+      if (i === 0) {
+        stats.trace?.push({
+          ...traceBase,
+          decisao: "cache-humano-soberano",
+          provedor: "humano",
+          ncm: cachedHumanoSoberano.output.ncmCandidatos?.[0]?.ncm ?? null,
+        });
+      }
+      continue;
+    }
+
     const hitChina = resolverNcmClassificacaoPlanilhaChina(
       {
         descOriginal: input.descPtConfirmado ?? input.descOriginal,
