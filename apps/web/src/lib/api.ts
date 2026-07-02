@@ -432,7 +432,7 @@ export const api = {
         body: JSON.stringify({ ncm }),
       },
       NCM_ITEM_TIMEOUT_MS,
-    ).then(handle<CotacaoSalva>),
+    ).then(handle<CotacaoSalva & { ordem?: number; avisoCoerencia?: string | null; avisoFobKg?: string | null }>),
 
   alterarFobKgItem: (cotacaoId: string, ordem: number, fobKgManual: number | null) =>
     fetchComTimeout(

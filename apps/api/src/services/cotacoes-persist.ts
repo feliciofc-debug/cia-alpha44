@@ -11,6 +11,10 @@ import {
   enriquecerItensPdfNcmAudit,
   analisarEscalaFobItem,
   bloquearPersistenciaFobCorrupto,
+  detectarFamilia,
+  fobKgParaPreenchimento,
+  lookupBenchmark,
+  validarNcmParaCacheHumano,
   type NcmCatalog,
   type LinhaCrua,
   type ItemMetaPersistido,
@@ -47,7 +51,6 @@ import type { Prisma } from "@prisma/client";
 import { extrairResumoFinanceiro } from "../lib/financeiro.js";
 import { calcularCotacao, fobKgFinalItem, montarItens, type ResultadoCompleto } from "./cotacao.js";
 import { calcAvisoValoracaoFobKg } from "./fob-kg-manual.js";
-import { detectarFamilia } from "@cia/pipeline";
 import type { AppState } from "../state.js";
 import {
   outputConfirmacaoHumana,
@@ -1387,12 +1390,15 @@ export async function desfazerConfirmacaoNcmItem(
   return formatCotacaoSalva(atualizada as CotacaoComRelacoes, provider, catalog);
 }
 
-/** Altera NCM do item salvo, limpa confirmação humana e recalcula a cotação. */
+/** Altera NCM do item salvo por decisão explícita do operador e recalcula a cotação. */
 export async function alterarNcmItem(cotacaoId: string, tenantSlug: string, ordem: number, ncmNovo: string, state: AppState) {
   if (!dbAtivo()) throw new PersistenciaIndisponivelError();
 
   const ncm = ncm8Limpo(ncmNovo);
   if (!ncm || ncm === "00000000") throw new Error("NCM inválido (8 dígitos).");
+  if (!state.ncmCatalog.existe(ncm)) {
+    throw new Error(`NCM inválido: ${ncm} não existe na TEC/NCM vigente.`);
+  }
 
   const row = await buscarCotacaoRow(cotacaoId, tenantSlug);
   if (!row) return null;
@@ -1420,31 +1426,76 @@ export async function alterarNcmItem(cotacaoId: string, tenantSlug: string, orde
       ? await (state.tecSource.buscarAsync?.(ncm) ??
           Promise.resolve(state.tecSource.buscar(ncm)))
       : null;
+  const inputCache = {
+    descOriginal: itemRow.descOriginal,
+    material: metaAtual.material,
+    uso: metaAtual.uso,
+  };
+  const validacaoCoerencia = validarNcmParaCacheHumano(state.ncmCatalog, inputCache, ncm);
+  const avisoCoerencia = validacaoCoerencia.ok ? null : (validacaoCoerencia.motivo ?? null);
+  const confirmacao = metaConfirmacaoNcm(ncm, "operador");
   const itemAtualizado = {
-    ...limparConfirmacaoNcm(base),
+    ...base,
     ncm,
     ncmValido: true,
-    ncmFonte: metaAtual.ncmFonte === "pendente" ? "planilha" : (metaAtual.ncmFonte ?? "planilha"),
+    ncmFonte: "planilha" as const,
+    ncmClassificacaoCache: "humano" as const,
+    ...confirmacao,
     compatibilidadeProduto: "compativel" as const,
-    motivoCompatibilidade: undefined,
+    motivoCompatibilidade: avisoCoerencia ?? undefined,
+    ncmAvisos: [
+      ...(base.ncmAvisos ?? []).filter((a) => !/coerente|incoerente|confirmad/i.test(a)),
+      ...(avisoCoerencia ? [`Aviso de coerência: ${avisoCoerencia}`] : []),
+    ],
     ...(familiaId ? { familiaProdutoId: familiaId } : {}),
     ...(tec?.aliquotas ? { aliquotas: tec.aliquotas, aliquotasRastro: tec.rastros } : {}),
   };
   const novoMeta = extrairItemMeta(itemAtualizado);
 
-  await prisma.item.update({
-    where: { id: itemRow.id },
-    data: {
-      ncm,
-      meta: novoMeta as Prisma.InputJsonValue,
-      ...(tec?.aliquotas ? { aliquotas: tec.aliquotas as Prisma.InputJsonValue } : {}),
-    },
+  const versoes = await versoesClassificacaoCacheAtual();
+  await prisma.$transaction(async (tx) => {
+    await tx.item.update({
+      where: { id: itemRow.id },
+      data: {
+        ncm,
+        ncmCandidatos: [{ ncm, confianca: 1 }] as Prisma.InputJsonValue,
+        meta: novoMeta as Prisma.InputJsonValue,
+        ...(tec?.aliquotas ? { aliquotas: tec.aliquotas as Prisma.InputJsonValue } : {}),
+      },
+    });
+
+    await salvarClassificacaoCacheHumano(
+      inputCache,
+      versoes,
+      outputConfirmacaoHumana({
+        ...inputCache,
+        ncmConfirmado: ncm,
+        descPt: itemRow.descPt,
+        descDuimp: itemRow.descDuimp,
+      }),
+      { tx, strict: true, skipCoerencia: true },
+    );
   });
 
   const recalculada = await recalcularCotacaoPersistida(cotacaoId, tenantSlug, state, row);
   if (!recalculada) return null;
 
-  return recalculada;
+  const itemRecalculado = recalculada.itens.find((it) => (it.ordem ?? -1) === ordem);
+  const benchmarkNovo = lookupBenchmark(state.benchmarkIndex, ncm);
+  const fobKgPlanilha = fobKgParaPreenchimento(benchmarkNovo);
+  const avisoFobKg =
+    itemRecalculado?.fobKgManual != null && itemRecalculado.fobKgManual > 0
+      ? "FOB/kg manual existente preservado — override do operador prevalece sobre planilha China/ComexStat."
+      : benchmarkNovo.fonte === "Histórico próprio" && fobKgPlanilha != null && fobKgPlanilha > 0
+        ? null
+        : `NCM ${ncm} sem PREÇO FOB/KG na planilha China operacional — usado fallback ${benchmarkNovo.fonte}.`;
+
+  return {
+    ...recalculada,
+    ordem,
+    avisoCoerencia,
+    avisoFobKg,
+  };
 }
 
 /** Override manual FOB/kg — recalcula cotação inteira; aviso informativo se abaixo do piso. */

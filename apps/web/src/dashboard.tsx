@@ -79,6 +79,89 @@ function normalizarNcmDigitos(raw: string): string {
   return raw.replace(/\D/g, "").padStart(8, "0").slice(0, 8);
 }
 
+function EditarNcmInline({
+  item,
+  ordem,
+  disabled,
+  onCommit,
+}: {
+  item: Item;
+  ordem: number;
+  disabled?: boolean;
+  onCommit: (ordem: number, ncm: string) => void | Promise<void>;
+}) {
+  const [editando, setEditando] = useState(false);
+  const [valor, setValor] = useState(item.ncm ? fmtNcm(item.ncm) : "");
+  const [erroLocal, setErroLocal] = useState("");
+
+  useEffect(() => {
+    if (!editando) setValor(item.ncm ? fmtNcm(item.ncm) : "");
+  }, [item.ncm, editando]);
+
+  async function salvar() {
+    const ncm = normalizarNcmDigitos(valor);
+    if (ncm.length !== 8 || ncm === "00000000") {
+      setErroLocal("NCM deve ter 8 dígitos.");
+      return;
+    }
+    setErroLocal("");
+    await onCommit(ordem, ncm);
+    setEditando(false);
+  }
+
+  if (!editando) {
+    return (
+      <button
+        type="button"
+        className="rounded border border-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-slate-300 hover:border-sky-400/50 hover:text-sky-200 disabled:opacity-50"
+        disabled={disabled}
+        onClick={() => {
+          setValor(item.ncm ? fmtNcm(item.ncm) : "");
+          setErroLocal("");
+          setEditando(true);
+        }}
+      >
+        Editar NCM
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-1 space-y-1 rounded border border-sky-400/30 bg-sky-950/20 p-1">
+      <input
+        value={valor}
+        disabled={disabled}
+        onChange={(e) => setValor(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") void salvar();
+          if (e.key === "Escape") setEditando(false);
+        }}
+        placeholder="0000.00.00"
+        className="w-full rounded border border-white/15 bg-ink-900 px-1.5 py-1 font-mono text-xs text-white disabled:opacity-50"
+      />
+      <div className="flex gap-1">
+        <button
+          type="button"
+          className="rounded bg-sky-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-sky-500 disabled:opacity-50"
+          disabled={disabled}
+          onClick={() => void salvar()}
+        >
+          Salvar
+        </button>
+        <button
+          type="button"
+          className="rounded bg-slate-700 px-2 py-1 text-[10px] font-semibold text-slate-200 hover:bg-slate-600 disabled:opacity-50"
+          disabled={disabled}
+          onClick={() => setEditando(false)}
+        >
+          Cancelar
+        </button>
+      </div>
+      {erroLocal && <span className="block text-[10px] text-red-300">{erroLocal}</span>}
+    </div>
+  );
+}
+
 function msgErroOperacaoNcm(e: unknown, fallback: string): string {
   const msg = e instanceof Error ? e.message : fallback;
   if (/abort/i.test(msg)) {
@@ -447,15 +530,23 @@ function AnalisePainel({
                     <div className="truncate text-slate-500">{it.descDuimp.slice(0, 80)}</div>
                   </td>
                   <td className="max-w-[11rem] p-2 align-top">
-                    <span
-                      className={
-                        ncmInformadoParaFechamento(it)
-                          ? "text-emerald-300"
-                          : "font-semibold text-red-400"
-                      }
-                    >
-                      {fmtNcm(it.ncm || "00000000")}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-1">
+                      <span
+                        className={
+                          ncmInformadoParaFechamento(it)
+                            ? "text-emerald-300"
+                            : "font-semibold text-red-400"
+                        }
+                      >
+                        {fmtNcm(it.ncm || "00000000")}
+                      </span>
+                      <EditarNcmInline
+                        item={it}
+                        ordem={ordem}
+                        disabled={alterandoNcm === ordem || confirmandoNcm === ordem}
+                        onCommit={onAlterarNcm}
+                      />
+                    </div>
                     <FobKgLinhaNcm item={it} />
                     {!ncmInformadoParaFechamento(it) && it.compatibilidadeProduto === "incompativel" && (
                       <span
@@ -999,6 +1090,7 @@ export function Dashboard() {
   const [origemVoltar, setOrigemVoltar] = useState<"lista" | "clientes">("lista");
   const [meta, setMeta] = useState<Meta | null>(null);
   const [erro, setErro] = useState("");
+  const [avisoOperacao, setAvisoOperacao] = useState("");
 
   const [lista, setLista] = useState<CotacaoResumo[]>([]);
   const [totalHoje, setTotalHoje] = useState(0);
@@ -1508,9 +1600,18 @@ export function Dashboard() {
     if (!iniciarOperacaoNcm()) return;
     setAlterandoNcm(ordem);
     setErro("");
+    setAvisoOperacao("");
     try {
       const idSalvo = detalhe?.id ?? salvaId;
-      const itEditado = limparConfirmacaoNcm({ ...base.itens[idx]!, ncm, ordem });
+      const itEditado = {
+        ...base.itens[idx]!,
+        ncm,
+        ordem,
+        ncmFonte: "planilha" as const,
+        ncmClassificacaoCache: "humano" as const,
+        compatibilidadeProduto: "compativel" as const,
+        ...metaConfirmacaoNcm(ncm, user?.email ?? user?.nome),
+      };
       const itensLocal = base.itens.map((it, i) => (i === idx ? itEditado : it));
       const draft = editorDraft ?? editorFromCotacao(base.cotacao, "cliente" in base ? base.cotacao.cliente : cliente);
       const cotacao = { ...aplicarEditorNaCotacao(base.cotacao, draft), itens: itensLocal };
@@ -1518,6 +1619,8 @@ export function Dashboard() {
       if (idSalvo) {
         const atualizada = await api.alterarNcmItem(idSalvo, ordem, ncm);
         sincronizarCotacaoSalva(atualizada);
+        const avisos = [atualizada.avisoCoerencia, atualizada.avisoFobKg].filter(Boolean);
+        if (avisos.length) setAvisoOperacao(avisos.join(" "));
         return;
       }
 
@@ -1788,6 +1891,11 @@ export function Dashboard() {
                 Sair e entrar de novo
               </button>
             )}
+          </div>
+        )}
+        {avisoOperacao && (
+          <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-200">
+            {avisoOperacao}
           </div>
         )}
 
