@@ -127,7 +127,9 @@ function extrairLinhasComColunas(
     (c) => RE_DESC_EN_MULTILINGUE.test(c.header) && !RE_DESC_DE_MULTILINGUE.test(c.header) && !/^品名/i.test(c.header),
   )?.indice;
   const iDesc = indiceDescricao(colunas);
-  const iSku = colunas.find((c) => RE_SKU_MULTILINGUE.test(c.header))?.indice;
+  const iSku =
+    colunas.find((c) => /货号|item\s*number|REF|唛头|artikel-nr|artikelnummer|sku|referenz|ref\b|model|modelo|产品型号/i.test(c.header))?.indice ??
+    colunas.find((c) => RE_SKU_MULTILINGUE.test(c.header))?.indice;
   const iPos = colunas.find((c) => /^pos\.?$/i.test(c.header.trim()))?.indice;
   const iQtd = escolherColuna(colunas, "qtd", {
     prefer: /总数量|qtd\s*tot|quantidade\s*total|total.*qty|total.*quant|menge\s*gesamt/i,

@@ -5,7 +5,7 @@
 import type { ColunaDetectada, ColunaMapeada } from "./parser.js";
 
 export const RE_NCM_MULTILINGUE =
-  /(?:\bn\s*[\.\-\s]*c\s*[\.\-\s]*m\b|\bh\s*[\.\-\s]*s\s*[\.\-\s]*code\b|\bh\s*[\.\-\s]*s\s*[\.\-\s]*编码|tariff|zolltarif|taric|税号|海关编码|商品编码|税则号|c[oó]d(?:igo)?\.?\s*fiscal)/i;
+  /(?:\bn\s*[\.\-\s]*c\s*[\.\-\s]*m\b|\bh\s*[\.\-\s]*s\s*[\.\-\s]*code\b|\bh\s*[\.\-\s]*s\s*[\.\-\s]*编码|tariff|zolltarif|taric|税号|海关编码|产品海关编码|商品编码|税则号|c[oó]d(?:igo)?\.?\s*fiscal)/i;
 
 /** Padrões estendidos — mesma ordem de prioridade que parser.ts (bruto antes de líquido). */
 export const PADROES_MULTILINGUE: { tipo: ColunaDetectada; re: RegExp }[] = [
@@ -38,7 +38,7 @@ export const RE_QTD_CAIXAS_MULTILINGUE =
   /qtd\s*caixas|qtde\s*caixas|quantidade\s*caixas|kartons?|cartons?|caixas?|colli|箱数|number\s*of\s*cartons?|cx\s*\/?\s*caixa/i;
 
 export const RE_QTD_POR_CAIXA_MULTILINGUE =
-  /qtd\s*por\s*caixa|qtde\s*por\s*caixa|por\s*caixa|per\s*box|per\s*case|stück\s*je\s*karton|stuck\s*je|stück\s*pro|pieces?\s*per|每箱|单箱个数|装箱量|pcs\s*per|vpe\b/i;
+  /qtd\s*por\s*caixa|qtde\s*por\s*caixa|por\s*caixa|per\s*box|per\s*case|stück\s*je\s*karton|stuck\s*je|stück\s*pro|pieces?\s*per|每箱|单箱个数|装箱量|申报数量|pcs\s*per|vpe\b/i;
 
 export const RE_MATERIAL_MULTILINGUE = /material|werkstoff|mat[eé]ria|材质|matériau/i;
 
@@ -46,7 +46,7 @@ export const RE_USO_MULTILINGUE =
   /verwendungszweck|verwendung|zweck|uso|用途|usage|application|aplica[cç][aã]o|utilisation|destino/i;
 
 export const RE_SKU_MULTILINGUE =
-  /货号|item\s*number|REF|唛头|artikel-nr|artikelnummer|sku|referenz|ref\b|model|modelo|产品型号/i;
+  /货号|po\s*number|item\s*number|REF|唛头|artikel-nr|artikelnummer|sku|referenz|ref\b|model|modelo|产品型号/i;
 
 export const RE_DESC_EN_MULTILINGUE =
   /beschreibung\s*\(\s*EN\s*\)|english|trade\s*name|品名（英文）|英文|descripci[oó]n\s*\(\s*EN/i;
@@ -64,7 +64,7 @@ export function detectarTipoMultilingue(header: string): { tipo: ColunaDetectada
   if (/stückpreis|stuckpreis|einzelpreis|unit\s*price|preço\s*unit|preco\s*unit|prix\s*unitaire|precio\s*unitario/i.test(h)) {
     return { tipo: "preco", confianca: 0.92 };
   }
-  if (/stück\s*je|stuck\s*je|je\s*karton|pcs\s*per|por\s*caixa|per\s*box|per\s*case/i.test(h) && !/gewicht|weight|peso|poids/i.test(h)) {
+  if (/stück\s*je|stuck\s*je|je\s*karton|pcs\s*per|por\s*caixa|per\s*box|per\s*case|申报数量/i.test(h) && !/gewicht|weight|peso|poids/i.test(h)) {
     return { tipo: "desconhecido", confianca: 0 };
   }
   if (/total.*fob|fob.*total|valor\s*total\s*fob|fob\s*total|gesamtwert/i.test(h)) {

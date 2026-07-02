@@ -453,6 +453,26 @@ export const api = {
       >,
     ),
 
+  alterarCustoUnitarioVeiculoItem: (cotacaoId: string, ordem: number, custoUnitarioUS: number) =>
+    fetchComTimeout(
+      `${BASE}/api/cotacoes/${cotacaoId}/itens/${ordem}/custo-unitario-veiculo`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ custoUnitarioUS }),
+      },
+      NCM_ITEM_TIMEOUT_MS,
+    ).then(
+      handle<
+        CotacaoSalva & {
+          ordem: number;
+          custoUnitarioUS: number;
+          fobTotalUS: number;
+          avisoCustoVeiculo?: string;
+        }
+      >,
+    ),
+
   reclassificarCotacao: (cotacaoId: string) =>
     fetchComTimeout(
       `${BASE}/api/cotacoes/${cotacaoId}/reclassificar`,

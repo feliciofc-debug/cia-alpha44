@@ -28,6 +28,7 @@ function fobKgBenchmarkOperacional(benchmark?: Benchmark): number | null {
 /** FOB total US$ metodologia empresa: PREÇO FOB/KG × peso bruto. */
 export function fobTotalPlanilhaItem(it: Item, benchmark?: Benchmark): number {
   if (it.fobPendente) return 0;
+  if (it.fobKgFonte === "preco-custo") return it.fobTotalUS > 0 ? it.fobTotalUS : 0;
   const bench = benchmark ?? it.benchmark;
   const pesoRef = pesoFobPlanilhaItem(it, bench);
   return fobTotalPlanilhaPeso(pesoRef, bench, it.fobKgManual);
@@ -54,6 +55,7 @@ export function fobKgReferenciaItem(it: Item): number | null {
  */
 export function fobUsadoNoEngine(it: Item, _calibracao: Calibracao): number {
   if (it.fobPendente) return 0;
+  if (it.fobKgFonte === "preco-custo" && it.fobTotalUS > 0) return it.fobTotalUS;
   const bench = it.benchmark;
   const fobPlanilha = fobTotalPlanilhaItem(it, bench);
   if (fobPlanilha > 0) return fobPlanilha;

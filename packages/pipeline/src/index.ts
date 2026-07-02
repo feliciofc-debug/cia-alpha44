@@ -84,6 +84,7 @@ export {
 export { analisarRisco, type RiscoInput } from "./risco.js";
 export {
   parsePlanilhaBuffer,
+  parsePlanilhaRows,
   parseOcrTexto,
   parseSupplierFile,
   parseSupplierOcrText,
