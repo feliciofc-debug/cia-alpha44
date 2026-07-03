@@ -857,7 +857,7 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
   const paramsEngine = { ...paramsIcms };
   const cotacaoIcms = { ...cotacao, params: paramsEngine };
 
-  /** Metodologia empresa: FOB DI = planilha FOB/kg × peso bruto; invoice só referência. */
+  /** Metodologia empresa: FOB DI = item resolvido; itens comuns já vêm como planilha FOB/kg × peso bruto. */
   const itensComFob = aplicarPlanilhaChinaCotacao(cotacaoIcms.itens, state.benchmarkIndex);
 
   const itensEnriquecidos: Item[] = itensComFob.map((it) => {
@@ -900,12 +900,14 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
       antidumping: it.antidumping,
     });
     const flags = it.fobPendente ? [...(risco.flags ?? []), "FOB_PENDENTE"] : risco.flags;
-    const fobKgFonteEfetiva =
-      benchmark.fonte === "Histórico próprio"
-        ? (benchmark.rastroFonte ?? "planilha-operacional")
-        : benchmark.fonte === "ComexStat"
-          ? (benchmark.rastroFonte ?? "comexstat")
-          : it.fobKgFonte;
+    let fobKgFonteEfetiva = it.fobKgFonte;
+    if (it.fobKgFonte !== "preco-custo") {
+      if (benchmark.fonte === "Histórico próprio") {
+        fobKgFonteEfetiva = benchmark.rastroFonte ?? "planilha-operacional";
+      } else if (benchmark.fonte === "ComexStat") {
+        fobKgFonteEfetiva = benchmark.rastroFonte ?? "comexstat";
+      }
+    }
     return {
       ...it,
       fobTotalUS: fobMetodologia > 0 ? fobMetodologia : it.fobTotalUS,

@@ -71,10 +71,13 @@ export function InputFobKgItem({
           onChange={(e) => setLocal(e.target.value)}
           onBlur={() => {
             setEditando(false);
-            void onCommit(ordem, parseValor());
           }}
           onKeyDown={(e) => {
-            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+            if (e.key === "Enter") {
+              setEditando(false);
+              void onCommit(ordem, parseValor());
+              (e.target as HTMLInputElement).blur();
+            }
           }}
         />
         {fob.manualAtivo && onLimpar && (
