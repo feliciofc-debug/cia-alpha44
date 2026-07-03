@@ -311,7 +311,7 @@ describe("alterarNcmItem — edição soberana do operador", () => {
     expect(novo.itens[0]?.ncmClassificacaoCache).toBe("humano");
   });
 
-  it("custo unitário de veículo atualiza FOB = custo × quantidade e recalcula", async () => {
+  it("custo unitário de veículo permanece após recálculo mesmo com meta FOB antigo", async () => {
     const state = carregarState();
     seedCotacao({
       ...makeItem("ES-T19A-10BLK — 滑板车T1 MAX"),
@@ -321,7 +321,12 @@ describe("alterarNcmItem — edição soberana do operador", () => {
       pesoLiqKg: 10000,
       fobUnitarioUS: 140.58,
       fobTotalUS: 70290,
-      meta: { uso: "骑行", ncmFonte: "planilha-cliente" },
+      meta: {
+        uso: "骑行",
+        ncmFonte: "planilha-cliente",
+        fobKgFonte: "linha",
+        fobEmbarqueUS: 70290,
+      },
     });
     const { alterarCustoUnitarioVeiculoItem } = await import("../src/services/cotacoes-persist.js");
 
