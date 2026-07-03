@@ -754,17 +754,16 @@ function AnalisePainel({
                         )}
                       </span>
                     )}
-                    {onAlterarCustoUnitarioVeiculo && itemVeiculoCusto(it) && (
+                  </td>
+                  <td className="p-2 whitespace-nowrap align-top">
+                    {onAlterarCustoUnitarioVeiculo && itemVeiculoCusto(it) ? (
                       <InputCustoUnitarioVeiculo
                         item={it}
                         ordem={ordem}
                         disabled={alterandoCustoVeiculo === ordem}
                         onCommit={onAlterarCustoUnitarioVeiculo}
                       />
-                    )}
-                  </td>
-                  <td className="p-2 whitespace-nowrap align-top">
-                    {onAlterarFobKg ? (
+                    ) : onAlterarFobKg ? (
                       <InputFobKgItem
                         item={it}
                         ordem={ordem}

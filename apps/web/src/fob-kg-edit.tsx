@@ -143,8 +143,8 @@ export function InputCustoUnitarioVeiculo({
   }
 
   return (
-    <div className="mt-1 min-w-[7rem] rounded border border-amber-500/30 bg-amber-950/20 p-1">
-      <span className="block text-[10px] font-semibold text-amber-300">Custo unit. (US)</span>
+    <div className="min-w-[7rem]">
+      <span className="block text-[10px] font-semibold text-amber-300">Custo unit. (US$)</span>
       <div className="mt-0.5 flex flex-wrap items-center gap-1">
         <input
           type="number"
@@ -167,7 +167,7 @@ export function InputCustoUnitarioVeiculo({
         />
         <button
           type="button"
-          className="rounded bg-amber-600/90 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+          className="rounded bg-brand-600/80 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-brand-500 disabled:opacity-50"
           disabled={disabled || parseValor() == null}
           title="Gravar custo unitário do veículo"
           onClick={() => {
