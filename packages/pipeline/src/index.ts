@@ -64,6 +64,11 @@ export {
   type TipoPrecoCusto,
 } from "./preco-custo.js";
 export {
+  detectarCustoOrfaoVeiculo,
+  FONTE_CUSTO_ORFAO_VEICULO,
+  type CustoOrfaoVeiculo,
+} from "./custo-orfao-veiculo.js";
+export {
   aplicarRegrasFobItens,
   anexarMetaFobItem,
   resolverFobKgPlanilha,

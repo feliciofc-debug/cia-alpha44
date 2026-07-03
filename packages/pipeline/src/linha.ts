@@ -16,6 +16,8 @@ export interface LinhaCrua {
   fobTotalUS: number | null;
   /** Coluna VALOR FOB/kg da planilha do fornecedor (quando detectada). */
   fobKgReferencia?: number | null;
+  /** Números em colunas sem cabeçalho reconhecido à direita da planilha. */
+  valoresSemCabecalho?: number[];
   dimensoes?: string | null;
   /** Material (材质) — coluna fornecedor. */
   material?: string | null;

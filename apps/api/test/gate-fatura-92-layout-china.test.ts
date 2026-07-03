@@ -72,6 +72,7 @@ describe("gate fatura 92 — layout China embarque 92", () => {
         pesoLiqKg: l.pesoLiqKg,
         fobUnitarioUS: l.precoUnitario,
         fobTotalUS: l.fobTotalUS,
+        valoresSemCabecalho: l.valoresSemCabecalho,
         material: l.material ?? null,
         uso: l.uso ?? null,
       })),
@@ -83,6 +84,10 @@ describe("gate fatura 92 — layout China embarque 92", () => {
     expect(itens[1]!.qtd).toBe(210);
     expect(itens[0]!.pesoBrutoKg).toBe(11500);
     expect(itens[1]!.pesoBrutoKg).toBe(4830);
+    expect(itens[0]!.fobUnitarioUS).toBe(109);
+    expect(itens[1]!.fobUnitarioUS).toBe(109);
+    expect(itens[0]!.fobTotalUS).toBeCloseTo(54500, 2);
+    expect(itens[1]!.fobTotalUS).toBeCloseTo(22890, 2);
     expect(itens[0]!.ncm).toBe("87116000");
     expect(itens[1]!.ncm).toBe("87116000");
     expect(itens[2]!.ncm).toBe("87141000");

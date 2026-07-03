@@ -34,10 +34,11 @@ import type { LinhaCrua } from "./linha.js";
 import { pesoBrutoPlanilhaFob, resolvePesoLiqRateio } from "./linha.js";
 import { linhaPesoAbsurdo, ncmSuspeitoLixo, embarqueSuspeitoVsPlanilha } from "./fob-escala.js";
 import {
+  custoUnitarioVeiculoUSD,
   detectarPrecoCusto,
-  precoCustoUnitarioUSD,
   type TipoPrecoCusto,
 } from "./preco-custo.js";
+import { detectarCustoOrfaoVeiculo } from "./custo-orfao-veiculo.js";
 
 export type { FobKgBase };
 
@@ -82,11 +83,13 @@ function formatarNcmIrmao(ncm: string): string {
   return `ncm-irmao(${normalizarNcm(ncm)})`;
 }
 
-function metaPrecoCusto(tipo: TipoPrecoCusto): FobKgMeta {
+function metaPrecoCusto(tipo: TipoPrecoCusto, avisoExtra?: string): FobKgMeta {
   return {
     fobKgFonte: FOB_KG_FONTE_PRECO_CUSTO,
     fobKgBase: "indeterminado",
-    fobKgAvisos: [`Preço de custo interno (${tipo === "moto_eletrica" ? "moto" : "patinete"} elétrico).`],
+    fobKgAvisos: [
+      avisoExtra ?? `Preço de custo interno (${tipo === "moto_eletrica" ? "moto" : "patinete"} elétrico).`,
+    ],
   };
 }
 
@@ -125,14 +128,12 @@ function aplicarPrecoCustoLinhaComMeta(l: LinhaCrua): ResultadoResolverFobLinha 
     qtd: l.qtd,
   });
   if (!tipo) return null;
-  const unit =
-    l.fobUnitarioUS != null && l.fobUnitarioUS > 0
-      ? l.fobUnitarioUS
-      : precoCustoUnitarioUSD(tipo);
+  const orfao = detectarCustoOrfaoVeiculo(l);
+  const unit = orfao?.custoUnitarioUS ?? custoUnitarioVeiculoUSD(l, tipo);
   const qtd = l.qtd != null && l.qtd > 0 ? l.qtd : 1;
   return {
     linha: { ...l, qtd, fobUnitarioUS: unit, fobTotalUS: unit * qtd },
-    meta: metaPrecoCusto(tipo),
+    meta: metaPrecoCusto(tipo, orfao?.fonte),
   };
 }
 
@@ -339,10 +340,7 @@ function resolverItemInterno(
     qtd: it.qtd,
   });
   if (tipo) {
-    const unit =
-      it.fobUnitarioUS != null && it.fobUnitarioUS > 0
-        ? it.fobUnitarioUS
-        : precoCustoUnitarioUSD(tipo);
+    const unit = custoUnitarioVeiculoUSD(it, tipo, { priorizarFobUnitario: true });
     const qtd = it.qtd != null && it.qtd > 0 ? it.qtd : 1;
     return {
       item: { ...it, qtd, fobUnitarioUS: unit, fobTotalUS: unit * qtd },
