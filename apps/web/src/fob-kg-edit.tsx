@@ -181,6 +181,11 @@ export function InputCustoUnitarioVeiculo({
       <span className="mt-0.5 block text-[10px] text-amber-200/80">
         Base FOB = valor de custo (veículo) — confirme o custo unitário
       </span>
+      {item.fobKgAvisos?.slice(0, 1).map((aviso, i) => (
+        <span key={i} className="mt-0.5 block max-w-[12rem] truncate text-[10px] text-slate-500" title={aviso}>
+          {aviso}
+        </span>
+      ))}
     </div>
   );
 }

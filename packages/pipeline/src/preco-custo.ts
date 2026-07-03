@@ -4,6 +4,7 @@
  */
 
 import type { LinhaCrua } from "./linha.js";
+import { detectarCustoOrfaoVeiculo } from "./custo-orfao-veiculo.js";
 
 /** FOB unitário padrão — moto elétrica. */
 export const PRECO_CUSTO_MOTO_USD = 300;
@@ -78,7 +79,16 @@ export function precoCustoUnitarioUSD(tipo: TipoPrecoCusto): number {
   return tipo === "moto_eletrica" ? PRECO_CUSTO_MOTO_USD : PRECO_CUSTO_PATINETE_USD;
 }
 
-function custoUnitarioVeiculoUSD(l: Pick<LinhaCrua, "fobUnitarioUS">, tipo: TipoPrecoCusto): number {
+export function custoUnitarioVeiculoUSD(
+  l: Pick<LinhaCrua, "fobUnitarioUS" | "qtd" | "valoresSemCabecalho">,
+  tipo: TipoPrecoCusto,
+  opts?: { priorizarFobUnitario?: boolean },
+): number {
+  if (opts?.priorizarFobUnitario && l.fobUnitarioUS != null && l.fobUnitarioUS > 0) {
+    return l.fobUnitarioUS;
+  }
+  const orfao = detectarCustoOrfaoVeiculo(l);
+  if (orfao) return orfao.custoUnitarioUS;
   return l.fobUnitarioUS != null && l.fobUnitarioUS > 0
     ? l.fobUnitarioUS
     : precoCustoUnitarioUSD(tipo);

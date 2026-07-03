@@ -63,6 +63,7 @@ export interface LinhaFornecedor {
   precoUnitario: number | null;
   fobTotalUS: number | null;
   fobKgReferencia?: number | null;
+  valoresSemCabecalho?: number[];
   ncm: string | null;
   material?: string | null;
   uso?: string | null;
@@ -151,6 +152,13 @@ function extrairLinhasComColunas(
   const iNcm = escolherColuna(colunas, "ncm");
   const iMaterial = indicePorHeader(colunas, RE_MATERIAL);
   const iUso = indicePorHeader(colunas, RE_USO);
+  const ultimoIndiceMapeado = Math.max(
+    -1,
+    ...colunas.filter((c) => c.tipo !== "desconhecido").map((c) => c.indice),
+  );
+  const indicesOrfaosNumericos = colunas
+    .filter((c) => c.indice > ultimoIndiceMapeado && c.tipo === "desconhecido")
+    .map((c) => c.indice);
 
   const linhasBrutas: LinhaFornecedor[] = [];
   for (let r = headerRow + 1; r < rows.length; r++) {
@@ -216,6 +224,9 @@ function extrairLinhasComColunas(
     }
     const material = iMaterial !== undefined ? String(row[iMaterial] ?? "").trim() || null : null;
     const uso = iUso !== undefined ? String(row[iUso] ?? "").trim() || null : null;
+    const valoresSemCabecalho = indicesOrfaosNumericos
+      .map((i) => num(row[i]))
+      .filter((v): v is number => v != null && Number.isFinite(v));
 
     const raw: Record<string, unknown> = {};
     colunas.forEach((c) => {
@@ -235,6 +246,7 @@ function extrairLinhasComColunas(
       precoUnitario,
       fobTotalUS,
       fobKgReferencia: fobKgRef,
+      valoresSemCabecalho: valoresSemCabecalho.length ? valoresSemCabecalho : undefined,
       ncm: ncm && ncm.length === 8 ? ncm : null,
       material,
       uso,
@@ -861,6 +873,7 @@ function resultadoParaSupplier(parsed: ResultadoParse): ParsedSupplierFile {
       fobUnitarioUS: l.precoUnitario,
       fobTotalUS,
       fobKgReferencia: l.fobKgReferencia ?? null,
+      valoresSemCabecalho: l.valoresSemCabecalho,
       dimensoes: null,
       material: l.material ?? null,
       uso: l.uso ?? null,
