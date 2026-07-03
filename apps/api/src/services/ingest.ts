@@ -76,6 +76,8 @@ function logDeteccaoNcmUpload(filename: string, bytes: Uint8Array, parsed: Parse
       colunasNcm,
       linhasComNcmColuna: metaNcm?.linhasComNcmColuna ?? parsed.linhas.filter((l) => l.ncm != null).length,
       totalLinhas: metaNcm?.totalLinhas ?? parsed.totalLinhas,
+      imagensArquivo: parsed.imagensArquivo,
+      imagensMapeadas: parsed.imagensMapeadas,
     }),
   );
 }

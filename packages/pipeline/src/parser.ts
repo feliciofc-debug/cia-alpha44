@@ -80,6 +80,8 @@ export interface ResultadoParse {
   linhas: LinhaFornecedor[];
   avisos: string[];
   abasCandidatas?: AbaCandidataPontuada[];
+  imagensArquivo?: number;
+  imagensMapeadas?: number;
   moedaPlanilha?: string;
   sammelkarton?: string;
   /** true quando cabeçalho NCM foi mapeado na planilha. */
@@ -844,9 +846,13 @@ export async function parsePlanilhaBuffer(
     if (fotos.size > 0) {
       parsed.linhas = associarFotosLinhas(parsed.linhas, fotos);
       const comFoto = parsed.linhas.filter((l) => l.fotoBase64).length;
+      parsed.imagensArquivo = mediaCount;
+      parsed.imagensMapeadas = comFoto;
       const fmt = isOleXls(buf) ? "WPS/.xls" : "Excel";
       parsed.avisos.push(`${comFoto} foto(s) vinculada(s) (${mediaCount} no arquivo ${fmt}).`);
     } else if (mediaCount > 0) {
+      parsed.imagensArquivo = mediaCount;
+      parsed.imagensMapeadas = 0;
       parsed.avisos.push(
         `Planilha contém ${mediaCount} imagem(ns), mas não foi possível vincular aos itens.`,
       );
@@ -952,6 +958,8 @@ function resultadoParaSupplier(parsed: ResultadoParse): ParsedSupplierFile {
     totalLinhas: linhas.length,
     avisos,
     abasCandidatas: parsed.abasCandidatas,
+    imagensArquivo: parsed.imagensArquivo,
+    imagensMapeadas: parsed.imagensMapeadas,
     moedaPlanilha: parsed.moedaPlanilha,
     sammelkarton: parsed.sammelkarton,
     metaNcmEmbarque: {
@@ -971,6 +979,8 @@ export interface ParsedSupplierFile {
   totalLinhas: number;
   avisos: string[];
   abasCandidatas?: AbaCandidataPontuada[];
+  imagensArquivo?: number;
+  imagensMapeadas?: number;
   moedaPlanilha?: string;
   /** P2c v1.1 — taxa EUR→US$ aplicada na ingestão (null se não convertido). */
   cambioEurUsd?: number | null;

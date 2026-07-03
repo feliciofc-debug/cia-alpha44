@@ -119,22 +119,24 @@ export async function extrairFotosXlsx(
   if (!isZipXlsx(buf)) {
     return { fotos: new Map(), mediaCount: 0 };
   }
-  let mediaCount = 0;
+  let excelMap: Map<number, FotoPlanilha> | null = null;
 
   try {
-    const excelMap = await extrairViaExcelJs(buf);
-    if (excelMap.size > 0) {
-      return { fotos: excelMap, mediaCount: excelMap.size };
-    }
+    excelMap = await extrairViaExcelJs(buf);
   } catch {
     /* exceljs indisponível ou arquivo corrompido */
   }
 
   try {
     const zipOut = await extrairViaZip(buf);
-    mediaCount = zipOut.mediaCount;
-    return { fotos: zipOut.map, mediaCount };
+    if (excelMap && excelMap.size > 0 && excelMap.size >= zipOut.mediaCount) {
+      return { fotos: excelMap, mediaCount: zipOut.mediaCount };
+    }
+    return { fotos: zipOut.map, mediaCount: zipOut.mediaCount };
   } catch {
+    if (excelMap && excelMap.size > 0) {
+      return { fotos: excelMap, mediaCount: excelMap.size };
+    }
     return { fotos: new Map(), mediaCount: 0 };
   }
 }
