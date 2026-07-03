@@ -109,6 +109,9 @@ function FotosCertificacao({ itens }: { itens: Item[] }) {
           key={i}
           src={src}
           alt={`Produto ${i + 1}`}
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+          }}
           className="h-14 w-full rounded border border-black/10 object-contain bg-white"
         />
       ))}
@@ -244,6 +247,9 @@ export function PreviewOrcamentoCliente({
                 <img
                   src={fotoMercadoria}
                   alt="Produto"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
                   className="mt-2 h-10 max-w-[88px] rounded border border-black/10 object-contain"
                 />
               ) : null}
