@@ -70,6 +70,7 @@ function logDeteccaoNcmUpload(filename: string, bytes: Uint8Array, parsed: Parse
       arquivo: filename,
       sha256,
       abaUsada: parsed.abaUsada,
+      abasCandidatas: parsed.abasCandidatas,
       headerRowIndex: parsed.headerRowIndex,
       colunaNcmDetectada: metaNcm?.colunaDetectada ?? colunasNcm.length > 0,
       colunasNcm,
