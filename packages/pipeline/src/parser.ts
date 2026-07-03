@@ -79,6 +79,7 @@ export interface ResultadoParse {
   colunas: ColunaMapeada[];
   linhas: LinhaFornecedor[];
   avisos: string[];
+  abasCandidatas?: AbaCandidataPontuada[];
   moedaPlanilha?: string;
   sammelkarton?: string;
   /** true quando cabeçalho NCM foi mapeado na planilha. */
@@ -96,13 +97,69 @@ export interface ParsePlanilhaOpts {
   mapearColunasIA?: MapearColunasIAFn;
 }
 
+export interface AbaCandidataPontuada {
+  aba: string;
+  pontuacao: number;
+  headerRowIndex: number;
+}
+
 /** Prefere aba de itens (Packliste, packing list) sobre metadados (Auftrag). */
-function escolherAbaItens(wb: XLSX.WorkBook, nomeAba?: string): string {
+function escolherAbaItensLegado(wb: XLSX.WorkBook, nomeAba?: string): string {
   if (nomeAba && wb.SheetNames.includes(nomeAba)) return nomeAba;
   const preferida = wb.SheetNames.find((n) =>
     /packliste|packing|packinglist|lista\s*de\s*embalagem|装箱单|invoice\s*items|itens/i.test(n),
   );
   return preferida ?? wb.SheetNames[0]!;
+}
+
+function rowsFromSheet(ws: XLSX.WorkSheet): unknown[][] {
+  return XLSX.utils.sheet_to_json(ws, {
+    header: 1,
+    raw: true,
+    defval: null,
+  }) as unknown[][];
+}
+
+function pontuarAba(wb: XLSX.WorkBook, aba: string): AbaCandidataPontuada {
+  const ws = wb.Sheets[aba];
+  if (!ws) return { aba, pontuacao: 0, headerRowIndex: 0 };
+  const rows = rowsFromSheet(ws);
+  const headerRowIndex = encontrarHeader(rows);
+  const header = rows[headerRowIndex] ?? [];
+  let pontuacao = 0;
+
+  for (const cell of header) {
+    const h = String(cell ?? "").trim();
+    if (!h) continue;
+    const { tipo } = detectarTipo(h);
+    if (tipo !== "desconhecido") pontuacao += 1;
+    if (RE_NCM_MULTILINGUE.test(h)) pontuacao += 8;
+    if (RE_QTD_CAIXAS.test(h) || RE_QTD_POR_CAIXA.test(h) || /qtd|qtde|quant|quantity|qty|数量|箱数|申报数量/i.test(h)) {
+      pontuacao += 5;
+    }
+    if (/申报单价|单价|unit\s*price|pre[cç]o\s*unit|preco\s*unit|price|precio|prix/i.test(h)) {
+      pontuacao += 4;
+    }
+    if (/总毛重|总净重|total.*gross|gross.*total|total.*net|net.*total/i.test(h)) {
+      pontuacao += 5;
+    }
+  }
+
+  if (/发票|invoice|fatura/i.test(aba)) pontuacao += 4;
+  return { aba, pontuacao, headerRowIndex };
+}
+
+function escolherAbaItens(wb: XLSX.WorkBook, nomeAba?: string): { aba: string; candidatas: AbaCandidataPontuada[] } {
+  const fallback = escolherAbaItensLegado(wb, nomeAba);
+  const candidatas = wb.SheetNames.map((aba) => pontuarAba(wb, aba));
+  if (nomeAba && wb.SheetNames.includes(nomeAba)) return { aba: nomeAba, candidatas };
+
+  const ordenadas = [...candidatas].sort((a, b) => b.pontuacao - a.pontuacao);
+  const melhor = ordenadas[0];
+  if (!melhor || melhor.pontuacao <= 0) return { aba: fallback, candidatas };
+  const empatadas = ordenadas.filter((c) => c.pontuacao === melhor.pontuacao);
+  if (empatadas.length > 1) return { aba: fallback, candidatas };
+  return { aba: melhor.aba, candidatas };
 }
 
 function indiceDescricao(colunas: ColunaMapeada[]): number | undefined {
@@ -698,13 +755,10 @@ export async function parsePlanilhaBuffer(
   const buf = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
   const wb = XLSX.read(buf, { type: "buffer", cellDates: true });
   const meta = extrairMetadadosWorkbook(wb);
-  const aba = escolherAbaItens(wb, opcoes.nomeAba);
+  const escolhaAba = escolherAbaItens(wb, opcoes.nomeAba);
+  const aba = escolhaAba.aba;
   const ws = wb.Sheets[aba]!;
-  const rows = XLSX.utils.sheet_to_json(ws, {
-    header: 1,
-    raw: true,
-    defval: null,
-  }) as unknown[][];
+  const rows = rowsFromSheet(ws);
 
   const ctx: Pick<ParsePlanilhaOpts, "sammelkarton" | "moedaPlanilha"> = {
     sammelkarton: opcoes.sammelkarton ?? meta.sammelkarton,
@@ -714,6 +768,7 @@ export async function parsePlanilhaBuffer(
   let parsed = parseRows(rows, aba, [...meta.avisos], ctx);
   parsed = {
     ...parsed,
+    abasCandidatas: escolhaAba.candidatas,
     linhas: aplicarQtdLinhasFornecedor(parsed.linhas, ctx.sammelkarton),
   };
   for (const l of parsed.linhas) {
@@ -744,7 +799,10 @@ export async function parsePlanilhaBuffer(
         })),
         mapa,
       );
-      parsed = parseRows(rows, aba, [...meta.avisos, AVISO_MAPEAMENTO_IA], ctx, colunasIA);
+      parsed = {
+        ...parseRows(rows, aba, [...meta.avisos, AVISO_MAPEAMENTO_IA], ctx, colunasIA),
+        abasCandidatas: escolhaAba.candidatas,
+      };
     }
   }
 
@@ -893,6 +951,7 @@ function resultadoParaSupplier(parsed: ResultadoParse): ParsedSupplierFile {
     linhas,
     totalLinhas: linhas.length,
     avisos,
+    abasCandidatas: parsed.abasCandidatas,
     moedaPlanilha: parsed.moedaPlanilha,
     sammelkarton: parsed.sammelkarton,
     metaNcmEmbarque: {
@@ -911,6 +970,7 @@ export interface ParsedSupplierFile {
   linhas: LinhaCrua[];
   totalLinhas: number;
   avisos: string[];
+  abasCandidatas?: AbaCandidataPontuada[];
   moedaPlanilha?: string;
   /** P2c v1.1 — taxa EUR→US$ aplicada na ingestão (null se não convertido). */
   cambioEurUsd?: number | null;

@@ -31,7 +31,7 @@ const RE_MOTO =
   /moto\s*el[eé]tr|motocicleta\s*el[eé]tr|electric\s*motorcycle|e-?motorcycle|motorcycle|ciclomotor|摩托车/i;
 
 const RE_PATINETE =
-  /patinete|kick\s*scooter|e-?scooter|electric\s*scooter|scooter\s*el[eé]tr|hoverboard|self\s*balance|电动滑板|滑板车|电动车|平衡车/i;
+  /patinete|kick\s*scooter|e-?scooter|\bscooter\b|electric\s*scooter|scooter\s*el[eé]tr|hoverboard|self\s*balance|电动滑板|滑板车|电动车|平衡车/i;
 
 /** Uso / descrição indica peça ou acessório — preço-custo não se aplica. */
 export const RE_USO_PECA =

@@ -13,6 +13,7 @@ import {
   loadNcmVigenteCache,
   loadTecCache,
   parsePlanilhaRows,
+  parseSupplierFile,
 } from "@cia/pipeline";
 import { montarItens } from "../src/services/cotacao.js";
 import type { AppState } from "../src/state.js";
@@ -32,6 +33,23 @@ const ROOT = join(__dir, "../../..");
 const FIXTURE = JSON.parse(
   readFileSync(join(ROOT, "tools/fixtures/fatura-92-layout-china.json"), "utf8"),
 ) as { sheet: string; header: string[]; rows: unknown[][] };
+const REAL_XLS = readFileSync(join(ROOT, "tools/fixtures/fatura-92-real.xls"));
+
+function stateTeste(provider: LlmProvider): AppState {
+  const comex = loadComexSeed();
+  return {
+    benchmarkIndex: buildBenchmarkIndex(comex.itens, comex.contexto),
+    ncmCatalog: criarNcmCatalog(loadNcmVigenteCache()),
+    tecSource: criarTecSource(loadTecCache()),
+    siscomex: { lookup: () => null },
+    ocr: null,
+    provider,
+  } as unknown as AppState;
+}
+
+async function montarComProvider(linhas: Parameters<typeof montarItens>[0], provider: LlmProvider) {
+  return montarItens(linhas, stateTeste(provider));
+}
 
 describe("gate fatura 92 — layout China embarque 92", () => {
   beforeEach(() => {
@@ -40,7 +58,6 @@ describe("gate fatura 92 — layout China embarque 92", () => {
 
   it("parse + montagem preserva NCM da coluna como planilha-cliente", async () => {
     const parsed = parsePlanilhaRows([FIXTURE.header, ...FIXTURE.rows], FIXTURE.sheet);
-    const comex = loadComexSeed();
     const provider: LlmProvider = {
       nome: "mock-vazio",
       disponivel: false,
@@ -52,16 +69,7 @@ describe("gate fatura 92 — layout China embarque 92", () => {
         })),
     };
 
-    const state = {
-      benchmarkIndex: buildBenchmarkIndex(comex.itens, comex.contexto),
-      ncmCatalog: criarNcmCatalog(loadNcmVigenteCache()),
-      tecSource: criarTecSource(loadTecCache()),
-      siscomex: { lookup: () => null },
-      ocr: null,
-      provider,
-    } as unknown as AppState;
-
-    const { itens } = await montarItens(
+    const { itens } = await montarComProvider(
       parsed.linhas.map((l) => ({
         descOriginal: l.descricao,
         ncm: l.ncm,
@@ -76,7 +84,7 @@ describe("gate fatura 92 — layout China embarque 92", () => {
         material: l.material ?? null,
         uso: l.uso ?? null,
       })),
-      state,
+      provider,
     );
 
     expect(itens).toHaveLength(13);
@@ -98,5 +106,40 @@ describe("gate fatura 92 — layout China embarque 92", () => {
       expect(it.ncmFonte).not.toBe("gemini");
       expect(it.ncmFonte).not.toBe("ia");
     }
+  });
+
+  it("arquivo real .xls seleciona aba da fatura e calcula patinetes sem digitação", async () => {
+    const parsed = await parseSupplierFile(REAL_XLS);
+    const provider: LlmProvider = {
+      nome: "mock-vazio",
+      disponivel: false,
+      classify: async (itens: ClassifyItemInput[]) =>
+        itens.map((i) => ({
+          descPt: i.descOriginal,
+          descDuimp: `${i.descOriginal} — pendente`,
+          ncmCandidatos: [],
+        })),
+    };
+
+    expect(parsed.abaUsada).toBe("巴西发票模板");
+    expect(parsed.abasCandidatas?.find((a) => a.aba === "巴西发票模板")?.pontuacao ?? 0).toBeGreaterThan(
+      parsed.abasCandidatas?.find((a) => a.aba === "巴西产品信息")?.pontuacao ?? -1,
+    );
+    expect(parsed.totalLinhas).toBe(13);
+
+    const { itens } = await montarComProvider(parsed.linhas, provider);
+    expect(itens).toHaveLength(13);
+    expect(itens[0]!.qtd).toBe(500);
+    expect(itens[1]!.qtd).toBe(210);
+    expect(itens[0]!.pesoBrutoKg).toBe(11500);
+    expect(itens[1]!.pesoBrutoKg).toBe(4830);
+    expect(itens[0]!.ncm).toBe("87116000");
+    expect(itens[1]!.ncm).toBe("87116000");
+    expect(itens[0]!.ncmFonte).toBe("planilha-cliente");
+    expect(itens[1]!.ncmFonte).toBe("planilha-cliente");
+    expect(itens[0]!.fobUnitarioUS).toBe(109);
+    expect(itens[1]!.fobUnitarioUS).toBe(109);
+    expect(itens[0]!.fobTotalUS).toBeCloseTo(54500, 2);
+    expect(itens[1]!.fobTotalUS).toBeCloseTo(22890, 2);
   });
 });
