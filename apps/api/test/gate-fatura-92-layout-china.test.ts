@@ -15,7 +15,7 @@ import {
   parsePlanilhaRows,
   parseSupplierFile,
 } from "@cia/pipeline";
-import { montarItens } from "../src/services/cotacao.js";
+import { calcularCotacao, montarItens } from "../src/services/cotacao.js";
 import type { AppState } from "../src/state.js";
 import type { ClassifyItemInput, LlmProvider } from "../src/llm/types.js";
 
@@ -49,6 +49,36 @@ function stateTeste(provider: LlmProvider): AppState {
 
 async function montarComProvider(linhas: Parameters<typeof montarItens>[0], provider: LlmProvider) {
   return montarItens(linhas, stateTeste(provider));
+}
+
+function cotacaoTeste(itens: Awaited<ReturnType<typeof montarItens>>["itens"]) {
+  return {
+    cambio: 5,
+    freteTotalUS: 0,
+    adicionaisVaUS: 0,
+    reducaoBaseUS: 0,
+    siscomex: 0,
+    antidumpingBRL: 0,
+    cliente: "fatura 92 real",
+    benefFiscal: "NENHUM" as const,
+    moeda: "USD" as const,
+    incoterm: "FOB",
+    origem: "CN",
+    destino: "SP",
+    despesas: [],
+    params: {
+      markupPct: 0.06,
+      pisSaida: 0.0065,
+      cofinsSaida: 0.03,
+      icmsSaida: 0.18,
+      csllSobreMarkup: 0.09,
+      irrfAliq: 0.015,
+      irrfBaseNotaPct: 1,
+      ipiTetoAliqMedia: 0.15,
+      icmsEntrada: 0,
+    },
+    itens,
+  };
 }
 
 describe("gate fatura 92 — layout China embarque 92", () => {
@@ -127,7 +157,8 @@ describe("gate fatura 92 — layout China embarque 92", () => {
     );
     expect(parsed.totalLinhas).toBe(13);
 
-    const { itens } = await montarComProvider(parsed.linhas, provider);
+    const state = stateTeste(provider);
+    const { itens } = await montarItens(parsed.linhas, state);
     expect(itens).toHaveLength(13);
     expect(itens[0]!.qtd).toBe(500);
     expect(itens[1]!.qtd).toBe(210);
@@ -141,5 +172,13 @@ describe("gate fatura 92 — layout China embarque 92", () => {
     expect(itens[1]!.fobUnitarioUS).toBe(109);
     expect(itens[0]!.fobTotalUS).toBeCloseTo(54500, 2);
     expect(itens[1]!.fobTotalUS).toBeCloseTo(22890, 2);
+
+    const calculada = calcularCotacao(cotacaoTeste(itens), state);
+    const somaItens = calculada.itens.reduce((s, it) => s + (it.fobTotalUS ?? 0), 0);
+    expect(calculada.itens[0]!.fobKgFonte).toBe("preco-custo");
+    expect(calculada.itens[1]!.fobKgFonte).toBe("preco-custo");
+    expect(calculada.resultado.entrada.fobTotalUS).toBeCloseTo(somaItens, 2);
+    expect(calculada.resultado.entrada.fobTotalUS).toBeGreaterThan(77000);
+    expect(calculada.resultado.entrada.fobTotalUS).toBeLessThan(77850);
   });
 });

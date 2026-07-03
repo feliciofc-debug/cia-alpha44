@@ -337,7 +337,32 @@ describe("alterarNcmItem — edição soberana do operador", () => {
     expect(store.row!.itens[0]!.fobTotalUS).toBeCloseTo(54500, 2);
     expect(out!.itens[0]!.fobUnitarioUS).toBe(109);
     expect(out!.itens[0]!.fobTotalUS).toBeCloseTo(54500, 2);
+    expect(out!.resultado?.entrada.fobTotalUS).toBeCloseTo(54500, 2);
     expect(out!.avisoCustoVeiculo).toContain("Base FOB = valor de custo");
+  });
+
+  it("FOB/kg manual responde com valor salvo e cotação recalculada", async () => {
+    const state = carregarState();
+    seedCotacao({
+      ...makeItem("Produto FOB manual"),
+      ncm: "84238900",
+      qtd: 1,
+      pesoBrutoKg: 100,
+      pesoLiqKg: 90,
+      fobTotalUS: 10,
+      meta: { ncmFonte: "planilha-cliente", fobKgFonte: "linha" },
+    });
+    const { alterarFobKgItem } = await import("../src/services/cotacoes-persist.js");
+
+    const out = await alterarFobKgItem(COTACAO_ID, TENANT, 0, 3.25, state);
+
+    expect(out).not.toBeNull();
+    expect(store.row!.itens[0]!.fobKgManual).toBe(3.25);
+    expect(out!.ordem).toBe(0);
+    expect(out!.itens[0]!.fobKgManual).toBe(3.25);
+    expect(out!.itens[0]!.fobTotalUS).toBeCloseTo(325, 2);
+    expect(out!.fobKgFinal).toBeCloseTo(3.25, 4);
+    expect(out!.resultado?.entrada.fobTotalUS).toBeCloseTo(325, 2);
   });
 
   it("custo unitário rejeita item não-veículo e não grava", async () => {

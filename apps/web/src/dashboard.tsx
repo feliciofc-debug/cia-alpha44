@@ -1660,6 +1660,7 @@ export function Dashboard() {
     if (idx < 0) return;
     setAlterandoFobKg(ordem);
     setErro("");
+    setAvisoOperacao("");
     try {
       const idSalvo = detalhe?.id ?? salvaId;
       const itEditado = { ...base.itens[idx]!, fobKgManual, ordem };
@@ -1671,6 +1672,11 @@ export function Dashboard() {
         const atualizada = await api.alterarFobKgItem(idSalvo, ordem, fobKgManual);
         setAvisosValoracaoFob((prev) => ({ ...prev, [ordem]: atualizada.avisoValoracao }));
         sincronizarCotacaoSalva(atualizada);
+        setAvisoOperacao(
+          fobKgManual != null && fobKgManual > 0
+            ? `FOB/kg manual salvo no item ${ordem + 1}.`
+            : `FOB/kg manual limpo no item ${ordem + 1}.`,
+        );
         return;
       }
 
@@ -1692,9 +1698,16 @@ export function Dashboard() {
       } else {
         setAvisosValoracaoFob((prev) => ({ ...prev, [ordem]: null }));
       }
+      setAvisoOperacao(
+        fobKgManual != null && fobKgManual > 0
+          ? `FOB/kg manual aplicado no item ${ordem + 1}.`
+          : `FOB/kg manual limpo no item ${ordem + 1}.`,
+      );
       if (analise) setAnalise({ ...analise, cotacao, resultado, itens });
     } catch (e) {
-      setErro(e instanceof Error ? e.message : "Falha ao alterar FOB/kg.");
+      const msg = e instanceof Error ? e.message : "Falha ao alterar FOB/kg.";
+      setErro(msg);
+      setAvisoOperacao("");
     } finally {
       setAlterandoFobKg(null);
     }
@@ -1724,8 +1737,13 @@ export function Dashboard() {
 
       if (idSalvo) {
         const atualizada = await api.alterarCustoUnitarioVeiculoItem(idSalvo, ordem, custoUnitarioUS);
-        if (atualizada.avisoCustoVeiculo) setAvisoOperacao(atualizada.avisoCustoVeiculo);
         sincronizarCotacaoSalva(atualizada);
+        setAvisoOperacao(
+          `Custo unitário salvo no item ${ordem + 1}: US$ ${custoUnitarioUS.toLocaleString("pt-BR", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}. ${atualizada.avisoCustoVeiculo ?? ""}`.trim(),
+        );
         return;
       }
 
@@ -1733,7 +1751,9 @@ export function Dashboard() {
       setAvisoOperacao("Base FOB = valor de custo (veículo) — confirme o custo unitário.");
       if (analise) setAnalise({ ...analise, cotacao, resultado, itens });
     } catch (e) {
-      setErro(e instanceof Error ? e.message : "Falha ao alterar custo unitário do veículo.");
+      const msg = e instanceof Error ? e.message : "Falha ao alterar custo unitário do veículo.";
+      setErro(msg);
+      setAvisoOperacao("");
     } finally {
       setAlterandoCustoVeiculo(null);
     }
