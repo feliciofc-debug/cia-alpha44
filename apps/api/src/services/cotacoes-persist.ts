@@ -399,6 +399,25 @@ function formatCotacaoSalva(row: CotacaoComRelacoes, provider?: string, catalog?
 
 type CotacaoSalvaFormatada = ReturnType<typeof formatCotacaoSalva>;
 
+function anexarFotosPersistidas(row: CotacaoComRelacoes, itens: Item[]): Item[] {
+  const fotoPorOrdem = new Map(
+    row.itens
+      .filter((it) => Boolean(it.fotoPath))
+      .map((it) => [it.ordem, it.fotoPath!] as const),
+  );
+
+  return itens.map((it, idx) => {
+    const ordem = it.ordem ?? idx;
+    const fotoPath = it.fotoPath ?? fotoPorOrdem.get(ordem);
+    if (!fotoPath) return it;
+    return {
+      ...it,
+      fotoPath,
+      fotoUrl: it.fotoUrl ?? fotoUrlApi(row.id, ordem),
+    };
+  });
+}
+
 function montarRespostaCotacaoCalc(
   row: CotacaoComRelacoes,
   calc: ResultadoCompleto,
@@ -406,9 +425,10 @@ function montarRespostaCotacaoCalc(
   provider?: string,
 ): CotacaoSalvaFormatada {
   const base = formatCotacaoSalva(row, provider, catalog);
+  const itensComFotos = anexarFotosPersistidas(row, calc.itens);
   const itensFinal = catalog
-    ? enriquecerItensPdfNcmAudit(calc.itens, criarPdfNcmAuditCtx(catalog))
-    : calc.itens;
+    ? enriquecerItensPdfNcmAudit(itensComFotos, criarPdfNcmAuditCtx(catalog))
+    : itensComFotos;
   return {
     ...base,
     cotacao: { ...base.cotacao, params: calc.params, itens: itensFinal },

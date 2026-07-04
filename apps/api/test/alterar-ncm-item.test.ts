@@ -365,6 +365,24 @@ describe("alterarNcmItem — edição soberana do operador", () => {
     expect(out!.resultado?.entrada.fobTotalUS).toBeCloseTo(325, 2);
   });
 
+  it("cotação salva reaberta preserva fotoPath e fotoUrl após recálculo", async () => {
+    const state = carregarState();
+    seedCotacao({
+      ...makeItem("Lustre com foto"),
+      ncm: "94052100",
+      fotoPath: `${COTACAO_ID}/0.jpg`,
+      meta: { ncmFonte: "planilha-cliente", fobKgFonte: "linha" },
+    });
+    const { buscarCotacao } = await import("../src/services/cotacoes-persist.js");
+
+    const out = await buscarCotacao(COTACAO_ID, TENANT, state);
+
+    expect(out).not.toBeNull();
+    expect(out!.itens[0]!.fotoPath).toBe(`${COTACAO_ID}/0.jpg`);
+    expect(out!.itens[0]!.fotoUrl).toBe(`/api/cotacoes/${COTACAO_ID}/foto/0`);
+    expect(out!.cotacao.itens[0]!.fotoUrl).toBe(`/api/cotacoes/${COTACAO_ID}/foto/0`);
+  });
+
   it("custo unitário rejeita item não-veículo e não grava", async () => {
     const state = carregarState();
     seedCotacao({
