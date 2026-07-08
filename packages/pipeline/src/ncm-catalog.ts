@@ -48,7 +48,7 @@ export function normalizarCodigoNcmCliente(valor: unknown): string | null {
   const raw = String(valor).trim();
   if (!raw) return null;
 
-  const semDecimalZero = raw.replace(/[.,]0+\s*$/, "");
+  const semDecimalZero = /^[+-]?\d+[.,]0+$/.test(raw) ? raw.replace(/[.,]0+$/, "") : raw;
   const expandido =
     /^[+-]?\d+(?:\.\d+)?e[+-]?\d+$/i.test(semDecimalZero) && Number.isFinite(Number(semDecimalZero))
       ? Number(semDecimalZero).toFixed(0)
