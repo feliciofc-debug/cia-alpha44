@@ -42,6 +42,23 @@ export function normNcm8(ncm: string): string | null {
   return d.length === 8 ? d : null;
 }
 
+/** Normaliza código declarado pelo cliente sem truncar HS chinês de 10 dígitos. */
+export function normalizarCodigoNcmCliente(valor: unknown): string | null {
+  if (valor === null || valor === undefined) return null;
+  const raw = String(valor).trim();
+  if (!raw) return null;
+
+  const semDecimalZero = /^[+-]?\d+[.,]0+$/.test(raw) ? raw.replace(/[.,]0+$/, "") : raw;
+  const expandido =
+    /^[+-]?\d+(?:\.\d+)?e[+-]?\d+$/i.test(semDecimalZero) && Number.isFinite(Number(semDecimalZero))
+      ? Number(semDecimalZero).toFixed(0)
+      : semDecimalZero;
+  const digits = expandido.replace(/\D/g, "");
+  if (!digits) return null;
+  if (digits.length <= 8) return digits.padStart(8, "0");
+  return digits;
+}
+
 export function ncmVigentePath(): string {
   const here = dirname(fileURLToPath(import.meta.url));
   return join(here, "data", "ncm-vigente.json");

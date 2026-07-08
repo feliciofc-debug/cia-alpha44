@@ -609,11 +609,13 @@ function AnalisePainel({
                               ? "◆ referência IA (2 passes)"
                               : it.ncmFonte === "planilha-cliente"
                                 ? "Planilha cliente (coluna NCM)"
-                                : it.ncmFonte === "planilha-cliente-familia"
-                                  ? "Planilha cliente (mesma família)"
-                                  : it.ncmFonte === "planilha"
-                                    ? "Planilha embarque"
-                                    : it.ncmFonte}
+                                : it.ncmFonte === "planilha-cliente-hs6"
+                                  ? "Planilha cliente (HS6 chinês)"
+                                  : it.ncmFonte === "planilha-cliente-familia"
+                                    ? "Planilha cliente (mesma família)"
+                                    : it.ncmFonte === "planilha"
+                                      ? "Planilha embarque"
+                                      : it.ncmFonte}
                       </span>
                     )}
                     {it.ncmEmbarqueStatus === "sem-ncm-coluna" && (

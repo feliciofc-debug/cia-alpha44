@@ -130,6 +130,7 @@ export const itemSchema = z.object({
     .enum([
       "planilha",
       "planilha-cliente",
+      "planilha-cliente-hs6",
       "planilha-cliente-familia",
       "planilha-china",
       "gemini",

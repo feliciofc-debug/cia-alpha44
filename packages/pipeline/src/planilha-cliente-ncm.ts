@@ -11,15 +11,16 @@ import {
   type FamiliaProduto,
 } from "./classificar-ncm.js";
 import type { LinhaCrua } from "./linha.js";
-import { normNcm8, type NcmCatalog } from "./ncm-catalog.js";
+import { normNcm8, normalizarCodigoNcmCliente, type NcmCatalog } from "./ncm-catalog.js";
 import { resolverDescPtFornecedor } from "./traducao-pt.js";
 import { tokensProdutoSemCor } from "./tokens-cor-produto.js";
 
 export interface PlanilhaClienteNcmHit {
   ncm: string;
   confianca: number;
-  provedor: "planilha-cliente" | "planilha-cliente-familia";
+  provedor: "planilha-cliente" | "planilha-cliente-hs6" | "planilha-cliente-familia";
   linhaReferencia?: number;
+  hs6?: string;
 }
 
 export interface ClassificarSiscomexOutput {
@@ -48,20 +49,67 @@ function scoreDescricoes(a: string, b: string): number {
   return matches / Math.max(ta.length, tb.length);
 }
 
+function candidatosPorHs6(catalog: NcmCatalog, hs6: string): Array<{ ncm: string; descricao: string }> {
+  return catalog.listarPorCapitulo(hs6.slice(0, 4)).filter((c) => c.ncm.startsWith(hs6));
+}
+
+function scoreResidual(ncm: string, descricao: string): number {
+  let score = 0;
+  if (/^outr[oa]s?$/i.test(descricao.trim()) || /\boutr[oa]s?\b/i.test(descricao)) score += 4;
+  if (ncm.endsWith("90")) score += 3;
+  if (ncm.endsWith("99")) score += 2;
+  return score;
+}
+
+function resolverNcmPorHs6(
+  hs6: string,
+  linha: LinhaCrua,
+  catalog: NcmCatalog,
+): PlanilhaClienteNcmHit | null {
+  if (!/^\d{6}$/.test(hs6)) return null;
+  const candidatos = candidatosPorHs6(catalog, hs6);
+  if (candidatos.length === 0) return null;
+  if (candidatos.length === 1) {
+    return { ncm: candidatos[0]!.ncm, confianca: 0.93, provedor: "planilha-cliente-hs6", hs6 };
+  }
+
+  const familia = detectarFamilia({ descOriginal: linha.descOriginal, uso: linha.uso });
+  const textual = candidatosSiscomexPorDescricao(catalog, linha.descOriginal, familia, 20)
+    .filter((c) => c.ncm.startsWith(hs6) && c.confianca >= MIN_SCORE_BUSCA_NCM)
+    .sort((a, b) => b.confianca - a.confianca)[0];
+  if (textual) {
+    return { ncm: textual.ncm, confianca: Math.min(0.92, textual.confianca), provedor: "planilha-cliente-hs6", hs6 };
+  }
+
+  const residual = [...candidatos].sort(
+    (a, b) => scoreResidual(b.ncm, b.descricao) - scoreResidual(a.ncm, a.descricao) || a.ncm.localeCompare(b.ncm),
+  )[0];
+  if (!residual) return null;
+  return { ncm: residual.ncm, confianca: 0.88, provedor: "planilha-cliente-hs6", hs6 };
+}
+
 /** NCM declarado na coluna embarque — válido na TEC e coerente com família. */
 export function resolverNcmDeclaradoCliente(
   input: { ncmInformado?: string | null },
   linha: LinhaCrua,
   catalog: NcmCatalog,
 ): PlanilhaClienteNcmHit | null {
-  const bruto = (input.ncmInformado ?? linha.ncm ?? "").trim();
-  const ncm = normNcm8(bruto);
-  if (!ncm || !catalog.existe(ncm)) return null;
+  const bruto = normalizarCodigoNcmCliente(input.ncmInformado ?? linha.ncm ?? "");
+  if (!bruto) return null;
 
   const familia = detectarFamilia({ descOriginal: linha.descOriginal, uso: linha.uso });
-  if (familia && !ncmCoerenteComFamilia(ncm, familia)) return null;
+  const ncm = bruto.length === 8 ? normNcm8(bruto) : null;
+  if (ncm && catalog.existe(ncm)) {
+    if (familia && !ncmCoerenteComFamilia(ncm, familia)) return null;
 
-  return { ncm, confianca: 0.95, provedor: "planilha-cliente" };
+    return { ncm, confianca: 0.95, provedor: "planilha-cliente" };
+  }
+
+  if (bruto.length === 10 || bruto.length === 8) {
+    return resolverNcmPorHs6(bruto.slice(0, 6), linha, catalog);
+  }
+
+  return null;
 }
 
 /** Herda NCM de outra linha do mesmo upload (mesma família, descrição mais próxima). */

@@ -80,7 +80,7 @@ export interface Item {
   fotoPath?: string;
   fotoUrl?: string;
   ncmValido?: boolean;
-  ncmFonte?: "planilha" | "planilha-cliente" | "planilha-cliente-familia" | "planilha-china" | "gemini" | "ia" | "siscomex" | "pendente";
+  ncmFonte?: "planilha" | "planilha-cliente" | "planilha-cliente-hs6" | "planilha-cliente-familia" | "planilha-china" | "gemini" | "ia" | "siscomex" | "pendente";
   ncmClassificacaoCache?: "humano" | "llm";
   ncmPlanilhaOriginal?: string;
   ncmEmbarque?: string | null;

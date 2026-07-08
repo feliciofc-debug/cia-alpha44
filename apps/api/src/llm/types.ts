@@ -44,6 +44,7 @@ export interface ClassifyItemOutput {
   /** Provedor da classificação NCM (planilha-cliente → Gemini/2-passes → Siscomex). */
   classificacaoProvedor?:
     | "planilha-cliente"
+    | "planilha-cliente-hs6"
     | "planilha-cliente-familia"
     | "planilha-china"
     | "siscomex"

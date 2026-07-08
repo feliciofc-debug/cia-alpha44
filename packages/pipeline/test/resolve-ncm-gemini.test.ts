@@ -26,6 +26,18 @@ describe("resolveNcm — Gemini validado Siscomex", () => {
     expect(r.ncm).toBe("84798999");
   });
 
+  it("planilha-cliente-hs6 retorna fonte e aviso do código chinês", () => {
+    const r = resolveNcm(catalog, {
+      ncmPlanilha: "9506919000",
+      fonteClassificacao: "planilha-cliente-hs6",
+      candidatosIa: [{ ncm: "95069100", confianca: 0.93 }],
+      descOriginal: "Roda abdominal para ginástica",
+    });
+    expect(r.fonte).toBe("planilha-cliente-hs6");
+    expect(r.ncm).toBe("95069100");
+    expect(r.avisos.join(" ")).toContain("HS6 950691");
+  });
+
   it("planilha-china retorna fonte própria, sem virar planilha-cliente", () => {
     const r = resolveNcm(catalog, {
       fonteClassificacao: "planilha-china",

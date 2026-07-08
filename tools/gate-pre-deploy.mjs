@@ -12,6 +12,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const tests = [
   "apps/api/test/gate-cotacao-72-gabarito.test.ts",
   "apps/api/test/gate-cotacao-72-traducao-pt.test.ts",
+  "apps/api/test/gate-fatura-90-hs6-china.test.ts",
   "apps/api/test/gate-fatura-92-layout-china.test.ts",
   "apps/api/test/gate-fatura-92-planilha-cliente.test.ts",
   "apps/api/test/ncm-embarque.test.ts",

@@ -70,6 +70,8 @@ function outputFromPlanilhaClienteHit(
   const rotulo =
     hit.provedor === "planilha-cliente"
       ? "NCM declarado na planilha do cliente"
+      : hit.provedor === "planilha-cliente-hs6"
+        ? `NCM derivado do código aduaneiro chinês (HS6 ${hit.hs6 ?? hit.ncm.slice(0, 6)}) declarado na planilha do cliente`
       : "NCM herdado de linha da mesma família na fatura";
   const { descPt, avisoTraducao } = resolverDescPtFornecedor(input.descOriginal, input.descPtConfirmado);
   return {
@@ -182,6 +184,7 @@ function fonteClassificacaoDeProvedor(
 ): ResolveNcmInput["fonteClassificacao"] {
   if (
     provedor === "planilha-cliente" ||
+    provedor === "planilha-cliente-hs6" ||
     provedor === "planilha-cliente-familia" ||
     provedor === "planilha-china" ||
     provedor === "siscomex" ||
@@ -725,6 +728,7 @@ export async function montarItens(
     const ncmColuna = l.ncm ? normNcm8(l.ncm) : null;
     const ncmPlanilhaCliente =
       c?.classificacaoProvedor === "planilha-cliente" ||
+      c?.classificacaoProvedor === "planilha-cliente-hs6" ||
       c?.classificacaoProvedor === "planilha-cliente-familia"
         ? normNcm8(c.ncmCandidatos?.[0]?.ncm ?? "")
         : null;
