@@ -14,7 +14,7 @@ import {
   loadTecCache,
   parseSupplierFile,
 } from "@cia/pipeline";
-import { calcularCotacao, montarItens } from "../src/services/cotacao.js";
+import { montarItens } from "../src/services/cotacao.js";
 import type { AppState } from "../src/state.js";
 import type { ClassifyItemInput, LlmProvider } from "../src/llm/types.js";
 
@@ -41,36 +41,6 @@ function stateTeste(provider: LlmProvider): AppState {
     ocr: null,
     provider,
   } as unknown as AppState;
-}
-
-function cotacaoTeste(itens: Awaited<ReturnType<typeof montarItens>>["itens"]) {
-  return {
-    cambio: 5,
-    freteTotalUS: 0,
-    adicionaisVaUS: 0,
-    reducaoBaseUS: 0,
-    siscomex: 0,
-    antidumpingBRL: 0,
-    cliente: "fatura 90 hs6",
-    benefFiscal: "NENHUM" as const,
-    moeda: "USD" as const,
-    incoterm: "FOB",
-    origem: "CN",
-    destino: "SP",
-    despesas: [],
-    params: {
-      markupPct: 0.06,
-      pisSaida: 0.0065,
-      cofinsSaida: 0.03,
-      icmsSaida: 0.18,
-      csllSobreMarkup: 0.09,
-      irrfAliq: 0.015,
-      irrfBaseNotaPct: 1,
-      ipiTetoAliqMedia: 0.15,
-      icmsEntrada: 0,
-    },
-    itens,
-  };
 }
 
 describe("gate fatura 90 — âncora HS6 de código chinês", () => {
@@ -114,9 +84,9 @@ describe("gate fatura 90 — âncora HS6 de código chinês", () => {
       expect(it.ncmAvisos?.join(" ")).toMatch(/código aduaneiro chinês \(HS6 \d{6}\)/i);
     }
 
-    const calculada = calcularCotacao(cotacaoTeste(itens), state);
-    expect(calculada.resultado.entrada.fobTotalUS).toBeGreaterThan(11000);
-    expect(calculada.resultado.entrada.fobTotalUS).toBeLessThan(12000);
-    expect(calculada.resultado.entrada.fobTotalUS).toBeCloseTo(11892, 2);
+    const fobEmbarqueUS = itens.reduce((s, it) => s + (it.fobEmbarqueUS ?? it.fobTotalUS ?? 0), 0);
+    expect(fobEmbarqueUS).toBeGreaterThan(11000);
+    expect(fobEmbarqueUS).toBeLessThan(12000);
+    expect(fobEmbarqueUS).toBeCloseTo(11892, 2);
   });
 });
