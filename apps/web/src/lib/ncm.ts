@@ -10,13 +10,15 @@ export function ncmInformadoParaFechamento(it: Item): boolean {
   return Boolean(key && key !== "00000000");
 }
 
-/** PDF bloqueado somente se algum item não tem NCM informado. */
+/** NCM pendente é informativo: não bloqueia o PDF. */
 export function pdfBloqueadoPorNcm(itens: Item[]): boolean {
-  return itens.some((it) => !ncmInformadoParaFechamento(it));
+  void itens;
+  return false;
 }
 
 export function itemBloqueiaPdfNcm(it: Item): boolean {
-  return !ncmInformadoParaFechamento(it);
+  void it;
+  return false;
 }
 
 export function itemPrecisaResolucaoNcm(it: Item): boolean {
@@ -91,18 +93,18 @@ export function nomeProdutoItem(it: Item, maxLen = 48): string {
 
 export function severidadeNcmItem(it: Item): SeveridadeNcmResolucao {
   if (ncmInformadoParaFechamento(it)) return "ok";
-  return "bloqueia";
+  return "revisar";
 }
 
 export function motivoResolucaoNcm(_it: Item): string {
-  return "NCM pendente — informe o código de 8 dígitos";
+  return "NCM pendente — informe o código de 8 dígitos se quiser; o PDF não bloqueia";
 }
 
 export function motivoCurtoNcm(_it: Item): string {
-  return "NCM pendente";
+  return "NCM pendente (informativo)";
 }
 
-/** Só itens SEM NCM entram na barra — whisky/chá com NCM nunca aparecem aqui. */
+/** Só itens SEM NCM entram na barra — informativo, sem bloquear PDF. */
 export function pendenciasNcmOrdenadas(itens: Item[]): PendenciaNcmItem[] {
   return itens
     .map((item, idx) => ({ idx, ordem: item.ordem ?? idx + 1, item }))
@@ -114,7 +116,7 @@ export function pendenciasNcmOrdenadas(itens: Item[]): PendenciaNcmItem[] {
       nome: nomeProdutoItem(item),
       motivo: motivoResolucaoNcm(item),
       motivoCurto: motivoCurtoNcm(item),
-      severidade: "bloqueia" as const,
+      severidade: "revisar" as const,
     }));
 }
 
@@ -125,8 +127,8 @@ export function contagemEstadosNcm(itens: Item[]): {
 } {
   const pendencias = pendenciasNcmOrdenadas(itens);
   return {
-    bloqueando: pendencias.length,
-    revisar: 0,
+    bloqueando: 0,
+    revisar: pendencias.length,
     ok: Math.max(0, itens.length - pendencias.length),
   };
 }
@@ -144,7 +146,7 @@ export function mensagemBloqueioPdf(itens: Item[]): string {
   const bloqueadores = pendenciasNcmOrdenadas(itens);
   if (!bloqueadores.length) return "";
   const linhas = bloqueadores.map(linhaPendenciaCurta).join("; ");
-  return `PDF bloqueado: ${linhas}. Informe o NCM de 8 dígitos na aba Detalhamento técnico.`;
+  return `NCM pendente: ${linhas}. Informe se quiser; o PDF não bloqueia.`;
 }
 
 export function mensagemToastBloqueioPdf(itens: Item[]): {
@@ -165,9 +167,9 @@ export function mensagemToastDePendencias(pendencias: PendenciaNcmItem[]): {
   }
   const visiveis = pendencias.slice(0, 2);
   const restantes = pendencias.length - visiveis.length;
-  let titulo = `PDF bloqueado: ${visiveis.map(linhaPendenciaCurta).join("; ")}`;
+  let titulo = `NCM pendente: ${visiveis.map(linhaPendenciaCurta).join("; ")}`;
   if (restantes > 0) titulo += ` +${restantes} → ver todos`;
-  titulo += ". Informe o NCM na aba abaixo.";
+  titulo += ". Informe se quiser; o PDF não bloqueia.";
   return { titulo, visiveis, restantes };
 }
 

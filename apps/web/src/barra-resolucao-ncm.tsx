@@ -267,7 +267,7 @@ export function BarraResolucaoNcm({
       </div>
 
       <p className="mt-3 text-sm font-medium text-amber-50">
-        <span className="text-red-300">● {contagem.bloqueando} bloqueando</span>
+        <span className="text-slate-300">● {contagem.bloqueando} bloqueando PDF</span>
         <span className="mx-2 text-amber-200/60">·</span>
         <span className="text-amber-200">● {contagem.revisar} revisar</span>
         <span className="mx-2 text-amber-200/60">·</span>
@@ -287,7 +287,7 @@ export function BarraResolucaoNcm({
           {bloqueadores.length > 0 && (
             <section>
               <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-red-300">
-                Bloqueia o PDF ({bloqueadores.length})
+                Revisão obrigatória antes do fechamento ({bloqueadores.length})
               </h3>
               <ul className="space-y-3">
                 {bloqueadores.map((p) => (

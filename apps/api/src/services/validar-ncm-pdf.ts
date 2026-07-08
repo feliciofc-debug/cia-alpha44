@@ -1,4 +1,4 @@
-/** Bloqueia PDF quando há NCM inválido, pendente ou incoerente com o produto. */
+/** Auditoria informativa de NCM para PDF — não bloqueia geração. */
 
 import type { Item } from "@cia/shared";
 import { auditarItemNcmParaPdf, confirmacaoNcmVigente } from "@cia/shared";
@@ -24,7 +24,7 @@ export class NcmInvalidoPdfError extends Error {
   }
 }
 
-/** Audita itens antes de gerar PDF — lança NcmInvalidoPdfError se houver bloqueio. */
+/** Audita itens antes de gerar PDF. Pendências de NCM são informativas e não bloqueiam. */
 export function auditarNcmsParaPdf(itens: Item[], catalog: NcmCatalog): void {
   const ctx = criarPdfNcmAuditCtx(catalog);
   const invalidos: ItemNcmInvalidoPdf[] = [];
@@ -52,5 +52,7 @@ export function auditarNcmsParaPdf(itens: Item[], catalog: NcmCatalog): void {
     });
   }
 
-  if (invalidos.length) throw new NcmInvalidoPdfError(invalidos);
+  if (invalidos.length) {
+    console.info("[pdf:ncm-informativo]", JSON.stringify({ pendencias: invalidos.length }));
+  }
 }
