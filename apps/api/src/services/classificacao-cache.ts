@@ -91,7 +91,7 @@ export function cacheClassificacaoToxico(
   if (prov === "planilha-china") return true;
   if (
     opts?.temColunaNcmReal === false &&
-    (prov === "planilha-cliente" || prov === "planilha-cliente-familia")
+    (prov === "planilha-cliente" || prov === "planilha-cliente-hs6" || prov === "planilha-cliente-familia")
   ) {
     return true;
   }

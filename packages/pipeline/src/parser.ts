@@ -29,6 +29,7 @@ import { extrairMetadadosWorkbook, avisoMoedaPlanilha } from "./parser-metadados
 import { linhaPesoAbsurdo, ncmSuspeitoLixo } from "./fob-escala.js";
 import { associarFotosLinhas, extrairFotosXlsx, type FotoPlanilha } from "./xlsx-images.js";
 import { extrairImagensWpsOle, isOleXls, isZipXlsx, mapDispimgLinhas } from "./wps-images.js";
+import { normalizarCodigoNcmCliente } from "./ncm-catalog.js";
 
 export type ColunaDetectada =
   | "descricao"
@@ -272,9 +273,9 @@ function extrairLinhasComColunas(
     if (fobTotalUS === null && fobKgRef !== null && pesoBrutoKg !== null && pesoBrutoKg > 0) {
       fobTotalUS = fobKgRef * pesoBrutoKg;
     }
-    const ncmRaw = iNcm !== undefined ? String(row[iNcm] ?? "").trim() : "";
-    let ncm = ncmRaw ? ncmRaw.replace(/\D/g, "").padStart(8, "0").slice(0, 8) : null;
-    if (ncm && (ncm.length !== 8 || ncmSuspeitoLixo(ncm))) ncm = null;
+    const ncmRaw = iNcm !== undefined ? row[iNcm] : null;
+    let ncm = normalizarCodigoNcmCliente(ncmRaw);
+    if (ncm && ncmSuspeitoLixo(ncm)) ncm = null;
     const avisosEscala: string[] = [];
     if (linhaPesoAbsurdo({ pesoLiqKg, pesoBrutoKg })) {
       avisosEscala.push(
@@ -306,7 +307,7 @@ function extrairLinhasComColunas(
       fobTotalUS,
       fobKgReferencia: fobKgRef,
       valoresSemCabecalho: valoresSemCabecalho.length ? valoresSemCabecalho : undefined,
-      ncm: ncm && ncm.length === 8 ? ncm : null,
+      ncm,
       material,
       uso,
       avisosEscala: avisosEscala.length ? avisosEscala : undefined,

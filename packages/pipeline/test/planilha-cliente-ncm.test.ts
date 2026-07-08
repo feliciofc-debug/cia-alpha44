@@ -17,6 +17,30 @@ describe("planilha-cliente-ncm", () => {
     expect(hit?.confianca).toBe(0.95);
   });
 
+  it("resolve código aduaneiro chinês de 10 dígitos pela âncora HS6", () => {
+    const linha = {
+      descOriginal: "健腹轮 — Roda abdominal para ginástica fitness",
+      ncm: "9506919000",
+      qtd: 500,
+    };
+    const hit = resolverNcmDeclaradoCliente({ ncmInformado: "9506919000.0" }, linha, catalog);
+    expect(hit?.provedor).toBe("planilha-cliente-hs6");
+    expect(hit?.hs6).toBe("950691");
+    expect(hit?.ncm).toBe("95069100");
+  });
+
+  it("usa residual do HS6 quando há vários NCMs e código de 8 dígitos inválido", () => {
+    const linha = {
+      descOriginal: "钢化玻璃膜 — Película de vidro protetora",
+      ncm: "70200099",
+      qtd: 375,
+    };
+    const hit = resolverNcmDeclaradoCliente({ ncmInformado: "70200099" }, linha, catalog);
+    expect(hit?.provedor).toBe("planilha-cliente-hs6");
+    expect(hit?.hs6).toBe("702000");
+    expect(hit?.ncm).toBe("70200090");
+  });
+
   it("resolverNcmHerancaFamiliaFatura herda de linha com NCM na mesma família", () => {
     const linhas = [
       {

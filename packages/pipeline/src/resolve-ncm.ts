@@ -16,12 +16,13 @@ import {
   type FamiliaProduto,
 } from "./classificar-ncm.js";
 import type { NcmCatalog } from "./ncm-catalog.js";
-import { normNcm8 } from "./ncm-catalog.js";
+import { normNcm8, normalizarCodigoNcmCliente } from "./ncm-catalog.js";
 import { aplicarDesempateOutros } from "./desempate-outros.js";
 
 export type NcmFonte =
   | "planilha"
   | "planilha-cliente"
+  | "planilha-cliente-hs6"
   | "planilha-cliente-familia"
   | "planilha-china"
   | "gemini"
@@ -35,6 +36,7 @@ export interface ResolveNcmInput {
   /** Classificador — planilha cliente → Gemini/IA → Siscomex. */
   fonteClassificacao?:
     | "planilha-cliente"
+    | "planilha-cliente-hs6"
     | "planilha-cliente-familia"
     | "planilha-china"
     | "siscomex"
@@ -221,6 +223,7 @@ export function resolveNcm(catalog: NcmCatalog, input: ResolveNcmInput): Resolve
 
   if (
     input.fonteClassificacao === "planilha-cliente" ||
+    input.fonteClassificacao === "planilha-cliente-hs6" ||
     input.fonteClassificacao === "planilha-cliente-familia"
   ) {
     const clienteCandidatos = filtrarCandidatosValidos(catalog, input.candidatosIa ?? []);
@@ -229,12 +232,23 @@ export function resolveNcm(catalog: NcmCatalog, input: ResolveNcmInput): Resolve
       const fonte =
         input.fonteClassificacao === "planilha-cliente-familia"
           ? "planilha-cliente-familia"
+          : input.fonteClassificacao === "planilha-cliente-hs6"
+            ? "planilha-cliente-hs6"
           : "planilha-cliente";
       const rotulo =
         fonte === "planilha-cliente"
           ? "declarado na planilha do cliente"
-          : "herdado de linha da mesma família na fatura";
-      avisos.push(`NCM ${rotulo}: ${clienteTop.ncm}.`);
+          : fonte === "planilha-cliente-hs6"
+            ? "derivado do código aduaneiro chinês"
+            : "herdado de linha da mesma família na fatura";
+      if (fonte === "planilha-cliente-hs6") {
+        const hs6 = normalizarCodigoNcmCliente(input.ncmPlanilha ?? "")?.slice(0, 6) ?? clienteTop.ncm.slice(0, 6);
+        avisos.push(
+          `NCM derivado do código aduaneiro chinês (HS6 ${hs6}) declarado na planilha do cliente: ${clienteTop.ncm}.`,
+        );
+      } else {
+        avisos.push(`NCM ${rotulo}: ${clienteTop.ncm}.`);
+      }
       return {
         ncm: clienteTop.ncm,
         fonte,
