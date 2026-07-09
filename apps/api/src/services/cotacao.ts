@@ -855,11 +855,23 @@ export interface ResultadoCompleto {
   params: Cotacao["params"];
 }
 
+function normalizarParamsIpiSaidaLegado(params: Cotacao["params"]): Cotacao["params"] {
+  if (params.ipiAliqSaida !== 0) return params;
+  const { ipiAliqSaida: _legacyDefault, ...semOverrideIpi } = params;
+  // O frontend antigo mandava 0 como default, mas no motor 0 é override explícito
+  // para crédito integral de IPI. Sem controle manual na UI, esse zero é legado.
+  return semOverrideIpi;
+}
+
 /** Enriquece itens (benchmark/calibragem/risco) e roda o engine fiscal. */
 export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCompleto {
-  const { params: paramsIcms, meta: icms } = aplicarIcmsCotacao(cotacao);
+  const cotacaoSemOverrideIpiLegado = {
+    ...cotacao,
+    params: normalizarParamsIpiSaidaLegado(cotacao.params),
+  };
+  const { params: paramsIcms, meta: icms } = aplicarIcmsCotacao(cotacaoSemOverrideIpiLegado);
   const paramsEngine = { ...paramsIcms };
-  const cotacaoIcms = { ...cotacao, params: paramsEngine };
+  const cotacaoIcms = { ...cotacaoSemOverrideIpiLegado, params: paramsEngine };
 
   /** Metodologia empresa: FOB DI = item resolvido; itens comuns já vêm como planilha FOB/kg × peso bruto. */
   const itensComFob = aplicarPlanilhaChinaCotacao(cotacaoIcms.itens, state.benchmarkIndex);
