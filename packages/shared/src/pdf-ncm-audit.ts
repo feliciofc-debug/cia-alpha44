@@ -28,9 +28,9 @@ export function normalizarAceiteNcmInformado(it: Item): Item {
 }
 
 /**
- * Gate de fechamento PDF — regra estrutural única:
- * bloqueia SOMENTE se NCM ausente / 00000000.
- * Classificação (compatível/revisar/validarNcm/catálogo) NÃO veta o PDF.
+ * Gate de fechamento PDF — regra atual:
+ * NCM ausente / 00000000 vira pendência informativa, mas NÃO veta o PDF.
+ * Classificação (compatível/revisar/validarNcm/catálogo) também NÃO veta o PDF.
  */
 export function auditarItemNcmParaPdf(it: Item, _ctx?: PdfNcmAuditContext): PdfNcmAuditResult {
   if (confirmacaoNcmVigente(it)) {
@@ -41,9 +41,9 @@ export function auditarItemNcmParaPdf(it: Item, _ctx?: PdfNcmAuditContext): PdfN
 
   if (!key || key === "00000000") {
     return {
-      bloqueia: true,
+      bloqueia: false,
       precisaConfirmacao: true,
-      motivo: "NCM pendente — informe o código de 8 dígitos",
+      motivo: "NCM pendente — informe se quiser; PDF não bloqueia",
     };
   }
 
@@ -58,7 +58,7 @@ export function enriquecerItensPdfNcmAudit(itens: Item[], ctx: PdfNcmAuditContex
   return itens.map((it) => enriquecerItemPdfNcmAudit(it, ctx));
 }
 
-/** Mescla 422 legado — não sobrescreve item que já tem NCM informado. */
+/** Mescla 422 legado — não sobrescreve item que já tem NCM informado; mantém pendência informativa. */
 export function mesclarItensInvalidosPdfAudit(
   itens: Item[],
   invalidos: Array<{ ordem: number; avisos?: string[] }>,
@@ -73,7 +73,7 @@ export function mesclarItensInvalidosPdfAudit(
     return {
       ...it,
       pdfNcmAudit: {
-        bloqueia: true,
+        bloqueia: false,
         precisaConfirmacao: true,
         motivo: avisos[0],
         avisos,

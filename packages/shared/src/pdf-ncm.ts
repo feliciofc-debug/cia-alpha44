@@ -19,7 +19,7 @@ export {
   type PdfNcmAuditResult,
 } from "./pdf-ncm-audit.js";
 
-/** Item impede PDF — somente NCM ausente / 00000000. */
+/** Item nunca impede PDF; NCM ausente é pendência informativa. */
 export function itemBloqueiaPdfNcm(it: Item, ctx?: PdfNcmAuditContext): boolean {
   return auditarItemNcmParaPdf(it, ctx).bloqueia;
 }
@@ -52,9 +52,9 @@ export function itensPendentesConfirmacaoNcm(itens: Item[], ctx?: PdfNcmAuditCon
   return itens.filter((it) => itemPodeConfirmarNcmIndividual(it, ctx));
 }
 
-/** Barra de resolução — só itens SEM NCM informado (bloqueiam PDF). */
+/** Barra de resolução — itens SEM NCM informado aparecem para revisão, sem bloquear PDF. */
 export function itemPrecisaResolucaoNcm(it: Item, ctx?: PdfNcmAuditContext): boolean {
-  return itemBloqueiaPdfNcm(it, ctx);
+  return !ncmInformadoParaFechamento(it) || itemBloqueiaPdfNcm(it, ctx);
 }
 
 export function itensResolucaoNcm(

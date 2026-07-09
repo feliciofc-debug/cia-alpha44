@@ -395,6 +395,281 @@ function num(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function numEstrito(v: unknown): number | null {
+  if (v === null || v === undefined || v === "") return null;
+  const raw = String(v).trim();
+  if (!/\d/.test(raw)) return null;
+  return num(raw);
+}
+
+function normHeaderPdf(header: string): string {
+  return header
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function headerPackingPdf(headers: string[], re: RegExp): number | undefined {
+  const idx = headers.findIndex((h) => re.test(normHeaderPdf(h)));
+  return idx >= 0 ? idx : undefined;
+}
+
+function headerPackingPdfUltimo(headers: string[], re: RegExp): number | undefined {
+  for (let i = headers.length - 1; i >= 0; i--) {
+    if (re.test(normHeaderPdf(headers[i] ?? ""))) return i;
+  }
+  return undefined;
+}
+
+function valorCelula(row: unknown[], idx: number | undefined): string {
+  if (idx === undefined) return "";
+  return String(row[idx] ?? "").trim();
+}
+
+function linhaNumericaPura(desc: string): boolean {
+  const d = desc.replace(/\s+/g, "");
+  return d.length > 0 && /^[\d.,\-]+$/.test(d);
+}
+
+function linhaItemPacking(row: unknown[]): boolean {
+  const first = String(row[0] ?? "").trim();
+  if (!first || !/[A-Z]/i.test(first) || !/\d/.test(first)) return false;
+  if (row.length < 10) return false;
+  return numEstrito(row[row.length - 1]) != null && numEstrito(row[row.length - 2]) != null;
+}
+
+function textoOrfao(row: unknown[] | undefined): string | null {
+  if (!row || row.length !== 1) return null;
+  const txt = String(row[0] ?? "").trim();
+  if (!txt || txt.includes("\u0000")) return null;
+  if (/^(?:total|合计)$/i.test(txt)) return null;
+  return txt;
+}
+
+function pareceFragmentoModelo(txt: string): boolean {
+  return /^[A-Z0-9][A-Z0-9-]*-$/i.test(txt) || /^[A-Z]{2,5}$/i.test(txt);
+}
+
+function pareceDescricaoProduto(txt: string): boolean {
+  return /\/|massage|massager|polones|polisher|按摩|磨甲|足疗|披肩|枪|垫|器/i.test(txt);
+}
+
+function isMassageadorPacking(desc: string, material: string): boolean {
+  if (/pet polones|宠物磨甲器/i.test(desc)) return false;
+  return /massage|massager|fascia gun|按摩|足疗|披肩|枪|垫/i.test(`${desc} ${material}`);
+}
+
+function enriquecerUsoMassageador(material: string): string {
+  const base = material.trim();
+  if (/aparelho de massagem/i.test(base)) return base;
+  return [base, "aparelho de massagem", "massageador"].filter(Boolean).join(" ");
+}
+
+interface PackingItemExtraido {
+  linha: LinhaFornecedor;
+  consumiuProximo: boolean;
+}
+
+function extrairItemPackingPorAncoraDireita(
+  row: unknown[],
+  linhaExcel: number,
+  orfaoAntes?: string | null,
+  orfaoDepois?: string | null,
+): PackingItemExtraido | null {
+  if (!linhaItemPacking(row)) return null;
+  const cells = row.map((c) => String(c ?? "").trim()).filter((c) => c.length > 0);
+  const totalGrossIdx = cells.length - 1;
+  const gwCtnIdx = totalGrossIdx - 1;
+  const totalCbmIdx = totalGrossIdx - 2;
+  const cbmCtnIdx = totalGrossIdx - 3;
+  const heightIdx = totalGrossIdx - 4;
+  const widthIdx = totalGrossIdx - 5;
+  const lengthIdx = totalGrossIdx - 6;
+  const qtyIdx = totalGrossIdx - 7;
+  if (qtyIdx < 4) return null;
+
+  const qtd = numEstrito(cells[qtyIdx]);
+  const pesoBrutoKg = numEstrito(cells[totalGrossIdx]);
+  if (qtd == null && pesoBrutoKg == null) return null;
+
+  const prefixo = cells.slice(0, qtyIdx);
+  const ctnNo = prefixo[0] ?? "";
+  const totalCtns = numEstrito(prefixo[1]);
+  let campos = prefixo.slice(2);
+  const pcsCtn = campos.length && numEstrito(campos[campos.length - 1]) != null ? numEstrito(campos.pop()) : null;
+
+  let modelo = campos[0] ?? "";
+  let brand = campos[1] ?? "";
+  let desc = campos[2] ?? "";
+  let material = campos[3] ?? "";
+  let consumiuProximo = false;
+
+  const antes = orfaoAntes?.trim() || null;
+  const depois = orfaoDepois?.trim() || null;
+
+  if (antes && pareceFragmentoModelo(antes)) {
+    const sufixo = depois && pareceFragmentoModelo(depois) && !pareceDescricaoProduto(depois) ? depois : "";
+    modelo = `${antes}${sufixo}`.replace(/-\s+/, "-");
+    if (sufixo) consumiuProximo = true;
+    brand = campos[0] ?? brand;
+    desc = campos[1] ?? desc;
+    material = campos[2] ?? material;
+  } else if (antes && pareceDescricaoProduto(antes) && (!desc || !pareceDescricaoProduto(desc))) {
+    desc = antes;
+    modelo = campos[0] ?? modelo;
+    brand = campos[1] ?? brand;
+    material = campos[2] ?? material;
+  }
+
+  if (!desc || linhaNumericaPura(desc)) return null;
+  if (isMassageadorPacking(desc, material)) {
+    material = enriquecerUsoMassageador(material);
+    if (/fascia gun|筋膜枪/i.test(desc) && !/massageador/i.test(desc)) {
+      desc = `${desc} — massageador`;
+    }
+  }
+  const descricao = [modelo, desc].filter((p, idx, arr) => p && arr.indexOf(p) === idx).join(" — ");
+  if (!descricao || linhaNumericaPura(descricao)) return null;
+
+  return {
+    consumiuProximo,
+    linha: {
+      linha: linhaExcel,
+      descricao,
+      qtd,
+      qtdCaixas: totalCtns,
+      qtdPorCaixa: pcsCtn,
+      pesoLiqKg: null,
+      pesoBrutoKg,
+      precoUnitario: null,
+      fobTotalUS: null,
+      ncm: null,
+      material: material || null,
+      uso: material || null,
+      raw: {
+        ocr: row.map((c) => String(c ?? "")).join("\t"),
+        ctnNo,
+        brand,
+        length: numEstrito(cells[lengthIdx]),
+        width: numEstrito(cells[widthIdx]),
+        height: numEstrito(cells[heightIdx]),
+        cbmCtn: numEstrito(cells[cbmCtnIdx]),
+        totalCbm: numEstrito(cells[totalCbmIdx]),
+        gwCtn: numEstrito(cells[gwCtnIdx]),
+      },
+    },
+  };
+}
+
+function extrairPackingListBilingue(rows: unknown[][]): ResultadoParse | null {
+  for (let h = 0; h < Math.min(rows.length, 30); h++) {
+    const headerBase = rows[h]?.map((c) => String(c ?? "").trim()) ?? [];
+    const headerZh = rows[h + 1]?.map((c) => String(c ?? "").trim()) ?? [];
+    const temLinhaZh = /(产品图片|箱号|合计|款号|货名|材质|每箱|重量)/.test(headerZh.join(" "));
+    const header =
+      temLinhaZh && headerZh.length >= headerBase.length - 2
+        ? headerBase.map((c, i) => [c, headerZh[i]].filter(Boolean).join(" ").trim())
+        : headerBase;
+    const dataStart = temLinhaZh ? h + 2 : h + 1;
+    if (header.length < 8) continue;
+    const joined = header.join(" ");
+    if (!/(cargo\s*name|货名)/i.test(joined)) continue;
+    if (!/(total\s*q(?:ty|uantity)|合计数量)/i.test(joined)) continue;
+    if (!/(total\s*g\.?\s*w|合计重量)/i.test(joined)) continue;
+
+    const iModel = headerPackingPdf(header, /(^|\b)(model|款号)(\b|$)/i);
+    const iDesc = headerPackingPdf(header, /(cargo\s*name|货名)/i);
+    const iMaterial = headerPackingPdf(header, /(材质|构成材料|用途|material|usage|application)/i);
+    const iQtd = headerPackingPdf(header, /(total\s*q(?:ty|uantity)|合计数量)/i);
+    const iPesoBrutoTotal =
+      headerPackingPdfUltimo(headerBase, /(total\s*g\.?\s*w|合计重量)/i) ??
+      headerPackingPdfUltimo(header, /(total\s*g\.?\s*w|合计重量)/i);
+    const iQtdCaixas = headerPackingPdf(header, /(total\s*ctns?|合计箱数)/i);
+    const iQtdPorCaixa = headerPackingPdf(header, /(pcs\s*ctn|每箱数量|pcs\s*\/?\s*ctn)/i);
+
+    if (iDesc === undefined || iQtd === undefined || iPesoBrutoTotal === undefined) continue;
+
+    const colunas: ColunaMapeada[] = header.map((nome, indice) => {
+      let tipo: ColunaDetectada = "desconhecido";
+      let confianca = 0;
+      if (indice === iDesc) {
+        tipo = "descricao";
+        confianca = 0.95;
+      } else if (indice === iQtd) {
+        tipo = "qtd";
+        confianca = 0.95;
+      } else if (indice === iPesoBrutoTotal) {
+        tipo = "peso_bruto";
+        confianca = 0.95;
+      }
+      return { indice, header: nome || `Col${indice}`, tipo, confianca };
+    });
+
+    const linhas: LinhaFornecedor[] = [];
+    let orfaoPendente: string | null = null;
+    for (let r = dataStart; r < rows.length; r++) {
+      const row = rows[r] ?? [];
+      const orfao = textoOrfao(row);
+      if (orfao) {
+        orfaoPendente = orfao;
+        continue;
+      }
+      if (row.some((c) => String(c ?? "").includes("\u0000"))) continue;
+
+      const proximoOrfao = textoOrfao(rows[r + 1]);
+      const extraido = extrairItemPackingPorAncoraDireita(row, r + 1, orfaoPendente, proximoOrfao);
+      orfaoPendente = null;
+      if (extraido) {
+        linhas.push(extraido.linha);
+        if (extraido.consumiuProximo) r++;
+        continue;
+      }
+
+      if (row.length < Math.max(iDesc, iQtd, iPesoBrutoTotal) + 1) continue;
+      const descBase = valorCelula(row, iDesc);
+      const modelo = valorCelula(row, iModel);
+      const descricao = [modelo, descBase].filter((p, idx, arr) => p && arr.indexOf(p) === idx).join(" — ");
+      const qtd = num(row[iQtd]);
+      const pesoBrutoKg = num(row[iPesoBrutoTotal]);
+      if (!descricao || linhaNumericaPura(descricao) || (qtd == null && pesoBrutoKg == null)) continue;
+
+      linhas.push({
+        linha: r + 1,
+        descricao,
+        qtd,
+        qtdCaixas: null,
+        qtdPorCaixa: null,
+        pesoLiqKg: null,
+        pesoBrutoKg,
+        precoUnitario: null,
+        fobTotalUS: null,
+        ncm: null,
+        material: valorCelula(row, iMaterial) || null,
+        uso: valorCelula(row, iMaterial) || null,
+        raw: { ocr: row.map((c) => String(c ?? "")).join("\t") },
+      });
+    }
+
+    if (linhas.length === 0) continue;
+    return {
+      aba: "OCR packing list",
+      headerRow: h,
+      colunas,
+      linhas,
+      avisos: [
+        "Origem: OCR — revise o mapeamento se necessário.",
+        `Packing list bilíngue EN/ZH detectado (${linhas.length} linha(s)).`,
+        `NCM embarque: coluna não detectada na planilha (0/${linhas.length} linhas com NCM na coluna).`,
+      ],
+      colunaNcmDetectada: false,
+      linhasComNcmColuna: 0,
+    };
+  }
+  return null;
+}
+
 /** Pontua linha de cabeçalho — prefere tabela de itens (desc + qty + fob) sobre metadados. */
 function scoreHeaderRow(row: unknown[]): number {
   if (!Array.isArray(row)) return -1;
@@ -872,6 +1147,11 @@ export function parseOcrTexto(texto: string, origem = "OCR"): ResultadoParse {
   if (rows.length === 0) {
     avisos.push("OCR não gerou linhas legíveis.");
     return parseRows(rows, origem, avisos);
+  }
+
+  const packingBilingue = extrairPackingListBilingue(rows);
+  if (packingBilingue) {
+    return { ...packingBilingue, aba: origem };
   }
 
   const diretas = extrairItensOcrLinhaUnica(rows);
