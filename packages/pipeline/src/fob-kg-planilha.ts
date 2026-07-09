@@ -38,11 +38,12 @@ export const DISTANCIA_MAX_NCM_IRMAO = DISTANCIA_MAX_NCM_PROXIMO;
 export function fobKgDaLinha(l: LinhaCrua, fobKgCol?: number | null): number | null {
   const fob = l.fobTotalUS ?? 0;
   if (fob <= 0) return null;
+  const fobKgReferencia = fobKgCol ?? l.fobKgReferencia;
   const det = detectarBasePesoFob({
     fobTotalUS: fob,
     pesoBrutoKg: l.pesoBrutoKg,
     pesoLiqKg: l.pesoLiqKg,
-    fobKgReferencia: fobKgCol,
+    fobKgReferencia,
   });
   const peso = pesoParaBaseFob(det.fobKgBase, l.pesoBrutoKg, l.pesoLiqKg);
   if (peso <= 0) return null;

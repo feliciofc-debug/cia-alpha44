@@ -58,7 +58,13 @@ export const RE_DESC_PT_MULTILINGUE = /portugues|português|desc.*port/i;
 export function detectarTipoMultilingue(header: string): { tipo: ColunaDetectada; confianca: number } {
   const h = String(header).trim();
   if (!h) return { tipo: "desconhecido", confianca: 0 };
+  if (/^item$/i.test(h)) {
+    return { tipo: "descricao", confianca: 0.78 };
+  }
   if (/artikel-nr|artikelnummer|item\s*number|货号|^\s*sku\b|^\s*ref\b/i.test(h)) {
+    return { tipo: "desconhecido", confianca: 0 };
+  }
+  if (/valor\s+de\s+compra.*mercadoria|valor.*mercadoria.*rmb|purchase\s+value/i.test(h)) {
     return { tipo: "desconhecido", confianca: 0 };
   }
   if (/stückpreis|stuckpreis|einzelpreis|unit\s*price|preço\s*unit|preco\s*unit|prix\s*unitaire|precio\s*unitario/i.test(h)) {

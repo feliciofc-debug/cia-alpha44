@@ -45,6 +45,7 @@ export type { FobKgBase };
 export const FOB_KG_FONTE_PRECO_CUSTO = "preco-custo" as const;
 export const FOB_KG_FONTE_PENDENTE = "pendente" as const;
 export const FOB_KG_FONTE_LINHA = "linha" as const;
+export const FOB_KG_FONTE_CLIENTE_DECLARADO = "planilha-cliente (FOB declarado)" as const;
 
 export interface FobKgMeta {
   fobKgFonte: string;
@@ -106,15 +107,24 @@ function linhaTemFobExplicito(l: LinhaCrua): boolean {
   return (l.fobTotalUS ?? 0) > 0;
 }
 
+function linhaTemFobDeclaradoConsistente(l: LinhaCrua, det: ResultadoDeteccaoBasePeso): boolean {
+  return (
+    (l.fobTotalUS ?? 0) > 0 &&
+    (l.fobKgReferencia ?? 0) > 0 &&
+    det.fobKgBase !== "indeterminado"
+  );
+}
+
 function detectarMetaLinha(l: LinhaCrua, fobKgCol?: number | null): ResultadoDeteccaoBasePeso {
   if (!linhaTemFobExplicito(l)) {
     return { fobKgBase: "indeterminado", avisos: [] };
   }
+  const fobKgReferencia = fobKgCol ?? l.fobKgReferencia;
   return detectarBasePesoFob({
     fobTotalUS: l.fobTotalUS!,
     pesoBrutoKg: l.pesoBrutoKg,
     pesoLiqKg: l.pesoLiqKg,
-    fobKgReferencia: fobKgCol,
+    fobKgReferencia,
   });
 }
 
@@ -236,6 +246,18 @@ export function resolverFobKgPlanilha(
     const baseDetLinha = detectarMetaLinha(l, fobKgCol);
     const pesoBaseLinha = pesoParaBaseFob(baseDetLinha.fobKgBase, l.pesoBrutoKg, l.pesoLiqKg);
     const pesoRateio = resolvePesoLiqRateio(l);
+
+    if (linhaTemFobDeclaradoConsistente(l, baseDetLinha)) {
+      const avisos = [...baseDetLinha.avisos];
+      if (l.avisosQtd?.length) avisos.push(...l.avisosQtd);
+      metas.push({
+        fobKgFonte: FOB_KG_FONTE_CLIENTE_DECLARADO,
+        fobKgBase: baseDetLinha.fobKgBase,
+        fobKgAvisos: avisos.length ? avisos : undefined,
+        fobEmbarqueUS: l.fobTotalUS ?? undefined,
+      });
+      return l;
+    }
 
     /** Metodologia empresa: FOB total = planilha FOB/kg × bruto; invoice só meta. */
     if (planilhaChinaTemNcm(benchmarkIndex, l.ncm ?? "")) {
@@ -361,6 +383,19 @@ function resolverItemInterno(
         fobPendente: it.fobPendente,
         fobKgBase: it.fobKgBase ?? "bruto",
         fobKgAvisos: it.fobKgAvisos,
+      },
+    };
+  }
+
+  if (it.fobKgFonte === FOB_KG_FONTE_CLIENTE_DECLARADO && it.fobTotalUS > 0) {
+    return {
+      item: it,
+      meta: {
+        fobKgFonte: FOB_KG_FONTE_CLIENTE_DECLARADO,
+        fobPendente: it.fobPendente,
+        fobKgBase: it.fobKgBase,
+        fobKgAvisos: it.fobKgAvisos,
+        fobEmbarqueUS: it.fobEmbarqueUS ?? it.fobTotalUS,
       },
     };
   }

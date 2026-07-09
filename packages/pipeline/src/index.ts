@@ -73,6 +73,7 @@ export {
   anexarMetaFobItem,
   resolverFobKgPlanilha,
   formatarFobKgFonteBenchmark,
+  FOB_KG_FONTE_CLIENTE_DECLARADO,
   FOB_KG_FONTE_PRECO_CUSTO,
   FOB_KG_FONTE_PENDENTE,
   FOB_KG_FONTE_LINHA,
