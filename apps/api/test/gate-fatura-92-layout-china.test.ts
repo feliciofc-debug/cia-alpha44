@@ -180,5 +180,8 @@ describe("gate fatura 92 — layout China embarque 92", () => {
     expect(calculada.resultado.entrada.fobTotalUS).toBeCloseTo(somaItens, 2);
     expect(calculada.resultado.entrada.fobTotalUS).toBeGreaterThan(77000);
     expect(calculada.resultado.entrada.fobTotalUS).toBeLessThan(77850);
+    expect(calculada.resultado.saida.aliqMediaIPI).toBeGreaterThan(0.3);
+    expect(calculada.resultado.saida.aliqMediaIPI).toBeLessThanOrEqual(0.35);
+    expect(calculada.resultado.saida.difIPI).toBeGreaterThan(0);
   });
 });

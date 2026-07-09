@@ -259,7 +259,6 @@ export const api = {
         irrfAliq: 0.25,
         irrfBaseNotaPct: 0.027,
         ipiTetoAliqMedia: 0.15,
-        ipiAliqSaida: 0,
         icmsEntrada: 0,
       },
     });
