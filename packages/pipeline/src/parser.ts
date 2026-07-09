@@ -89,6 +89,8 @@ export interface ResultadoParse {
   colunaNcmDetectada?: boolean;
   /** Linhas com dígitos válidos na coluna NCM. */
   linhasComNcmColuna?: number;
+  /** Linhas de total/subtotal descartadas durante o parse. */
+  linhasTotaisDescartadas?: number;
 }
 
 export type MapearColunasIAFn = (entrada: EntradaMapeamentoIA) => Promise<MapeamentoColunasIA | null>;
@@ -169,6 +171,7 @@ function indiceDescricao(colunas: ColunaMapeada[]): number | undefined {
   return (
     colunas.find((c) => RE_DESC_DE_MULTILINGUE.test(c.header))?.indice ??
     colunas.find((c) => /产品配置|product\s*config/i.test(c.header))?.indice ??
+    colunas.find((c) => /^item$/i.test(c.header.trim()))?.indice ??
     escolherColuna(colunas, "descricao", {
       prefer: /portugues|português|warenbezeichnung|bezeichnung|beschreibung|model|modelo|英文|english|descripci[oó]n|d[eé]signation/i,
       avoid: /^品名|product\s*image|imag|artikel-nr|pos\./i,
@@ -181,6 +184,7 @@ function extrairLinhasComColunas(
   headerRow: number,
   colunas: ColunaMapeada[],
   sammelkarton?: string,
+  stats?: { linhasTotaisDescartadas: number },
 ): LinhaFornecedor[] {
   const iDescPt = colunas.find((c) => RE_DESC_PT_MULTILINGUE.test(c.header))?.indice;
   const iModel = colunas.find((c) => /model|modelo|产品型号/i.test(c.header))?.indice;
@@ -237,8 +241,16 @@ function extrairLinhasComColunas(
       parteDesc ||
       parteEn ||
       parteSku;
-    if (!descricao || descricao.length < 2) continue;
-    if (/^total$/i.test(descricao.trim())) continue;
+    if (linhaTotalPorDescricao(descricao)) {
+      stats && (stats.linhasTotaisDescartadas += 1);
+      continue;
+    }
+    if (!descricao || descricao.length < 2) {
+      if (linhaTotalPorAgregadosNumericos(row, linhasBrutas, { iQtd, iFob, pesoLiqCols, pesoBrutoCols })) {
+        stats && (stats.linhasTotaisDescartadas += 1);
+      }
+      continue;
+    }
     if (iPos !== undefined) {
       const pos = String(row[iPos] ?? "").trim();
       if (!pos || !/^\d+$/.test(pos)) continue;
@@ -318,6 +330,51 @@ function extrairLinhasComColunas(
   return linhasBrutas;
 }
 
+const RE_LINHA_TOTAL = /^(?:total|totais|合计|总计|小计|sum|grand\s*total)\s*[:：]?\s*$/i;
+
+function linhaTotalPorDescricao(descricao: string): boolean {
+  return RE_LINHA_TOTAL.test(descricao.trim());
+}
+
+function relDiff(a: number, b: number): number {
+  const base = Math.max(Math.abs(a), Math.abs(b), 1);
+  return Math.abs(a - b) / base;
+}
+
+function somaLinhaNumerica(linhas: LinhaFornecedor[], campo: "qtd" | "fobTotalUS" | "pesoLiqKg" | "pesoBrutoKg"): number {
+  return linhas.reduce((acc, l) => acc + (l[campo] ?? 0), 0);
+}
+
+function valorTotalCol(row: unknown[], idx: number | undefined): number | null {
+  return idx === undefined ? null : num(row[idx]);
+}
+
+function linhaTotalPorAgregadosNumericos(
+  row: unknown[],
+  anteriores: LinhaFornecedor[],
+  cols: {
+    iQtd: number | undefined;
+    iFob: number | undefined;
+    pesoLiqCols: ReturnType<typeof resolverColunasPeso>;
+    pesoBrutoCols: ReturnType<typeof resolverColunasPeso>;
+  },
+): boolean {
+  if (anteriores.length < 2) return false;
+  const textos = row
+    .map((c) => String(c ?? "").trim())
+    .filter((c) => c && num(c) == null);
+  if (textos.length > 0) return false;
+
+  const candidatos = [
+    { valor: valorTotalCol(row, cols.iQtd), soma: somaLinhaNumerica(anteriores, "qtd") },
+    { valor: valorTotalCol(row, cols.iFob), soma: somaLinhaNumerica(anteriores, "fobTotalUS") },
+    { valor: valorTotalCol(row, cols.pesoLiqCols.total), soma: somaLinhaNumerica(anteriores, "pesoLiqKg") },
+    { valor: valorTotalCol(row, cols.pesoBrutoCols.total), soma: somaLinhaNumerica(anteriores, "pesoBrutoKg") },
+  ].filter((c) => c.valor != null && c.valor > 0 && c.soma > 0);
+
+  return candidatos.length > 0 && candidatos.some((c) => relDiff(c.valor!, c.soma) <= 0.005);
+}
+
 function aplicarQtdLinhasFornecedor(linhas: LinhaFornecedor[], sammelkarton?: string): LinhaFornecedor[] {
   const comQtd = aplicarQuantidadesLinhas(
     linhas.map((l) => ({
@@ -379,6 +436,49 @@ function garantirColunaNcm(colunas: ColunaMapeada[]): ColunaMapeada[] {
   if (idx < 0) return colunas;
   return colunas.map((c, i) =>
     i === idx ? { ...c, tipo: "ncm", confianca: Math.max(c.confianca, 0.9) } : c,
+  );
+}
+
+function pareceHeaderSemCabecalho(header: string): boolean {
+  return !header.trim() || /^Col\d+$/i.test(header.trim());
+}
+
+function valorPareceNcmCliente(v: unknown): boolean {
+  const raw = String(v ?? "").trim();
+  if (!raw) return false;
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length < 8 || digits.length > 10) return false;
+  return /^\d{4}\.?\d{2}\.?\d{2}(?:\d{2})?$/.test(raw.replace(/\s+/g, ""));
+}
+
+function inferirColunaNcmSemCabecalho(
+  rows: unknown[][],
+  headerRow: number,
+  colunas: ColunaMapeada[],
+): ColunaMapeada[] {
+  if (colunas.some((c) => c.tipo === "ncm")) return colunas;
+  let melhor: { indice: number; ratio: number; validos: number } | null = null;
+  for (const c of colunas) {
+    if (c.tipo !== "desconhecido" || !pareceHeaderSemCabecalho(c.header)) continue;
+    let preenchidos = 0;
+    let validos = 0;
+    for (let r = headerRow + 1; r < rows.length; r++) {
+      const raw = rows[r]?.[c.indice];
+      if (raw === null || raw === undefined || String(raw).trim() === "") continue;
+      preenchidos += 1;
+      if (valorPareceNcmCliente(raw)) validos += 1;
+    }
+    if (preenchidos < 3) continue;
+    const ratio = validos / preenchidos;
+    if (ratio >= 0.8 && (!melhor || ratio > melhor.ratio || validos > melhor.validos)) {
+      melhor = { indice: c.indice, ratio, validos };
+    }
+  }
+  if (!melhor) return colunas;
+  return colunas.map((c) =>
+    c.indice === melhor.indice
+      ? { ...c, tipo: "ncm", confianca: Math.max(c.confianca, 0.82) }
+      : c,
   );
 }
 
@@ -953,13 +1053,13 @@ function parseRows(
       const { tipo, confianca } = detectarTipo(header);
       return { indice, header, tipo, confianca };
     });
-  colunas = garantirColunaNcm(colunas);
+  colunas = inferirColunaNcmSemCabecalho(rows, headerRow, garantirColunaNcm(colunas));
 
   let usouSinonimos = false;
   if (indiceDescricao(colunas) === undefined) {
     const remapeadas = mapearColunasPorSinonimos(headerCells.map((h) => String(h ?? "")));
     if (indiceDescricao(remapeadas) !== undefined) {
-      colunas = garantirColunaNcm(remapeadas);
+      colunas = inferirColunaNcmSemCabecalho(rows, headerRow, garantirColunaNcm(remapeadas));
       usouSinonimos = true;
       avisos.push(AVISO_MAPEAMENTO_SINONIMOS);
     }
@@ -978,7 +1078,8 @@ function parseRows(
     // aviso já incluído
   }
 
-  const linhas = extrairLinhasComColunas(rows, headerRow, colunas, ctx.sammelkarton);
+  const stats = { linhasTotaisDescartadas: 0 };
+  const linhas = extrairLinhasComColunas(rows, headerRow, colunas, ctx.sammelkarton, stats);
 
   if (linhas.length === 0) {
     avisos.push("Nenhuma linha de item encontrada após o cabeçalho.");
@@ -1017,6 +1118,7 @@ function parseRows(
     sammelkarton: ctx.sammelkarton,
     colunaNcmDetectada,
     linhasComNcmColuna,
+    linhasTotaisDescartadas: stats.linhasTotaisDescartadas,
   };
 }
 
@@ -1243,6 +1345,7 @@ function resultadoParaSupplier(parsed: ResultadoParse): ParsedSupplierFile {
     imagensMapeadas: parsed.imagensMapeadas,
     moedaPlanilha: parsed.moedaPlanilha,
     sammelkarton: parsed.sammelkarton,
+    linhasTotaisDescartadas: parsed.linhasTotaisDescartadas,
     metaNcmEmbarque: {
       colunaDetectada: parsed.colunaNcmDetectada ?? false,
       linhasComNcmColuna: parsed.linhasComNcmColuna ?? linhas.filter((l) => l.ncm != null).length,
@@ -1262,6 +1365,7 @@ export interface ParsedSupplierFile {
   abasCandidatas?: AbaCandidataPontuada[];
   imagensArquivo?: number;
   imagensMapeadas?: number;
+  linhasTotaisDescartadas?: number;
   moedaPlanilha?: string;
   /** P2c v1.1 — taxa EUR→US$ aplicada na ingestão (null se não convertido). */
   cambioEurUsd?: number | null;
