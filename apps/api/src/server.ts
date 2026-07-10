@@ -1,5 +1,6 @@
 /** Servidor Fastify — API do CIA / Alpha 44. */
 
+import { pathToFileURL } from "node:url";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
@@ -917,4 +918,6 @@ async function main() {
 }
 
 // roda quando executado diretamente (node dist/server.js | tsx src/server.ts)
-main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  void main();
+}
