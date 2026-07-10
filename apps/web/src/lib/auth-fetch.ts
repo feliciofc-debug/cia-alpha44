@@ -3,6 +3,10 @@
 export type TokenOptions = { forceRefresh?: boolean };
 type TokenFn = (opts?: TokenOptions) => Promise<string | null>;
 type SessionExpiredFn = () => void;
+export interface AuthFetchOptions {
+  /** Pede token Clerk com skipCache antes da primeira tentativa. */
+  forceRefreshToken?: boolean;
+}
 
 let tokenFn: TokenFn | null = null;
 let onSessionExpired: SessionExpiredFn | null = null;
@@ -61,8 +65,12 @@ export async function withAuthHeaders(
   return { ...init, headers };
 }
 
-export async function fetchAutenticado(url: string, init: RequestInit = {}): Promise<Response> {
-  let res = await fetch(url, await withAuthHeaders(init));
+export async function fetchAutenticado(
+  url: string,
+  init: RequestInit = {},
+  opts: AuthFetchOptions = {},
+): Promise<Response> {
+  let res = await fetch(url, await withAuthHeaders(init, opts.forceRefreshToken === true));
   if (res.status === 401 && tokenFn) {
     const expirado = await respostaJwtExpirado(res);
     res = await fetch(url, await withAuthHeaders(init, true));
@@ -76,6 +84,6 @@ export async function fetchAutenticado(url: string, init: RequestInit = {}): Pro
   return res;
 }
 
-export async function authFetch(url: string, init: RequestInit = {}): Promise<Response> {
-  return fetchAutenticado(url, init);
+export async function authFetch(url: string, init: RequestInit = {}, opts: AuthFetchOptions = {}): Promise<Response> {
+  return fetchAutenticado(url, init, opts);
 }

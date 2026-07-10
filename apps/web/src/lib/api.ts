@@ -1,7 +1,7 @@
 import { despesasParaContainers, outrasDespesasBaseParaContainers, DEFAULT_FRETE_US, DEFAULT_SISCOMEX_BRL } from "./despesas.ts";
 import { icmsSaidaParaDestino } from "./icms-uf.ts";
 import { PdfDownloadError, type ItemInvalidoPdf } from "./pdf-erro.ts";
-import { fetchAutenticado, withAuthHeaders } from "./auth-fetch.ts";
+import { fetchAutenticado } from "./auth-fetch.ts";
 import { mesclarAvisoMoedaCotacao } from "@cia/shared";
 import type {
   Cotacao,
@@ -41,10 +41,15 @@ const SALVAR_TIMEOUT_MS = 180_000;
 /** PATCH NCM + recálculo — pode demorar em cotações grandes. */
 const NCM_ITEM_TIMEOUT_MS = 120_000;
 
-function fetchComTimeout(url: string, init: RequestInit, ms: number) {
+function fetchComTimeout(
+  url: string,
+  init: RequestInit,
+  ms: number,
+  opts: { forceRefreshToken?: boolean } = {},
+) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), ms);
-  return fetchAutenticado(url, { ...init, signal: ctrl.signal }).finally(() => clearTimeout(timer));
+  return fetchAutenticado(url, { ...init, signal: ctrl.signal }, opts).finally(() => clearTimeout(timer));
 }
 
 function msgErroApi(status: number, txt: string): string {
@@ -145,7 +150,12 @@ export const api = {
   parse: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
-    return fetchComTimeout(`${BASE}/api/parse`, { method: "POST", body: fd }, PARSE_TIMEOUT_MS).then(
+    return fetchComTimeout(
+      `${BASE}/api/parse`,
+      { method: "POST", body: fd },
+      PARSE_TIMEOUT_MS,
+      { forceRefreshToken: true },
+    ).then(
       handle<ParsedSheet>,
     );
   },
@@ -173,6 +183,7 @@ export const api = {
         }),
       },
       CLASSIFY_TIMEOUT_MS,
+      { forceRefreshToken: true },
     ).then(
       handle<{
         itens: Item[];
@@ -206,6 +217,7 @@ export const api = {
         }),
       },
       CLASSIFY_TIMEOUT_MS,
+      { forceRefreshToken: true },
     ).then(
       handle<{
         itens: Item[];
@@ -218,8 +230,8 @@ export const api = {
     const { itens, provider } = classificado;
 
     const comFobPlanilha = itens.some((it) => it.fobTotalUS > 0);
-    const cambio = await withAuthHeaders({}).then((h) =>
-      fetch(`${BASE}/api/cambio?moeda=USD`, h).then(handle<Cambio>),
+    const cambio = await fetchAutenticado(`${BASE}/api/cambio?moeda=USD`, {}, { forceRefreshToken: true }).then(
+      handle<Cambio>,
     );
     const benefFiscal = "ALAGOAS";
     const origem = "RJ";
@@ -270,6 +282,7 @@ export const api = {
         body: JSON.stringify(cotacao),
       },
       CLASSIFY_TIMEOUT_MS,
+      { forceRefreshToken: true },
     ).then(
       handle<{
         resultado: ResultadoCotacao;
@@ -318,17 +331,13 @@ export const api = {
   relatorioFaturamento: (ano: number, mes?: number) => {
     const params = new URLSearchParams({ ano: String(ano) });
     if (mes != null) params.set("mes", String(mes));
-    return withAuthHeaders({}).then((h) =>
-      fetch(`${BASE}/api/dashboard/relatorio?${params}`, h).then(handle<RelatorioFaturamento>),
-    );
+    return fetchAutenticado(`${BASE}/api/dashboard/relatorio?${params}`).then(handle<RelatorioFaturamento>);
   },
 
   baixarRelatorioFaturamentoPdf: async (ano: number, mes?: number) => {
     const params = new URLSearchParams({ ano: String(ano) });
     if (mes != null) params.set("mes", String(mes));
-    const res = await withAuthHeaders({}).then((h) =>
-      fetch(`${BASE}/api/dashboard/relatorio/pdf?${params}`, h),
-    );
+    const res = await fetchAutenticado(`${BASE}/api/dashboard/relatorio/pdf?${params}`);
     const slug = mes != null ? `${ano}-${String(mes).padStart(2, "0")}` : String(ano);
     return api.baixarPdfBlob(res, `cia-faturamento-${slug}.pdf`);
   },
@@ -358,40 +367,36 @@ export const api = {
     ).then(handle<CotacaoSalva>),
 
   duplicarCotacao: (id: string, opts?: { markupPct?: number; cliente?: string }) =>
-    withAuthHeaders({
+    fetchAutenticado(`${BASE}/api/cotacoes/${id}/duplicar`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(opts ?? {}),
-    }).then((h) => fetch(`${BASE}/api/cotacoes/${id}/duplicar`, h).then(handle<CotacaoSalva>)),
+    }).then(handle<CotacaoSalva>),
 
   excluirCotacao: (id: string) =>
-    withAuthHeaders({ method: "DELETE" }).then((h) =>
-      fetch(`${BASE}/api/cotacoes/${id}`, h).then(handle<{ ok: true }>),
-    ),
+    fetchAutenticado(`${BASE}/api/cotacoes/${id}`, { method: "DELETE" }).then(handle<{ ok: true }>),
 
   calcular: (cotacao: Cotacao) =>
-    withAuthHeaders({
+    fetchAutenticado(`${BASE}/api/calcular`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(cotacao),
-    }).then((h) =>
-      fetch(`${BASE}/api/calcular`, h).then(
-        handle<{
-          resultado: ResultadoCotacao;
-          itens: Item[];
-          icms: IcmsCotacaoMeta;
-          avisosFiscais: string[];
-          params: Cotacao["params"];
-        }>,
-      ),
+    }).then(
+      handle<{
+        resultado: ResultadoCotacao;
+        itens: Item[];
+        icms: IcmsCotacaoMeta;
+        avisosFiscais: string[];
+        params: Cotacao["params"];
+      }>,
     ),
 
   atualizarCotacao: (id: string, opts: Record<string, unknown>) =>
-    withAuthHeaders({
+    fetchAutenticado(`${BASE}/api/cotacoes/${id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(opts),
-    }).then((h) => fetch(`${BASE}/api/cotacoes/${id}`, h).then(handle<CotacaoSalva>)),
+    }).then(handle<CotacaoSalva>),
 
   confirmarNcmItem: (cotacaoId: string, ordem: number, confirmadoPor?: string) =>
     fetchComTimeout(
@@ -500,11 +505,11 @@ export const api = {
 
   /** @deprecated use atualizarCotacao */
   atualizarFiscal: (id: string, opts: Record<string, unknown>) =>
-    withAuthHeaders({
+    fetchAutenticado(`${BASE}/api/cotacoes/${id}/fiscal`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(opts),
-    }).then((h) => fetch(`${BASE}/api/cotacoes/${id}/fiscal`, h).then(handle<CotacaoSalva>)),
+    }).then(handle<CotacaoSalva>),
 
   baixarPdfBlob: async (res: Response, fallback: string) => {
     if (!res.ok) {
@@ -632,11 +637,9 @@ export const api = {
   },
 
   listarUfs: (benefFiscal = "ALAGOAS") =>
-    withAuthHeaders({}).then((h) =>
-      fetch(`${BASE}/api/fiscal/ufs?benefFiscal=${encodeURIComponent(benefFiscal)}`, h).then(
-        handle<{
-          ufs: { sigla: string; nome: string; icmsInterno: number; icmsEfetivoSaida: number }[];
-        }>,
-      ),
+    fetchAutenticado(`${BASE}/api/fiscal/ufs?benefFiscal=${encodeURIComponent(benefFiscal)}`).then(
+      handle<{
+        ufs: { sigla: string; nome: string; icmsInterno: number; icmsEfetivoSaida: number }[];
+      }>,
     ),
 };
