@@ -1,4 +1,4 @@
-/** Injeta Authorization Bearer (Clerk) ou x-demo-auth em dev. */
+/** Injeta Authorization Bearer (Clerk), x-api-key interno ou x-demo-auth em dev. */
 
 export type TokenOptions = { forceRefresh?: boolean };
 type TokenFn = (opts?: TokenOptions) => Promise<string | null>;
@@ -45,11 +45,17 @@ async function respostaJwtExpirado(res: Response): Promise<boolean> {
   }
 }
 
+function aplicarApiKeyInterna(headers: Headers): void {
+  const apiKey = import.meta.env.VITE_CIA_API_KEY?.trim();
+  if (apiKey) headers.set("x-api-key", apiKey);
+}
+
 export async function withAuthHeaders(
   init: RequestInit = {},
   forceRefresh = false,
 ): Promise<RequestInit> {
   const headers = new Headers(init.headers);
+  aplicarApiKeyInterna(headers);
 
   if (tokenFn) {
     const token = await obterToken(forceRefresh);

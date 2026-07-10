@@ -56,4 +56,70 @@ describe("registrarAuth middleware", () => {
     expect(JSON.parse(res.body).tenant).toBe("default");
     await app.close();
   });
+
+  it("AUTH_MODE=apikey libera rota protegida com x-api-key correto", async () => {
+    process.env.AUTH_MODE = "apikey";
+    process.env.CIA_API_KEY = "segredo-interno";
+
+    const { registrarAuth } = await import("../src/auth/middleware.js");
+    const app = Fastify();
+    await registrarAuth(app);
+    app.get("/api/cotacoes", async (req) => ({
+      userId: req.auth?.userId,
+      tenant: req.auth?.tenantSlug,
+      tenantId: req.auth?.tenantId,
+    }));
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/cotacoes",
+      headers: { "x-api-key": "segredo-interno" },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body)).toEqual({
+      userId: "apikey",
+      tenant: "default",
+      tenantId: "tid-default",
+    });
+    await app.close();
+  });
+
+  it("AUTH_MODE=apikey rejeita x-api-key errado", async () => {
+    process.env.AUTH_MODE = "apikey";
+    process.env.CIA_API_KEY = "segredo-interno";
+
+    const { registrarAuth } = await import("../src/auth/middleware.js");
+    const app = Fastify();
+    await registrarAuth(app);
+    app.get("/api/cotacoes", async () => ({ ok: true }));
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/cotacoes",
+      headers: { "x-api-key": "segredo-errado" },
+    });
+
+    expect(res.statusCode).toBe(401);
+    await app.close();
+  });
+
+  it("sem AUTH_MODE=apikey, x-api-key não substitui o fluxo Clerk", async () => {
+    delete process.env.AUTH_MODE;
+    process.env.CIA_API_KEY = "segredo-interno";
+
+    const { registrarAuth } = await import("../src/auth/middleware.js");
+    const app = Fastify();
+    await registrarAuth(app);
+    app.get("/api/cotacoes", async () => ({ ok: true }));
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/cotacoes",
+      headers: { "x-api-key": "segredo-interno" },
+    });
+
+    expect(res.statusCode).toBe(401);
+    await app.close();
+  });
 });
