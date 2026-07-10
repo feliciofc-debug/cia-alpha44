@@ -341,6 +341,44 @@ describe("alterarNcmItem — edição soberana do operador", () => {
     expect(out!.avisoCustoVeiculo).toContain("Base FOB = valor de custo");
   });
 
+  it("endpoint PATCH custo unitário de veículo altera 109 → 115 e recalcula FOB", async () => {
+    seedCotacao({
+      ...makeItem("ES-T19A-10BLK — 滑板车T1 MAX"),
+      ncm: "87116000",
+      qtd: 500,
+      pesoBrutoKg: 11500,
+      pesoLiqKg: 10000,
+      fobUnitarioUS: 109,
+      fobTotalUS: 54500,
+      meta: {
+        uso: "骑行",
+        ncmFonte: "planilha-cliente",
+        fobKgFonte: "preco-custo",
+        fobEmbarqueUS: 54500,
+      },
+    });
+    store.row!.tenantId = "tid-default";
+    const { buildServer } = await import("../src/server.js");
+    const app = await buildServer();
+
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/cotacoes/${COTACAO_ID}/itens/0/custo-unitario-veiculo`,
+      headers: { "x-demo-auth": "1", "content-type": "application/json" },
+      payload: { custoUnitarioUS: 115 },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(store.row!.itens[0]!.fobUnitarioUS).toBe(115);
+    expect(store.row!.itens[0]!.fobTotalUS).toBeCloseTo(57500, 2);
+    expect(body.itens[0].fobUnitarioUS).toBe(115);
+    expect(body.itens[0].fobTotalUS).toBeCloseTo(57500, 2);
+    expect(body.resultado.entrada.fobTotalUS).toBeCloseTo(57500, 2);
+    expect(body.avisoCustoVeiculo).toContain("Base FOB = valor de custo");
+    await app.close();
+  });
+
   it("FOB/kg manual responde com valor salvo e cotação recalculada", async () => {
     const state = carregarState();
     seedCotacao({
