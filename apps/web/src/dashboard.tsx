@@ -1756,6 +1756,7 @@ export function Dashboard() {
       const msg = e instanceof Error ? e.message : "Falha ao alterar custo unitário do veículo.";
       setErro(msg);
       setAvisoOperacao("");
+      throw e;
     } finally {
       setAlterandoCustoVeiculo(null);
     }

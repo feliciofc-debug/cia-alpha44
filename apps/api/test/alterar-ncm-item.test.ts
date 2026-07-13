@@ -83,11 +83,20 @@ const store = vi.hoisted(() => ({
   row: null as CotacaoRow | null,
   cache: new Map<string, { chave: string; promptVersion: string; catalogVersion: string; resultado: unknown; confirmadoHumano: boolean; hitCount?: number }>(),
   itemUpdates: 0,
+  appState: null as AppState | null,
 }));
 
 vi.mock("../src/auth/tenant.js", () => ({
   ensureTenant: vi.fn(async (slug: string) => `tid-${slug}`),
 }));
+
+vi.mock("../src/state.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/state.js")>();
+  return {
+    ...actual,
+    getState: () => store.appState ?? actual.getState(),
+  };
+});
 
 vi.mock("@cia/db", () => {
   const itemUpdate = vi.fn(async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
@@ -240,6 +249,7 @@ describe("alterarNcmItem — edição soberana do operador", () => {
     store.row = null;
     store.cache.clear();
     store.itemUpdates = 0;
+    store.appState = null;
     vi.clearAllMocks();
   });
 
@@ -339,6 +349,82 @@ describe("alterarNcmItem — edição soberana do operador", () => {
     expect(out!.itens[0]!.fobTotalUS).toBeCloseTo(54500, 2);
     expect(out!.resultado?.entrada.fobTotalUS).toBeCloseTo(54500, 2);
     expect(out!.avisoCustoVeiculo).toContain("Base FOB = valor de custo");
+  });
+
+  it("PATCH custo unitário de veículo altera 109 -> 115 -> 109 e responde cotação recalculada", async () => {
+    const envBackup = { ...process.env };
+    const state = carregarState();
+    store.appState = state;
+    seedCotacao({
+      ...makeItem("ES-T19A-10BLK — 滑板车T1 MAX"),
+      ncm: "87116000",
+      qtd: 500,
+      pesoBrutoKg: 11500,
+      pesoLiqKg: 10000,
+      fobUnitarioUS: 109,
+      fobTotalUS: 54500,
+      meta: {
+        uso: "骑行",
+        ncmFonte: "planilha-cliente",
+        fobKgFonte: "preco-custo",
+        fobEmbarqueUS: 54500,
+      },
+    });
+    process.env = {
+      ...envBackup,
+      AUTH_MODE: "apikey",
+      CIA_API_KEY: "test-key",
+      CIA_API_TENANT_SLUG: TENANT,
+      DATABASE_URL: "postgresql://mock/mock",
+      NODE_ENV: "development",
+    };
+    vi.resetModules();
+
+    let app: { close: () => Promise<void>; inject: (opts: {
+      method: string;
+      url: string;
+      headers?: Record<string, string>;
+      payload?: string;
+    }) => Promise<{ statusCode: number; body: string }> } | null = null;
+    try {
+      const { buildServer } = await import("../src/server.js");
+      app = await buildServer();
+      const res = await app.inject({
+        method: "PATCH",
+        url: `/api/cotacoes/${COTACAO_ID}/itens/0/custo-unitario-veiculo`,
+        headers: { "x-api-key": "test-key", "content-type": "application/json" },
+        payload: JSON.stringify({ custoUnitarioUS: 115 }),
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.ordem).toBe(0);
+      expect(body.custoUnitarioUS).toBe(115);
+      expect(body.fobTotalUS).toBeCloseTo(57500, 2);
+      expect(body.itens[0].fobUnitarioUS).toBe(115);
+      expect(body.itens[0].fobTotalUS).toBeCloseTo(57500, 2);
+      expect(body.resultado.entrada.fobTotalUS).toBeCloseTo(57500, 2);
+      expect(store.row!.itens[0]!.fobUnitarioUS).toBe(115);
+      expect(store.row!.itens[0]!.fobTotalUS).toBeCloseTo(57500, 2);
+
+      const resBack = await app.inject({
+        method: "PATCH",
+        url: `/api/cotacoes/${COTACAO_ID}/itens/0/custo-unitario-veiculo`,
+        headers: { "x-api-key": "test-key", "content-type": "application/json" },
+        payload: JSON.stringify({ custoUnitarioUS: 109 }),
+      });
+      expect(resBack.statusCode).toBe(200);
+      const bodyBack = JSON.parse(resBack.body);
+      expect(bodyBack.custoUnitarioUS).toBe(109);
+      expect(bodyBack.fobTotalUS).toBeCloseTo(54500, 2);
+      expect(bodyBack.itens[0].fobUnitarioUS).toBe(109);
+      expect(bodyBack.itens[0].fobTotalUS).toBeCloseTo(54500, 2);
+      expect(bodyBack.resultado.entrada.fobTotalUS).toBeCloseTo(54500, 2);
+    } finally {
+      await app?.close();
+      process.env = envBackup;
+      store.appState = null;
+    }
   });
 
   it("FOB/kg manual responde com valor salvo e cotação recalculada", async () => {
