@@ -351,7 +351,7 @@ describe("alterarNcmItem — edição soberana do operador", () => {
     expect(out!.avisoCustoVeiculo).toContain("Base FOB = valor de custo");
   });
 
-  it("PATCH custo unitário de veículo altera 109 -> 115 e responde cotação recalculada", async () => {
+  it("PATCH custo unitário de veículo altera 109 -> 115 -> 109 e responde cotação recalculada", async () => {
     const envBackup = { ...process.env };
     const state = carregarState();
     store.appState = state;
@@ -406,6 +406,20 @@ describe("alterarNcmItem — edição soberana do operador", () => {
       expect(body.resultado.entrada.fobTotalUS).toBeCloseTo(57500, 2);
       expect(store.row!.itens[0]!.fobUnitarioUS).toBe(115);
       expect(store.row!.itens[0]!.fobTotalUS).toBeCloseTo(57500, 2);
+
+      const resBack = await app.inject({
+        method: "PATCH",
+        url: `/api/cotacoes/${COTACAO_ID}/itens/0/custo-unitario-veiculo`,
+        headers: { "x-api-key": "test-key", "content-type": "application/json" },
+        payload: JSON.stringify({ custoUnitarioUS: 109 }),
+      });
+      expect(resBack.statusCode).toBe(200);
+      const bodyBack = JSON.parse(resBack.body);
+      expect(bodyBack.custoUnitarioUS).toBe(109);
+      expect(bodyBack.fobTotalUS).toBeCloseTo(54500, 2);
+      expect(bodyBack.itens[0].fobUnitarioUS).toBe(109);
+      expect(bodyBack.itens[0].fobTotalUS).toBeCloseTo(54500, 2);
+      expect(bodyBack.resultado.entrada.fobTotalUS).toBeCloseTo(54500, 2);
     } finally {
       await app?.close();
       process.env = envBackup;
