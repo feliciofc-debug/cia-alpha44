@@ -32,7 +32,7 @@ describe("InputCustoUnitarioVeiculo", () => {
       <InputCustoUnitarioVeiculo item={itemVeiculo(109)} ordem={0} onCommit={onCommit} />,
     );
 
-    expect(screen.getByText("US$ 109,00 — custo unitário (veículo)")).toBeInTheDocument();
+    expect(screen.getByText("US$ 109,00 — custo unitário (veículo)")).toBeTruthy();
 
     await user.click(screen.getByRole("button", { name: /editar custo/i }));
     const input = screen.getByRole("spinbutton");
@@ -43,7 +43,7 @@ describe("InputCustoUnitarioVeiculo", () => {
     await waitFor(() => expect(onCommit).toHaveBeenCalledWith(0, 115));
 
     rerender(<InputCustoUnitarioVeiculo item={itemVeiculo(115)} ordem={0} onCommit={onCommit} />);
-    expect(screen.getByText("US$ 115,00 — custo unitário (veículo)")).toBeInTheDocument();
+    expect(screen.getByText("US$ 115,00 — custo unitário (veículo)")).toBeTruthy();
   });
 
   it("erro de rede no Salvar fica visível e mantém edição aberta", async () => {
@@ -60,7 +60,7 @@ describe("InputCustoUnitarioVeiculo", () => {
     await user.type(input, "115");
     await user.click(screen.getByRole("button", { name: /^salvar$/i }));
 
-    expect(await screen.findByText("Falha de rede ao salvar custo.")).toBeInTheDocument();
-    expect(screen.getByRole("spinbutton")).toBeInTheDocument();
+    expect(await screen.findByText("Falha de rede ao salvar custo.")).toBeTruthy();
+    expect(screen.getByRole("spinbutton")).toBeTruthy();
   });
 });
