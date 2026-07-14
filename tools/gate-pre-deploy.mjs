@@ -12,6 +12,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const tests = [
   "apps/api/test/dif-ipi-saida.test.ts",
   "apps/api/test/gate-embarque-89-total-row.test.ts",
+  "apps/api/test/gate-mochilas-ncm1-mescla.test.ts",
   "apps/api/test/gate-cotacao-72-gabarito.test.ts",
   "apps/api/test/gate-cotacao-72-traducao-pt.test.ts",
   "apps/api/test/gate-fatura-90-hs6-china.test.ts",
@@ -27,6 +28,7 @@ const pipelineTests = [
   "test/resolve-ncm-gemini.test.ts",
   "test/planilha-china-ncm.test.ts",
   "test/parser-fatura92-layout-china.test.ts",
+  "test/parser-mescla-vertical.test.ts",
   "test/relatorio-fob-fonte.test.ts",
 ];
 

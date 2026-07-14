@@ -125,6 +125,49 @@ function rowsFromSheet(ws: XLSX.WorkSheet): unknown[][] {
   }) as unknown[][];
 }
 
+/** Colunas de texto que podem herdar valor de células mescladas verticalmente. */
+function indicesColunasTextoMescla(colunas: ColunaMapeada[]): Set<number> {
+  const indices = new Set<number>();
+  for (const c of colunas) {
+    if (c.tipo === "descricao") indices.add(c.indice);
+    if (RE_MATERIAL.test(c.header)) indices.add(c.indice);
+    if (RE_USO.test(c.header)) indices.add(c.indice);
+    if (RE_DESC_PT_MULTILINGUE.test(c.header)) indices.add(c.indice);
+    if (RE_DESC_EN_MULTILINGUE.test(c.header)) indices.add(c.indice);
+    if (RE_DESC_DE_MULTILINGUE.test(c.header)) indices.add(c.indice);
+  }
+  return indices;
+}
+
+/**
+ * Propaga valor da célula-âncora (top-left) para filhas de mesclas verticais.
+ * Aplica somente em colunas de texto — qty/peso de cada linha permanecem intactos.
+ */
+function aplicarHerancaMesclasVerticais(
+  rows: unknown[][],
+  merges: XLSX.Range[] | undefined,
+  colunasTexto: Set<number>,
+): unknown[][] {
+  if (!merges?.length || colunasTexto.size === 0) return rows;
+  const out = rows.map((r) => (r ? [...r] : []));
+  for (const m of merges) {
+    if (m.e.r <= m.s.r) continue;
+    const anchorVal = out[m.s.r]?.[m.s.c];
+    if (anchorVal == null || String(anchorVal).trim() === "") continue;
+    for (let r = m.s.r + 1; r <= m.e.r; r++) {
+      for (let c = m.s.c; c <= m.e.c; c++) {
+        if (!colunasTexto.has(c)) continue;
+        const atual = out[r]?.[c];
+        if (atual != null && String(atual).trim() !== "") continue;
+        const linha = out[r] ?? [];
+        linha[c] = anchorVal;
+        out[r] = linha;
+      }
+    }
+  }
+  return out;
+}
+
 function pontuarAba(wb: XLSX.WorkBook, aba: string): AbaCandidataPontuada {
   const ws = wb.Sheets[aba];
   if (!ws) return { aba, pontuacao: 0, headerRowIndex: 0 };
@@ -225,6 +268,7 @@ function extrairLinhasComColunas(
     .map((c) => c.indice);
 
   const linhasBrutas: LinhaFornecedor[] = [];
+  const rowsItensRaw: unknown[][] = [];
   for (let r = headerRow + 1; r < rows.length; r++) {
     const row = rows[r] as unknown[] | undefined;
     if (!row) continue;
@@ -246,7 +290,14 @@ function extrairLinhasComColunas(
       continue;
     }
     if (!descricao || descricao.length < 2) {
-      if (linhaTotalPorAgregadosNumericos(row, linhasBrutas, { iQtd, iFob, pesoLiqCols, pesoBrutoCols })) {
+      if (
+        linhaTotalPorAgregadosNumericos(row, linhasBrutas, {
+          iQtd,
+          iFob,
+          pesoLiqCols,
+          pesoBrutoCols,
+        }, rowsItensRaw)
+      ) {
         stats && (stats.linhasTotaisDescartadas += 1);
       }
       continue;
@@ -325,6 +376,7 @@ function extrairLinhasComColunas(
       avisosEscala: avisosEscala.length ? avisosEscala : undefined,
       raw,
     });
+    rowsItensRaw.push(row);
   }
 
   return linhasBrutas;
@@ -349,6 +401,25 @@ function valorTotalCol(row: unknown[], idx: number | undefined): number | null {
   return idx === undefined ? null : num(row[idx]);
 }
 
+function linhaSemTextoApenasNumeros(row: unknown[]): boolean {
+  const textos = row
+    .map((c) => String(c ?? "").trim())
+    .filter((c) => c && num(c) == null);
+  return textos.length === 0;
+}
+
+/** Soma coluna-a-coluna: detecta totais sem rótulo (ex. 件数/总重) mesmo sem mapeamento de cabeçalho. */
+function linhaTotalPorSomaColunasRaw(row: unknown[], rowsItens: unknown[][]): boolean {
+  if (rowsItens.length < 2 || !linhaSemTextoApenasNumeros(row)) return false;
+  for (let col = 0; col < row.length; col++) {
+    const valor = num(row[col]);
+    if (valor == null || valor <= 0) continue;
+    const soma = rowsItens.reduce((acc, r) => acc + (num(r[col]) ?? 0), 0);
+    if (soma > 0 && relDiff(valor, soma) <= 0.005) return true;
+  }
+  return false;
+}
+
 function linhaTotalPorAgregadosNumericos(
   row: unknown[],
   anteriores: LinhaFornecedor[],
@@ -358,12 +429,10 @@ function linhaTotalPorAgregadosNumericos(
     pesoLiqCols: ReturnType<typeof resolverColunasPeso>;
     pesoBrutoCols: ReturnType<typeof resolverColunasPeso>;
   },
+  rowsItensRaw?: unknown[][],
 ): boolean {
   if (anteriores.length < 2) return false;
-  const textos = row
-    .map((c) => String(c ?? "").trim())
-    .filter((c) => c && num(c) == null);
-  if (textos.length > 0) return false;
+  if (!linhaSemTextoApenasNumeros(row)) return false;
 
   const candidatos = [
     { valor: valorTotalCol(row, cols.iQtd), soma: somaLinhaNumerica(anteriores, "qtd") },
@@ -372,7 +441,13 @@ function linhaTotalPorAgregadosNumericos(
     { valor: valorTotalCol(row, cols.pesoBrutoCols.total), soma: somaLinhaNumerica(anteriores, "pesoBrutoKg") },
   ].filter((c) => c.valor != null && c.valor > 0 && c.soma > 0);
 
-  return candidatos.length > 0 && candidatos.some((c) => relDiff(c.valor!, c.soma) <= 0.005);
+  if (candidatos.length > 0 && candidatos.some((c) => relDiff(c.valor!, c.soma) <= 0.005)) {
+    return true;
+  }
+  if (rowsItensRaw?.length) {
+    return linhaTotalPorSomaColunasRaw(row, rowsItensRaw);
+  }
+  return false;
 }
 
 function aplicarQtdLinhasFornecedor(linhas: LinhaFornecedor[], sammelkarton?: string): LinhaFornecedor[] {
@@ -1038,6 +1113,7 @@ function parseRows(
   avisosExtras: string[] = [],
   ctx: Pick<ParsePlanilhaOpts, "sammelkarton" | "moedaPlanilha"> = {},
   colunasOverride?: ColunaMapeada[],
+  merges?: XLSX.Range[],
 ): ResultadoParse {
   const avisos: string[] = [...avisosExtras];
   const headerRow = encontrarHeader(rows);
@@ -1054,6 +1130,12 @@ function parseRows(
       return { indice, header, tipo, confianca };
     });
   colunas = inferirColunaNcmSemCabecalho(rows, headerRow, garantirColunaNcm(colunas));
+
+  const colunasTexto = indicesColunasTextoMescla(colunas);
+  const rowsEfetivas =
+    merges?.length && colunasTexto.size > 0
+      ? aplicarHerancaMesclasVerticais(rows, merges, colunasTexto)
+      : rows;
 
   let usouSinonimos = false;
   if (indiceDescricao(colunas) === undefined) {
@@ -1079,7 +1161,7 @@ function parseRows(
   }
 
   const stats = { linhasTotaisDescartadas: 0 };
-  const linhas = extrairLinhasComColunas(rows, headerRow, colunas, ctx.sammelkarton, stats);
+  const linhas = extrairLinhasComColunas(rowsEfetivas, headerRow, colunas, ctx.sammelkarton, stats);
 
   if (linhas.length === 0) {
     avisos.push("Nenhuma linha de item encontrada após o cabeçalho.");
@@ -1123,8 +1205,12 @@ function parseRows(
 }
 
 /** Expõe parse interno para testes (matriz de linhas, sem imagens). */
-export function parsePlanilhaRows(rows: unknown[][], aba = "Sheet1"): ResultadoParse {
-  return parseRows(rows, aba);
+export function parsePlanilhaRows(
+  rows: unknown[][],
+  aba = "Sheet1",
+  merges?: XLSX.Range[],
+): ResultadoParse {
+  return parseRows(rows, aba, [], {}, undefined, merges);
 }
 
 export async function parsePlanilhaBuffer(
@@ -1139,13 +1225,14 @@ export async function parsePlanilhaBuffer(
   const aba = escolhaAba.aba;
   const ws = wb.Sheets[aba]!;
   const rows = rowsFromSheet(ws);
+  const merges = ws["!merges"];
 
   const ctx: Pick<ParsePlanilhaOpts, "sammelkarton" | "moedaPlanilha"> = {
     sammelkarton: opcoes.sammelkarton ?? meta.sammelkarton,
     moedaPlanilha: opcoes.moedaPlanilha ?? meta.moeda,
   };
 
-  let parsed = parseRows(rows, aba, [...meta.avisos], ctx);
+  let parsed = parseRows(rows, aba, [...meta.avisos], ctx, undefined, merges);
   parsed = {
     ...parsed,
     abasCandidatas: escolhaAba.candidatas,
@@ -1180,7 +1267,7 @@ export async function parsePlanilhaBuffer(
         mapa,
       );
       parsed = {
-        ...parseRows(rows, aba, [...meta.avisos, AVISO_MAPEAMENTO_IA], ctx, colunasIA),
+        ...parseRows(rows, aba, [...meta.avisos, AVISO_MAPEAMENTO_IA], ctx, colunasIA, merges),
         abasCandidatas: escolhaAba.candidatas,
       };
     }
