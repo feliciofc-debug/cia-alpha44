@@ -75,12 +75,14 @@ export function fmtFobKgPlanilha(n: number): string {
 /** Rótulo da fonte FOB/kg efetiva na cotação. */
 export function fobKgFonteLabel(it: Item): string | null {
   if (it.fobPendente) return null;
+  if (it.fobKgManual != null && it.fobKgManual > 0) return "manual do operador";
   if (it.benchmark?.fonte === "Histórico próprio") {
     return "Planilha China (PREÇO FOB/KG)";
   }
   if (it.benchmark?.fonte === "ComexStat") {
     return "ComexStat (NCM não encontrado na planilha)";
   }
+  if (it.fobKgFonte === "planilha-cliente (FOB declarado)") return "FOB declarado na planilha";
   if (it.fobKgFonte?.includes("planilha-mensal")) return "Planilha China";
   if (it.fobKgFonte?.includes("comexstat")) return "ComexStat";
   if (it.fobKgFonte === "linha") return "Planilha embarque";

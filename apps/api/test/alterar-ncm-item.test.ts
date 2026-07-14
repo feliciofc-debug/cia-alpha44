@@ -427,7 +427,7 @@ describe("alterarNcmItem — edição soberana do operador", () => {
     }
   });
 
-  it("FOB/kg manual responde com valor salvo e cotação recalculada", async () => {
+  it("FOB/kg manual responde com valor salvo e cotação recalculada sobre FOB declarado", async () => {
     const state = carregarState();
     seedCotacao({
       ...makeItem("Produto FOB manual"),
@@ -435,8 +435,8 @@ describe("alterarNcmItem — edição soberana do operador", () => {
       qtd: 1,
       pesoBrutoKg: 100,
       pesoLiqKg: 90,
-      fobTotalUS: 10,
-      meta: { ncmFonte: "planilha-cliente", fobKgFonte: "linha" },
+      fobTotalUS: 120,
+      meta: { ncmFonte: "planilha-cliente", fobKgFonte: "planilha-cliente (FOB declarado)" },
     });
     const { alterarFobKgItem } = await import("../src/services/cotacoes-persist.js");
 
@@ -446,9 +446,70 @@ describe("alterarNcmItem — edição soberana do operador", () => {
     expect(store.row!.itens[0]!.fobKgManual).toBe(3.25);
     expect(out!.ordem).toBe(0);
     expect(out!.itens[0]!.fobKgManual).toBe(3.25);
+    expect(out!.itens[0]!.fobKgFonte).toBe("manual do operador");
     expect(out!.itens[0]!.fobTotalUS).toBeCloseTo(325, 2);
     expect(out!.fobKgFinal).toBeCloseTo(3.25, 4);
     expect(out!.resultado?.entrada.fobTotalUS).toBeCloseTo(325, 2);
+  });
+
+  it("PATCH FOB/kg sobrescreve fonte declarada e persiste na reabertura", async () => {
+    const envBackup = { ...process.env };
+    const state = carregarState();
+    store.appState = state;
+    seedCotacao({
+      ...makeItem("Produto FOB declarado"),
+      ncm: "84238900",
+      qtd: 1,
+      pesoBrutoKg: 100,
+      pesoLiqKg: 90,
+      fobTotalUS: 120,
+      meta: { ncmFonte: "planilha-cliente", fobKgFonte: "planilha-cliente (FOB declarado)" },
+    });
+    process.env = {
+      ...envBackup,
+      AUTH_MODE: "apikey",
+      CIA_API_KEY: "test-key",
+      CIA_API_TENANT_SLUG: TENANT,
+      DATABASE_URL: "postgresql://mock/mock",
+      NODE_ENV: "development",
+    };
+    vi.resetModules();
+
+    let app: { close: () => Promise<void>; inject: (opts: {
+      method: string;
+      url: string;
+      headers?: Record<string, string>;
+      payload?: string;
+    }) => Promise<{ statusCode: number; body: string }> } | null = null;
+    try {
+      const { buildServer } = await import("../src/server.js");
+      app = await buildServer();
+      const res = await app.inject({
+        method: "PATCH",
+        url: `/api/cotacoes/${COTACAO_ID}/itens/0/fob-kg`,
+        headers: { "x-api-key": "test-key", "content-type": "application/json" },
+        payload: JSON.stringify({ fobKgManual: 2.75 }),
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.ordem).toBe(0);
+      expect(body.itens[0].fobKgManual).toBe(2.75);
+      expect(body.itens[0].fobKgFonte).toBe("manual do operador");
+      expect(body.itens[0].fobTotalUS).toBeCloseTo(275, 2);
+      expect(body.fobKgFinal).toBeCloseTo(2.75, 4);
+      expect(body.resultado.entrada.fobTotalUS).toBeCloseTo(275, 2);
+
+      const { buscarCotacao } = await import("../src/services/cotacoes-persist.js");
+      const reaberta = await buscarCotacao(COTACAO_ID, TENANT, state);
+      expect(reaberta?.itens[0]?.fobKgManual).toBe(2.75);
+      expect(reaberta?.itens[0]?.fobKgFonte).toBe("manual do operador");
+      expect(reaberta?.itens[0]?.fobTotalUS).toBeCloseTo(275, 2);
+    } finally {
+      await app?.close();
+      process.env = envBackup;
+      store.appState = null;
+    }
   });
 
   it("cotação salva reaberta preserva fotoPath e fotoUrl após recálculo", async () => {
