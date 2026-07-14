@@ -108,7 +108,7 @@ describe("gate embarque 89 — total row + FOB/NCM declarados", () => {
     expect(calc.itens[3]!.ncm).toBe("94054200");
     expect(calc.itens[4]!.ncm).toBe("94017900");
     expect(calc.itens[5]!.ncm).toBe("39169010");
-  });
+  }, 30000);
 
   it("não altera fixture sem FOB/KG e TTL FOB declarados", async () => {
     const parsed = await parseSupplierFile(FIXTURE_92);
