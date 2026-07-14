@@ -46,6 +46,7 @@ export const FOB_KG_FONTE_PRECO_CUSTO = "preco-custo" as const;
 export const FOB_KG_FONTE_PENDENTE = "pendente" as const;
 export const FOB_KG_FONTE_LINHA = "linha" as const;
 export const FOB_KG_FONTE_CLIENTE_DECLARADO = "planilha-cliente (FOB declarado)" as const;
+export const FOB_KG_FONTE_MANUAL_OPERADOR = "manual do operador" as const;
 
 export interface FobKgMeta {
   fobKgFonte: string;
@@ -379,7 +380,7 @@ function resolverItemInterno(
           pesoBruto > 0 ? it.fobKgManual * pesoBruto : it.fobTotalUS,
       },
       meta: {
-        fobKgFonte: it.fobKgFonte ?? FOB_KG_FONTE_LINHA,
+        fobKgFonte: FOB_KG_FONTE_MANUAL_OPERADOR,
         fobPendente: it.fobPendente,
         fobKgBase: it.fobKgBase ?? "bruto",
         fobKgAvisos: it.fobKgAvisos,

@@ -22,6 +22,7 @@ import {
   classificarSiscomexUltimoRecurso,
   carregarItensPlanilhaChinaOperacional,
   FOB_KG_FONTE_CLIENTE_DECLARADO,
+  FOB_KG_FONTE_MANUAL_OPERADOR,
   normNcm8,
   resolverNcmClassificacaoPlanilhaChina,
   type LinhaCrua,
@@ -918,7 +919,9 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
     });
     const flags = it.fobPendente ? [...(risco.flags ?? []), "FOB_PENDENTE"] : risco.flags;
     let fobKgFonteEfetiva = it.fobKgFonte;
-    if (it.fobKgFonte !== "preco-custo" && it.fobKgFonte !== FOB_KG_FONTE_CLIENTE_DECLARADO) {
+    if (it.fobKgManual != null && it.fobKgManual > 0) {
+      fobKgFonteEfetiva = FOB_KG_FONTE_MANUAL_OPERADOR;
+    } else if (it.fobKgFonte !== "preco-custo" && it.fobKgFonte !== FOB_KG_FONTE_CLIENTE_DECLARADO) {
       if (benchmark.fonte === "Histórico próprio") {
         fobKgFonteEfetiva = benchmark.rastroFonte ?? "planilha-operacional";
       } else if (benchmark.fonte === "ComexStat") {

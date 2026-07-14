@@ -28,7 +28,8 @@ export function InputFobKgItem({
 }) {
   const fob = fobKgItem(item);
   const sugestao = fobKgReferencia(item);
-  const fonte = fobKgFonteLabel(item);
+  const fonte = fob.manualAtivo ? "manual do operador" : fobKgFonteLabel(item);
+  const fonteReferencia = fobKgFonteLabel({ ...item, fobKgManual: null });
   const [local, setLocal] = useState(
     fob.manual != null
       ? String(fob.manual)
@@ -37,6 +38,8 @@ export function InputFobKgItem({
         : "",
   );
   const [editando, setEditando] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [erroLocal, setErroLocal] = useState("");
 
   useEffect(() => {
     if (editando) return;
@@ -52,64 +55,156 @@ export function InputFobKgItem({
     return n;
   }
 
+  function valorAtualInput(): string {
+    const v = fob.manual ?? sugestao;
+    return v != null ? (fob.manual != null ? String(v) : fmtFobKgPlanilha(v)) : "";
+  }
+
+  function iniciarEdicao() {
+    setLocal(valorAtualInput());
+    setErroLocal("");
+    setEditando(true);
+  }
+
+  function cancelarEdicao() {
+    setLocal(valorAtualInput());
+    setErroLocal("");
+    setEditando(false);
+  }
+
+  async function salvar() {
+    const valor = parseValor();
+    if (valor == null) {
+      setErroLocal("Informe um FOB/kg válido.");
+      return;
+    }
+    setSalvando(true);
+    setErroLocal("");
+    try {
+      await onCommit(ordem, valor);
+      setEditando(false);
+    } catch (e) {
+      setErroLocal(e instanceof Error ? e.message : "Falha ao salvar FOB/kg.");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  async function limparManual() {
+    const limpar = onLimpar ?? ((o: number) => onCommit(o, null));
+    setSalvando(true);
+    setErroLocal("");
+    try {
+      await limpar(ordem);
+      setEditando(false);
+    } catch (e) {
+      setErroLocal(e instanceof Error ? e.message : "Falha ao limpar FOB/kg manual.");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  if (!editando) {
+    return (
+      <div className="min-w-[7rem]">
+        <span className="block text-[10px] font-semibold text-slate-300">FOB/kg US$</span>
+        <div
+          className={`mt-0.5 rounded border px-2 py-1 text-xs ${
+            fob.manualAtivo
+              ? "border-emerald-500/40 bg-emerald-950/30 font-medium text-emerald-100"
+              : "border-white/10 bg-ink-900/60 text-slate-100"
+          }`}
+        >
+          {fob.principal != null
+            ? `${usdKg(fob.principal)} — ${fonte ?? "fonte não informada"}`
+            : "FOB/kg pendente — informe manualmente"}
+        </div>
+        <div className="mt-1 flex flex-wrap gap-1">
+          <button
+            type="button"
+            className="rounded border border-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-slate-300 hover:border-sky-400/50 hover:text-sky-200 disabled:opacity-50"
+            disabled={disabled}
+            onClick={iniciarEdicao}
+          >
+            Editar
+          </button>
+          {fob.manualAtivo && (
+            <button
+              type="button"
+              className="rounded border border-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 hover:border-slate-400/50 hover:text-slate-200 disabled:opacity-50"
+              disabled={disabled || salvando}
+              title="Limpar override — volta planilha/calibragem"
+              onClick={() => void limparManual()}
+            >
+              Limpar manual
+            </button>
+          )}
+        </div>
+        {fob.manualAtivo && fob.referencia != null && (
+          <span className="mt-0.5 block max-w-[12rem] truncate text-[10px] text-slate-500" title={fonteReferencia ?? "referência anterior"}>
+            referência anterior: {fonteReferencia ?? "fonte anterior"} · {usdKg(fob.referencia)}
+          </span>
+        )}
+        {!fob.manualAtivo && fonte && (
+          <span className="mt-0.5 block max-w-[12rem] truncate text-[10px] text-slate-500" title={fonte}>
+            fonte: {fonte}
+          </span>
+        )}
+        {erroLocal && <span className="block text-[10px] text-red-300">{erroLocal}</span>}
+        {avisoValoracao && <AvisoValoracaoFob aviso={avisoValoracao} />}
+      </div>
+    );
+  }
+
   return (
     <div className="min-w-[7rem]">
-      <div className="flex flex-wrap items-center gap-1">
+      <span className="block text-[10px] font-semibold text-slate-300">FOB/kg US$</span>
+      <div className="mt-0.5 space-y-1 rounded border border-sky-400/30 bg-sky-950/20 p-1">
         <input
           type="number"
           min={0}
           step={0.0001}
-          disabled={disabled}
+          disabled={disabled || salvando}
           title="FOB/kg US$ — override manual prevalece sobre planilha e ComexStat"
-          className={`w-[5.5rem] rounded border px-1 py-0.5 text-xs disabled:opacity-50 ${
-            fob.manualAtivo
-              ? "border-emerald-500/60 bg-emerald-950/40 font-medium text-emerald-200"
-              : "border-white/15 bg-ink-900/80 text-white"
-          }`}
+          className="w-full rounded border border-white/15 bg-ink-900 px-1.5 py-1 text-xs text-white disabled:opacity-50"
           value={local}
-          onFocus={() => setEditando(true)}
-          onChange={(e) => setLocal(e.target.value)}
-          onBlur={() => {
-            setEditando(false);
+          onChange={(e) => {
+            setLocal(e.target.value);
+            setErroLocal("");
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
-              setEditando(false);
-              void onCommit(ordem, parseValor());
-              (e.target as HTMLInputElement).blur();
+              void salvar();
+            }
+            if (e.key === "Escape") {
+              cancelarEdicao();
             }
           }}
         />
-        {fob.manualAtivo && onLimpar && (
+        <div className="flex gap-1">
           <button
             type="button"
-            className="text-[10px] text-slate-400 underline hover:text-slate-200 disabled:opacity-50"
-            disabled={disabled}
-            title="Limpar override — volta planilha/calibragem"
-            onClick={() => void onLimpar(ordem)}
+            className="rounded bg-brand-600/80 px-2 py-1 text-[10px] font-bold text-white hover:bg-brand-500 disabled:opacity-50"
+            disabled={disabled || salvando}
+            title="Gravar FOB/kg manual"
+            onClick={() => void salvar()}
           >
-            limpar
+            {salvando ? "Salvando..." : "Salvar"}
           </button>
-        )}
-        <button
-          type="button"
-          className="rounded bg-brand-600/80 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-brand-500 disabled:opacity-50"
-          disabled={disabled}
-          title="Gravar FOB/kg manual"
-          onClick={() => {
-            setEditando(false);
-            void onCommit(ordem, parseValor());
-          }}
-        >
-          Salvar
-        </button>
+          <button
+            type="button"
+            className="rounded bg-slate-700 px-2 py-1 text-[10px] font-semibold text-slate-200 hover:bg-slate-600 disabled:opacity-50"
+            disabled={disabled || salvando}
+            onClick={cancelarEdicao}
+          >
+            Cancelar
+          </button>
+        </div>
+        {erroLocal && <span className="block text-[10px] text-red-300">{erroLocal}</span>}
       </div>
-      {fob.manualAtivo && fob.referencia != null && (
-        <span className="mt-0.5 block text-[10px] text-slate-500">ref. {usdKg(fob.referencia)}</span>
-      )}
-      {!fob.manualAtivo && fonte && (
-        <span className="mt-0.5 block max-w-[12rem] truncate text-[10px] text-emerald-400/90" title={fonte}>
-          {fonte}
+      {sugestao != null && (
+        <span className="mt-0.5 block max-w-[12rem] truncate text-[10px] text-slate-500" title={fonteReferencia ?? "referência anterior"}>
+          referência: {fonteReferencia ?? "fonte anterior"} · {usdKg(sugestao)}
         </span>
       )}
       {avisoValoracao && <AvisoValoracaoFob aviso={avisoValoracao} />}

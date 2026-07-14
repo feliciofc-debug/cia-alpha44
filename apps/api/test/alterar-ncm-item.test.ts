@@ -351,7 +351,7 @@ describe("alterarNcmItem — edição soberana do operador", () => {
     expect(out!.avisoCustoVeiculo).toContain("Base FOB = valor de custo");
   });
 
-  it("PATCH custo unitário de veículo altera 109 -> 115 -> 109 e responde cotação recalculada", async () => {
+  it("PATCH custo de veículo e FOB/kg respondem cotação recalculada", async () => {
     const envBackup = { ...process.env };
     const state = carregarState();
     store.appState = state;
@@ -420,6 +420,36 @@ describe("alterarNcmItem — edição soberana do operador", () => {
       expect(bodyBack.itens[0].fobUnitarioUS).toBe(109);
       expect(bodyBack.itens[0].fobTotalUS).toBeCloseTo(54500, 2);
       expect(bodyBack.resultado.entrada.fobTotalUS).toBeCloseTo(54500, 2);
+
+      seedCotacao({
+        ...makeItem("Produto FOB declarado"),
+        ncm: "84238900",
+        qtd: 1,
+        pesoBrutoKg: 100,
+        pesoLiqKg: 90,
+        fobTotalUS: 120,
+        meta: { ncmFonte: "planilha-cliente", fobKgFonte: "planilha-cliente (FOB declarado)" },
+      });
+      const resFob = await app.inject({
+        method: "PATCH",
+        url: `/api/cotacoes/${COTACAO_ID}/itens/0/fob-kg`,
+        headers: { "x-api-key": "test-key", "content-type": "application/json" },
+        payload: JSON.stringify({ fobKgManual: 2.75 }),
+      });
+      expect(resFob.statusCode).toBe(200);
+      const bodyFob = JSON.parse(resFob.body);
+      expect(bodyFob.ordem).toBe(0);
+      expect(bodyFob.itens[0].fobKgManual).toBe(2.75);
+      expect(bodyFob.itens[0].fobKgFonte).toBe("manual do operador");
+      expect(bodyFob.itens[0].fobTotalUS).toBeCloseTo(275, 2);
+      expect(bodyFob.fobKgFinal).toBeCloseTo(2.75, 4);
+      expect(bodyFob.resultado.entrada.fobTotalUS).toBeCloseTo(275, 2);
+
+      const { buscarCotacao } = await import("../src/services/cotacoes-persist.js");
+      const reaberta = await buscarCotacao(COTACAO_ID, TENANT, state);
+      expect(reaberta?.itens[0]?.fobKgManual).toBe(2.75);
+      expect(reaberta?.itens[0]?.fobKgFonte).toBe("manual do operador");
+      expect(reaberta?.itens[0]?.fobTotalUS).toBeCloseTo(275, 2);
     } finally {
       await app?.close();
       process.env = envBackup;
@@ -427,7 +457,7 @@ describe("alterarNcmItem — edição soberana do operador", () => {
     }
   });
 
-  it("FOB/kg manual responde com valor salvo e cotação recalculada", async () => {
+  it("FOB/kg manual responde com valor salvo e cotação recalculada sobre FOB declarado", async () => {
     const state = carregarState();
     seedCotacao({
       ...makeItem("Produto FOB manual"),
@@ -435,8 +465,8 @@ describe("alterarNcmItem — edição soberana do operador", () => {
       qtd: 1,
       pesoBrutoKg: 100,
       pesoLiqKg: 90,
-      fobTotalUS: 10,
-      meta: { ncmFonte: "planilha-cliente", fobKgFonte: "linha" },
+      fobTotalUS: 120,
+      meta: { ncmFonte: "planilha-cliente", fobKgFonte: "planilha-cliente (FOB declarado)" },
     });
     const { alterarFobKgItem } = await import("../src/services/cotacoes-persist.js");
 
@@ -446,6 +476,7 @@ describe("alterarNcmItem — edição soberana do operador", () => {
     expect(store.row!.itens[0]!.fobKgManual).toBe(3.25);
     expect(out!.ordem).toBe(0);
     expect(out!.itens[0]!.fobKgManual).toBe(3.25);
+    expect(out!.itens[0]!.fobKgFonte).toBe("manual do operador");
     expect(out!.itens[0]!.fobTotalUS).toBeCloseTo(325, 2);
     expect(out!.fobKgFinal).toBeCloseTo(3.25, 4);
     expect(out!.resultado?.entrada.fobTotalUS).toBeCloseTo(325, 2);
