@@ -47,7 +47,13 @@ import {
   rateLimitParse,
   rateLimitNcmConferir,
 } from "./auth/rate-limit.js";
+import {
+  ERRO_UPLOAD_EXCEDE_LIMITE,
+  mensagemArquivoGrandeDemais,
+  UPLOAD_MAX_BYTES,
+} from "./upload-limits.js";
 import type { FastifyRequest } from "fastify";
+import { pathToFileURL } from "node:url";
 
 const PDF_GERACAO_TIMEOUT_MS = 45_000;
 
@@ -78,11 +84,19 @@ function tenantSlug(req: FastifyRequest): string {
 }
 
 export async function buildServer() {
-  const app = Fastify({ logger: true, bodyLimit: 35 * 1024 * 1024 });
+  const app = Fastify({ logger: true, bodyLimit: UPLOAD_MAX_BYTES });
   await app.register(cors, { origin: corsOrigins() });
-  await app.register(multipart, { limits: { fileSize: 25 * 1024 * 1024 } });
+  await app.register(multipart, { limits: { fileSize: UPLOAD_MAX_BYTES } });
   await registrarAuth(app);
   await registrarRateLimit(app);
+
+  app.setErrorHandler((error: Error & { code?: string; statusCode?: number }, _req, reply) => {
+    if (error.code === "FST_REQ_FILE_TOO_LARGE" || error.message?.includes("request file too large")) {
+      return reply.status(422).send({ erro: mensagemArquivoGrandeDemais() });
+    }
+    const status = error.statusCode ?? 500;
+    return reply.status(status).send({ erro: error.message });
+  });
 
   app.get("/api/health", async () => ({ ok: true, ts: new Date().toISOString() }));
 
@@ -297,7 +311,16 @@ export async function buildServer() {
     "/api/parse",
     { config: { rateLimit: rateLimitParse() } },
     async (req, reply) => {
-    const file = await req.file();
+    let file;
+    try {
+      file = await req.file();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      if (msg.includes("file too large") || (e as { code?: string }).code === "FST_REQ_FILE_TOO_LARGE") {
+        return reply.status(422).send({ erro: ERRO_UPLOAD_EXCEDE_LIMITE });
+      }
+      throw e;
+    }
     if (!file) {
       return reply.status(400).send({ erro: "Envie um arquivo no campo 'file' (.xlsx, .csv, .pdf ou imagem)." });
     }
@@ -305,7 +328,11 @@ export async function buildServer() {
       const buf = await file.toBuffer();
       return await ingerirArquivo(file.filename, new Uint8Array(buf), getState().ocr, getState().provider);
     } catch (e) {
+      const code = (e as { code?: string }).code;
       const msg = e instanceof Error ? e.message : "Falha ao processar arquivo.";
+      if (code === "FST_REQ_FILE_TOO_LARGE" || msg.includes("file too large")) {
+        return reply.status(422).send({ erro: ERRO_UPLOAD_EXCEDE_LIMITE });
+      }
       return reply.status(422).send({ erro: msg });
     }
   },
@@ -917,4 +944,9 @@ async function main() {
 }
 
 // roda quando executado diretamente (node dist/server.js | tsx src/server.ts)
-main();
+const ehEntradaDireta =
+  process.argv[1] != null &&
+  import.meta.url === pathToFileURL(process.argv[1]).href;
+if (ehEntradaDireta) {
+  main();
+}

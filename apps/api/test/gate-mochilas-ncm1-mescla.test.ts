@@ -1,9 +1,8 @@
 /**
  * Gate mochilas (ncm1.xlsx) — mesclas verticais na descrição + linha de totais sem rótulo.
  *
- * Causa do 422 em produção: linhas filhas de mescla vinham só com REF (H321…)
- * sem texto de produto → classificação cega / validação falha no fluxo upload→classificar.
- * Correção: herança de célula-âncora em colunas de texto + filtro matemático por coluna.
+ * Causa do 422 em produção: arquivo ~26MB excedia limite multipart (25MB).
+ * Após aumento para 60MB (#49), valida também mesclas verticais (PR #48).
  */
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
