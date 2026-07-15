@@ -1,29 +1,18 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { registerAuthToken, registerSessionExpiredHandler } from "../lib/auth-fetch.ts";
 import { apiBaseUrl } from "../lib/api.ts";
+import {
+  lerTokenArmazenado,
+  limparToken,
+  persistirToken,
+  USER_KEY,
+} from "./token-storage.ts";
 import type { AuthContextValue, User } from "./types.ts";
 
-const TOKEN_KEY = "cia_jwt_token";
-const USER_KEY = "cia_jwt_user";
-
-function jwtExpirado(token: string): boolean {
-  try {
-    const part = token.split(".")[1];
-    if (!part) return true;
-    const json = atob(part.replace(/-/g, "+").replace(/_/g, "/"));
-    const payload = JSON.parse(json) as { exp?: number };
-    return typeof payload.exp === "number" && payload.exp * 1000 <= Date.now();
-  } catch {
-    return true;
-  }
-}
-
 function lerSessao(): { user: User | null; token: string | null } {
-  const token = localStorage.getItem(TOKEN_KEY);
+  const token = lerTokenArmazenado();
   const rawUser = localStorage.getItem(USER_KEY);
-  if (!token || jwtExpirado(token)) {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+  if (!token) {
     return { user: null, token: null };
   }
   try {
@@ -31,8 +20,7 @@ function lerSessao(): { user: User | null; token: string | null } {
     if (!user?.email) throw new Error("sessão inválida");
     return { user, token };
   } catch {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+    limparToken();
     return { user: null, token: null };
   }
 }
@@ -43,7 +31,7 @@ function persistirSessao(token: string, email: string, nome: string, role?: "adm
     nome: nome || email.split("@")[0] || email,
     role,
   };
-  localStorage.setItem(TOKEN_KEY, token);
+  persistirToken(token);
   localStorage.setItem(USER_KEY, JSON.stringify(user));
   return user;
 }
@@ -56,8 +44,7 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   const logout = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+    limparToken();
     setUser(null);
     setToken(null);
   }, []);
@@ -75,7 +62,7 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
   }, [logout]);
 
   useEffect(() => {
-    registerAuthToken(async () => token);
+    registerAuthToken(async () => lerTokenArmazenado());
     return () => registerAuthToken(null);
   }, [token]);
 
@@ -101,6 +88,8 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
     const u = persistirSessao(body.token, body.email, body.nome ?? "", body.role);
     setToken(body.token);
     setUser(u);
+    // Garante que o próximo fetch já enxerga o token (antes do re-render/useEffect).
+    registerAuthToken(async () => body.token ?? lerTokenArmazenado());
   }, []);
 
   const register = useCallback(async (nome: string, email: string, senha: string) => {
@@ -123,9 +112,9 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
       login,
       register,
       logout,
-      getToken: async () => token,
+      getToken: async () => lerTokenArmazenado(),
     }),
-    [isLoaded, user, login, register, logout, token],
+    [isLoaded, user, login, register, logout],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
