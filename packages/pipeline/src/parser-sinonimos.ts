@@ -17,7 +17,7 @@ export const PADROES_MULTILINGUE: { tipo: ColunaDetectada; re: RegExp }[] = [
     tipo: "qtd",
     re: /qty|quant|quantity|menge|cantidad|quantit[eé]|unidades?|数量|总数量|\bpcs\b|qtd\b|unidade|\bvpe\b/i,
   },
-  { tipo: "peso_bruto", re: /gross|bruto|bruttogewicht|brutt|peso\s*bruto|poids\s*brut|毛重|gw\b/i },
+  { tipo: "peso_bruto", re: /gross|bruto|bruttogewicht|brutt|peso\s*bruto|poids\s*brut|毛重|总毛重|总重|gw\b/i },
   {
     tipo: "peso",
     re: /nettogewicht|nettogew|peso\s*l[ií]q|peso\s*neto|poids\s*net|peso|weight|净重|nw\b|net|(?<!brutt)gewicht|kg/i,
@@ -31,11 +31,11 @@ export const PADROES_MULTILINGUE: { tipo: ColunaDetectada; re: RegExp }[] = [
     re: /price|preço|preco|preis|stückpreis|stuckpreis|einzelpreis|unitario|unit[aá]rio|precio|prix|单价|unit|usd\/kg|eur\)/i,
   },
   { tipo: "ncm", re: RE_NCM_MULTILINGUE },
-  { tipo: "dimensoes", re: /dim|size|maß|mass|medida|规格|measure|tamanho/i },
+  { tipo: "dimensoes", re: /dim|size|maß|mass|medida|规格|measure|tamanho|体积|总体积/i },
 ];
 
 export const RE_QTD_CAIXAS_MULTILINGUE =
-  /qtd\s*caixas|qtde\s*caixas|quantidade\s*caixas|kartons?|cartons?|caixas?|colli|箱数|number\s*of\s*cartons?|cx\s*\/?\s*caixa/i;
+  /qtd\s*caixas|qtde\s*caixas|quantidade\s*caixas|kartons?|cartons?|caixas?|colli|件数|箱数(?!量)|number\s*of\s*cartons?|cx\s*\/?\s*caixa/i;
 
 export const RE_QTD_POR_CAIXA_MULTILINGUE =
   /qtd\s*por\s*caixa|qtde\s*por\s*caixa|por\s*caixa|per\s*box|per\s*case|stück\s*je\s*karton|stuck\s*je|stück\s*pro|pieces?\s*per|每箱|单箱个数|装箱量|申报数量|pcs\s*per|vpe\b/i;
@@ -70,8 +70,17 @@ export function detectarTipoMultilingue(header: string): { tipo: ColunaDetectada
   if (/stückpreis|stuckpreis|einzelpreis|unit\s*price|preço\s*unit|preco\s*unit|prix\s*unitaire|precio\s*unitario/i.test(h)) {
     return { tipo: "preco", confianca: 0.92 };
   }
-  if (/stück\s*je|stuck\s*je|je\s*karton|pcs\s*per|por\s*caixa|per\s*box|per\s*case|申报数量/i.test(h) && !/gewicht|weight|peso|poids/i.test(h)) {
+  if (/每箱|stück\s*je|stuck\s*je|je\s*karton|pcs\s*per|por\s*caixa|per\s*box|per\s*case|申报数量/i.test(h) && !/gewicht|weight|peso|poids/i.test(h)) {
     return { tipo: "desconhecido", confianca: 0 };
+  }
+  if (/^件数$/.test(h)) {
+    return { tipo: "desconhecido", confianca: 0 };
+  }
+  if (/^总重$|总毛重/.test(h)) {
+    return { tipo: "peso_bruto", confianca: 0.94 };
+  }
+  if (/^总体积$/.test(h)) {
+    return { tipo: "dimensoes", confianca: 0.9 };
   }
   if (/total.*fob|fob.*total|valor\s*total\s*fob|fob\s*total|gesamtwert/i.test(h)) {
     return { tipo: "fob", confianca: 0.95 };

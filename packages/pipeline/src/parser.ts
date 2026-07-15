@@ -33,6 +33,7 @@ import { extrairImagensWpsOle, isOleXls, isZipXlsx, mapDispimgLinhas } from "./w
 import { normalizarCodigoNcmCliente } from "./ncm-catalog.js";
 import {
   colunasFromMapeamentoMatematico,
+  ajustarColunasPesoPorMatematica,
   inferirMapeamentoColunasPorMatematica,
   mesclarMapeamentoMatematicaPrevalece,
   planilhaProvavelmenteSemCabecalho,
@@ -235,7 +236,7 @@ function extrairLinhasComColunas(
   colunas: ColunaMapeada[],
   sammelkarton?: string,
   stats?: { linhasTotaisDescartadas: number },
-  dataStartRow?: number,
+  opts?: { dataStartRow?: number; pesoUnitarioPorCaixa?: boolean },
 ): LinhaFornecedor[] {
   const iDescPt = colunas.find((c) => RE_DESC_PT_MULTILINGUE.test(c.header))?.indice;
   const iModel = colunas.find((c) => /model|modelo|产品型号/i.test(c.header))?.indice;
@@ -277,7 +278,7 @@ function extrairLinhasComColunas(
 
   const linhasBrutas: LinhaFornecedor[] = [];
   const rowsItensRaw: unknown[][] = [];
-  const inicioDados = dataStartRow ?? headerRow + 1;
+  const inicioDados = opts?.dataStartRow ?? headerRow + 1;
   for (let r = inicioDados; r < rows.length; r++) {
     const row = rows[r] as unknown[] | undefined;
     if (!row) continue;
@@ -327,6 +328,7 @@ function extrairLinhasComColunas(
       qtd: qtdRaw,
       qtdCaixas,
       qtdPorCaixa,
+      pesoUnitarioPorCaixa: opts?.pesoUnitarioPorCaixa,
     });
     const qtd = pesoCalc.qtd ?? qtdRaw;
     let pesoLiqKg = pesoCalc.pesoLiqKg;
@@ -1170,6 +1172,13 @@ function parseRows(
     // aviso já incluído
   }
 
+  let pesoUnitarioPorCaixa = false;
+  if (!colunasOverride) {
+    const ajustePeso = ajustarColunasPesoPorMatematica(colunas, rowsEfetivas, headerRow);
+    colunas = ajustePeso.colunas;
+    pesoUnitarioPorCaixa = ajustePeso.pesoUnitarioPorCaixa;
+  }
+
   const stats = { linhasTotaisDescartadas: 0 };
   const linhas = extrairLinhasComColunas(
     rowsEfetivas,
@@ -1177,7 +1186,7 @@ function parseRows(
     colunas,
     ctx.sammelkarton,
     stats,
-    parseOpts?.dataStartRow,
+    { dataStartRow: parseOpts?.dataStartRow, pesoUnitarioPorCaixa },
   );
 
   if (linhas.length === 0) {
