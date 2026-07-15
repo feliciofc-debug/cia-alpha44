@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "./auth/auth.tsx";
-import { api, type AnaliseCompleta, type Meta } from "./lib/api.ts";
+import { api, type AnaliseCompleta, type Meta, type UsuarioAdmin } from "./lib/api.ts";
 import { brl, fmtNcm, pct, usdKg } from "./lib/format.ts";
 import { fobKgItem } from "./lib/fob-kg.ts";
 import { contarItensComFoto, fotoItemSrc } from "./lib/item-foto.ts";
@@ -15,6 +15,7 @@ import type { Aliquotas, Canal, CotacaoResumo, CotacaoSalva, Item, ResultadoCota
 import { PainelEditorCotacao } from "./painel-editor.tsx";
 import { AppShell, type NavItem } from "./app-shell.tsx";
 import { ClientesView } from "./clientes-view.tsx";
+import { UsuariosView } from "./usuarios-view.tsx";
 import { PainelKpisView } from "./painel-kpis.tsx";
 import { BenchmarkReferenciaView } from "./benchmark-referencia-view.tsx";
 import { PreviewOrcamentoCliente } from "./preview-orcamento-cliente.tsx";
@@ -1176,6 +1177,12 @@ export function Dashboard() {
   const [kpisLoading, setKpisLoading] = useState(false);
   const [clientes, setClientes] = useState<ClienteResumo[]>([]);
   const [clientesLoading, setClientesLoading] = useState(false);
+  const [usuarios, setUsuarios] = useState<UsuarioAdmin[]>([]);
+  const [usuariosLoading, setUsuariosLoading] = useState(false);
+  const [usuariosPendentes, setUsuariosPendentes] = useState(0);
+  const [usuarioAcaoId, setUsuarioAcaoId] = useState<string | null>(null);
+
+  const isAdmin = user?.role === "admin";
 
   const carregarPainel = useCallback(async () => {
     setKpisLoading(true);
@@ -1220,12 +1227,38 @@ export function Dashboard() {
     }
   }, []);
 
+  const carregarUsuarios = useCallback(async () => {
+    if (!isAdmin) return;
+    setUsuariosLoading(true);
+    try {
+      const res = await api.listarUsuariosAdmin();
+      setUsuarios(res.usuarios);
+      setUsuariosPendentes(res.pendentes);
+    } catch (e) {
+      setUsuarios([]);
+      setErro(e instanceof Error ? e.message : "Falha ao carregar usuários.");
+    } finally {
+      setUsuariosLoading(false);
+    }
+  }, [isAdmin]);
+
+  const atualizarPendentesBadge = useCallback(async () => {
+    if (!isAdmin) return;
+    try {
+      const res = await api.contarUsuariosPendentes();
+      setUsuariosPendentes(res.pendentes);
+    } catch {
+      /* badge opcional */
+    }
+  }, [isAdmin]);
+
   useEffect(() => {
     if (!isLoaded || !user) return;
     api.meta().then(setMeta).catch(() => {});
     void carregarPainel();
     void carregarLista();
-  }, [isLoaded, user, carregarPainel, carregarLista]);
+    void atualizarPendentesBadge();
+  }, [isLoaded, user, carregarPainel, carregarLista, atualizarPendentesBadge]);
 
   function irNav(n: NavItem) {
     setErro("");
@@ -1241,6 +1274,9 @@ export function Dashboard() {
       void carregarClientes(busca || undefined);
     } else if (n === "referencia") {
       setView("referencia");
+    } else if (n === "usuarios") {
+      setView("usuarios");
+      void carregarUsuarios();
     }
   }
 
@@ -1946,6 +1982,32 @@ export function Dashboard() {
     }
   }
 
+  async function aprovarUsuario(id: string) {
+    setUsuarioAcaoId(id);
+    try {
+      const res = await api.atualizarUsuarioAdmin(id, "aprovar");
+      setUsuarios((prev) => prev.map((u) => (u.id === id ? res.usuario : u)));
+      setUsuariosPendentes(res.pendentes);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao aprovar usuário.");
+    } finally {
+      setUsuarioAcaoId(null);
+    }
+  }
+
+  async function bloquearUsuario(id: string) {
+    setUsuarioAcaoId(id);
+    try {
+      const res = await api.atualizarUsuarioAdmin(id, "bloquear");
+      setUsuarios((prev) => prev.map((u) => (u.id === id ? res.usuario : u)));
+      setUsuariosPendentes(res.pendentes);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao bloquear usuário.");
+    } finally {
+      setUsuarioAcaoId(null);
+    }
+  }
+
   const navAtivo: NavItem = view === "detalhe" ? "lista" : view;
 
   return (
@@ -1953,6 +2015,8 @@ export function Dashboard() {
       nav={navAtivo}
       onNav={irNav}
       userEmail={user?.email}
+      isAdmin={isAdmin}
+      usuariosPendentes={usuariosPendentes}
       totalHoje={totalHoje}
       busca={busca}
       onBuscaChange={setBusca}
@@ -2010,6 +2074,18 @@ export function Dashboard() {
                 void carregarLista(nome);
               }}
               onAbrirCotacao={(id) => void abrirCotacao(id, "clientes")}
+            />
+          </div>
+        )}
+
+        {view === "usuarios" && isAdmin && (
+          <div className="card overflow-hidden">
+            <UsuariosView
+              usuarios={usuarios}
+              loading={usuariosLoading}
+              acaoId={usuarioAcaoId}
+              onAprovar={aprovarUsuario}
+              onBloquear={bloquearUsuario}
             />
           </div>
         )}

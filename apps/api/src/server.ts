@@ -42,6 +42,8 @@ import { exportarConciliacao, exportarConciliacaoSalva } from "./services/concil
 import { lerFotoItem } from "./services/fotos.js";
 import { registrarAuth } from "./auth/middleware.js";
 import { registrarRotaLogin } from "./auth/login.js";
+import { registrarRotaRegister } from "./auth/register.js";
+import { registrarRotasAdminUsuarios } from "./auth/admin-usuarios.js";
 import {
   registrarRateLimit,
   rateLimitClassificar,
@@ -90,6 +92,8 @@ export async function buildServer() {
   await app.register(multipart, { limits: { fileSize: UPLOAD_MAX_BYTES } });
   await registrarAuth(app);
   await registrarRotaLogin(app);
+  await registrarRotaRegister(app);
+  await registrarRotasAdminUsuarios(app);
   await registrarRateLimit(app);
 
   app.setErrorHandler((error: Error & { code?: string; statusCode?: number }, _req, reply) => {

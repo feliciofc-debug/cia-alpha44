@@ -8,4 +8,7 @@ export type {
   CotacaoStatus,
   CanalAduaneiro,
   ClassificacaoCache,
+  Usuario,
+  UsuarioStatus,
+  UsuarioRole,
 } from "@prisma/client";

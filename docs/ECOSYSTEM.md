@@ -105,7 +105,7 @@ O login atual é **demo** (`localStorage`, sem validação). Para entregar ao cl
 |--------|---------------------|
 | Login | **Clerk** (ou Auth.js) |
 | Vercel | `VITE_API_URL` (URL da API) |
-| VPS API | `CIA_JWT_SECRET`, `CIA_USERS`, `CIA_API_KEY` (opcional) |
+| VPS API | `CIA_JWT_SECRET`, `DATABASE_URL`, `CIA_API_KEY` (opcional). `CIA_USERS` só no seed inicial (depois remover). |
 | API | validação JWT / middleware Clerk |
 
 Estrutura em `apps/web/src/auth/` já isolada para trocar sem refazer telas.

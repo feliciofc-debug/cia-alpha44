@@ -20,12 +20,17 @@ function IconOlhoFechado() {
   );
 }
 
+type AuthTab = "entrar" | "criar";
+
 function LoginScreen() {
-  const { login } = useAuth();
+  const { login, register } = useAuth();
+  const [tab, setTab] = useState<AuthTab>("entrar");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [nome, setNome] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erro, setErro] = useState("");
+  const [sucesso, setSucesso] = useState("");
   const [loading, setLoading] = useState(false);
   const [meta, setMeta] = useState<Meta | null>(null);
 
@@ -33,14 +38,38 @@ function LoginScreen() {
     api.meta().then(setMeta).catch(() => setMeta(null));
   }, []);
 
-  async function submit(e: React.FormEvent) {
+  function trocarTab(nova: AuthTab) {
+    setTab(nova);
+    setErro("");
+    setSucesso("");
+  }
+
+  async function submitLogin(e: React.FormEvent) {
     e.preventDefault();
     setErro("");
+    setSucesso("");
     setLoading(true);
     try {
       await login(email, senha);
     } catch (err) {
       setErro(err instanceof Error ? err.message : "E-mail ou senha incorretos.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function submitRegister(e: React.FormEvent) {
+    e.preventDefault();
+    setErro("");
+    setSucesso("");
+    setLoading(true);
+    try {
+      const msg = await register(nome, email, senha);
+      setSucesso(msg);
+      setSenha("");
+      setNome("");
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Não foi possível criar a conta.");
     } finally {
       setLoading(false);
     }
@@ -66,54 +95,151 @@ function LoginScreen() {
         </div>
 
         <div className="card w-full max-w-md p-8 shadow-glow">
-          <h2 className="mb-6 text-xl font-bold text-white">Entrar</h2>
-          <form onSubmit={submit} className="space-y-4">
-            <div>
-              <label className="label" htmlFor="login-email">
-                E-mail
-              </label>
-              <input
-                id="login-email"
-                className="input"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="username"
-                placeholder="voce@empresa.com.br"
-              />
-            </div>
-            <div>
-              <label className="label" htmlFor="login-senha">
-                Senha
-              </label>
-              <div className="relative">
-                <input
-                  id="login-senha"
-                  className="input pr-10"
-                  type={mostrarSenha ? "text" : "password"}
-                  value={senha}
-                  onChange={(e) => setSenha(e.target.value)}
-                  required
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 transition hover:text-white"
-                  onClick={() => setMostrarSenha((v) => !v)}
-                  aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
-                  tabIndex={-1}
-                >
-                  {mostrarSenha ? <IconOlhoFechado /> : <IconOlhoAberto />}
-                </button>
-              </div>
-            </div>
-            {erro && <p className="text-sm text-red-400">{erro}</p>}
-            <button type="submit" className="btn-primary w-full" disabled={loading}>
-              {loading ? "Aguarde…" : "Entrar"}
+          <div className="mb-6 flex gap-2 rounded-lg bg-ink-800/80 p-1">
+            <button
+              type="button"
+              className={`flex-1 rounded-md py-2 text-sm font-medium transition ${
+                tab === "entrar" ? "bg-brand-500/30 text-white" : "text-slate-400 hover:text-white"
+              }`}
+              onClick={() => trocarTab("entrar")}
+            >
+              Entrar
             </button>
-          </form>
+            <button
+              type="button"
+              className={`flex-1 rounded-md py-2 text-sm font-medium transition ${
+                tab === "criar" ? "bg-brand-500/30 text-white" : "text-slate-400 hover:text-white"
+              }`}
+              onClick={() => trocarTab("criar")}
+            >
+              Criar conta
+            </button>
+          </div>
+
+          {tab === "entrar" ? (
+            <>
+              <h2 className="mb-6 text-xl font-bold text-white">Entrar</h2>
+              <form onSubmit={submitLogin} className="space-y-4">
+                <div>
+                  <label className="label" htmlFor="login-email">
+                    E-mail
+                  </label>
+                  <input
+                    id="login-email"
+                    className="input"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    autoComplete="username"
+                    placeholder="voce@empresa.com.br"
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor="login-senha">
+                    Senha
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="login-senha"
+                      className="input pr-10"
+                      type={mostrarSenha ? "text" : "password"}
+                      value={senha}
+                      onChange={(e) => setSenha(e.target.value)}
+                      required
+                      autoComplete="current-password"
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 transition hover:text-white"
+                      onClick={() => setMostrarSenha((v) => !v)}
+                      aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+                      tabIndex={-1}
+                    >
+                      {mostrarSenha ? <IconOlhoFechado /> : <IconOlhoAberto />}
+                    </button>
+                  </div>
+                </div>
+                {erro && <p className="text-sm text-red-400">{erro}</p>}
+                <button type="submit" className="btn-primary w-full" disabled={loading}>
+                  {loading ? "Aguarde…" : "Entrar"}
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <h2 className="mb-2 text-xl font-bold text-white">Criar conta</h2>
+              <p className="mb-6 text-sm text-slate-400">
+                Preencha seus dados. Um administrador precisa aprovar antes do primeiro acesso.
+              </p>
+              <form onSubmit={submitRegister} className="space-y-4">
+                <div>
+                  <label className="label" htmlFor="register-nome">
+                    Nome
+                  </label>
+                  <input
+                    id="register-nome"
+                    className="input"
+                    type="text"
+                    value={nome}
+                    onChange={(e) => setNome(e.target.value)}
+                    required
+                    minLength={2}
+                    autoComplete="name"
+                    placeholder="Seu nome"
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor="register-email">
+                    E-mail
+                  </label>
+                  <input
+                    id="register-email"
+                    className="input"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    autoComplete="email"
+                    placeholder="voce@empresa.com.br"
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor="register-senha">
+                    Senha
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="register-senha"
+                      className="input pr-10"
+                      type={mostrarSenha ? "text" : "password"}
+                      value={senha}
+                      onChange={(e) => setSenha(e.target.value)}
+                      required
+                      minLength={8}
+                      autoComplete="new-password"
+                      placeholder="Mínimo 8 caracteres"
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 transition hover:text-white"
+                      onClick={() => setMostrarSenha((v) => !v)}
+                      aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+                      tabIndex={-1}
+                    >
+                      {mostrarSenha ? <IconOlhoFechado /> : <IconOlhoAberto />}
+                    </button>
+                  </div>
+                </div>
+                {erro && <p className="text-sm text-red-400">{erro}</p>}
+                {sucesso && <p className="text-sm text-emerald-400">{sucesso}</p>}
+                <button type="submit" className="btn-primary w-full" disabled={loading}>
+                  {loading ? "Enviando…" : "Criar conta"}
+                </button>
+              </form>
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -7,6 +7,8 @@ import { SignJWT, jwtVerify } from "jose";
 export interface JwtClaims {
   userId: string;
   email: string;
+  nome?: string;
+  role?: string;
   tenantSlugMeta?: string;
 }
 
@@ -23,9 +25,17 @@ export function jwtConfigurado(): boolean {
   return Boolean(process.env.CIA_JWT_SECRET?.trim());
 }
 
-export async function emitirToken(email: string): Promise<string> {
-  const normalizado = email.trim().toLowerCase();
-  return new SignJWT({ email: normalizado })
+export async function emitirToken(usuario: {
+  email: string;
+  nome?: string;
+  role?: string;
+}): Promise<string> {
+  const normalizado = usuario.email.trim().toLowerCase();
+  return new SignJWT({
+    email: normalizado,
+    nome: usuario.nome,
+    role: usuario.role,
+  })
     .setProtectedHeader({ alg: ALG })
     .setSubject(normalizado)
     .setIssuedAt()
@@ -53,14 +63,16 @@ export async function verificarToken(authHeader?: string): Promise<JwtClaims> {
     typeof meta.tenantSlug === "string" && meta.tenantSlug.trim()
       ? meta.tenantSlug.trim()
       : undefined;
+  const nome = typeof meta.nome === "string" && meta.nome.trim() ? meta.nome.trim() : undefined;
+  const role = typeof meta.role === "string" && meta.role.trim() ? meta.role.trim() : undefined;
 
-  return { userId: email, email, tenantSlugMeta };
+  return { userId: email, email, nome, role, tenantSlugMeta };
 }
 
 /** Testes — emite token já expirado. */
 export async function emitirTokenExpirado(email: string): Promise<string> {
   const normalizado = email.trim().toLowerCase();
-  return new SignJWT({ email: normalizado })
+  return new SignJWT({ email: normalizado, role: "operador" })
     .setProtectedHeader({ alg: ALG })
     .setSubject(normalizado)
     .setIssuedAt(Math.floor(Date.now() / 1000) - 3600)
