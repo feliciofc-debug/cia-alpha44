@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "@cia/shared": "*",
-    "@clerk/clerk-react": "^5.61.8",
     "clsx": "^2.1.1",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",

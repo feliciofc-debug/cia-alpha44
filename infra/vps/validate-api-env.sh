@@ -1,5 +1,5 @@
 #!/bin/bash
-# Valida api.env antes do deploy P4 (não vaza segredos).
+# Valida api.env antes do deploy (não vaza segredos).
 # Uso: bash /opt/cia-alpha44/infra/vps/validate-api-env.sh
 
 set -euo pipefail
@@ -12,8 +12,11 @@ if [[ ! -f "$ENV_API" ]]; then
 fi
 
 echo "=== validate-api-env ==="
-echo -n "CLERK_SECRET_KEY count (sk_): "
-grep -c '^CLERK_SECRET_KEY=sk_' "$ENV_API" || echo 0
+echo -n "CIA_JWT_SECRET definido: "
+grep -c '^CIA_JWT_SECRET=.' "$ENV_API" || echo 0
+
+echo -n "CIA_USERS entradas (vírgulas+1): "
+grep '^CIA_USERS=' "$ENV_API" | awk -F= '{gsub(/[^,]/,"",$2); print length($2)+1}' || echo 0
 
 echo -n "CRLF count: "
 grep -c $'\r' "$ENV_API" || echo 0
@@ -26,8 +29,5 @@ grep '^NCM_HELPER_BASE_URL=' "$ENV_API" || echo "NCM_HELPER_BASE_URL=(ausente)"
 grep '^CLASSIFICACAO_NCM_PROVIDER=' "$ENV_API" || echo "CLASSIFICACAO_NCM_PROVIDER=(ausente)"
 grep '^CLASSIFICACAO_NCM_VISION=' "$ENV_API" || echo "CLASSIFICACAO_NCM_VISION=(ausente)"
 
-echo -n "CLERK prefix: "
-grep -o '^CLERK_SECRET_KEY=sk_[a-z]*_' "$ENV_API" || echo "(ausente)"
-
-echo -n "CLERK length: "
-grep '^CLERK_SECRET_KEY=' "$ENV_API" | awk -F= '{print length($2)}' || echo 0
+echo -n "CIA_API_KEY definido: "
+grep -c '^CIA_API_KEY=.' "$ENV_API" || echo 0

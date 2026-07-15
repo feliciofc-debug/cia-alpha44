@@ -13,6 +13,13 @@ vi.mock("@cia/db", () => ({
       findFirst: vi.fn().mockResolvedValue(null),
       upsert: vi.fn().mockResolvedValue({}),
     },
+    tenant: {
+      upsert: vi.fn(async ({ where }: { where: { slug: string } }) => ({
+        id: `tid-${where.slug}`,
+        slug: where.slug,
+        nome: where.slug,
+      })),
+    },
   },
 }));
 
@@ -32,8 +39,12 @@ describe("gate upload limite 60MB — ncm1 com fotos", () => {
   const envBackup = { ...process.env };
 
   beforeEach(() => {
-    process.env = { ...envBackup, NODE_ENV: "development", CLERK_SECRET_KEY: "" };
-    delete process.env.AUTH_MODE;
+    process.env = {
+      ...envBackup,
+      NODE_ENV: "development",
+      CIA_JWT_SECRET: "test-jwt-secret-minimo-32-chars!!",
+      CIA_API_KEY: "gate-upload-test-key",
+    };
     vi.resetModules();
   });
 
@@ -56,7 +67,7 @@ describe("gate upload limite 60MB — ncm1 com fotos", () => {
       method: "POST",
       url: "/api/parse",
       headers: {
-        "x-demo-auth": "1",
+        "x-api-key": "gate-upload-test-key",
         "content-type": "multipart/form-data; boundary=----cia-upload-test",
       },
       payload: multipartBody("ncm1.xlsx", buf),

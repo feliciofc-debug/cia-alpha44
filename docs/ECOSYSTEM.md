@@ -104,7 +104,8 @@ O login atual é **demo** (`localStorage`, sem validação). Para entregar ao cl
 | Camada | Solução recomendada |
 |--------|---------------------|
 | Login | **Clerk** (ou Auth.js) |
-| Vercel | `VITE_CLERK_PUBLISHABLE_KEY` |
+| Vercel | `VITE_API_URL` (URL da API) |
+| VPS API | `CIA_JWT_SECRET`, `CIA_USERS`, `CIA_API_KEY` (opcional) |
 | API | validação JWT / middleware Clerk |
 
 Estrutura em `apps/web/src/auth/` já isolada para trocar sem refazer telas.

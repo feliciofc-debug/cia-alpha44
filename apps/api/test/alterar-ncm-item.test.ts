@@ -372,9 +372,9 @@ describe("alterarNcmItem — edição soberana do operador", () => {
     });
     process.env = {
       ...envBackup,
-      AUTH_MODE: "apikey",
       CIA_API_KEY: "test-key",
       CIA_API_TENANT_SLUG: TENANT,
+      CIA_JWT_SECRET: "test-jwt-secret-minimo-32-chars!!",
       DATABASE_URL: "postgresql://mock/mock",
       NODE_ENV: "development",
     };

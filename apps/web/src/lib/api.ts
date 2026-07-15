@@ -33,6 +33,10 @@ export { PdfDownloadError } from "./pdf-erro.ts";
 /** Vazio = proxy local do Vite (`/api` → localhost:3333). Produção: HTTPS direto na VPS. */
 const BASE = (import.meta.env.VITE_API_URL as string) || "";
 
+export function apiBaseUrl(): string {
+  return BASE;
+}
+
 const PARSE_TIMEOUT_MS = 120_000;
 const CLASSIFY_TIMEOUT_MS = 600_000;
 const PDF_TIMEOUT_MS = 180_000;

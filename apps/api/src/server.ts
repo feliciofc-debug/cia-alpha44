@@ -41,6 +41,7 @@ import { conferirNcmItens } from "./services/ncm-conferencia.js";
 import { exportarConciliacao, exportarConciliacaoSalva } from "./services/conciliacao-export.js";
 import { lerFotoItem } from "./services/fotos.js";
 import { registrarAuth } from "./auth/middleware.js";
+import { registrarRotaLogin } from "./auth/login.js";
 import {
   registrarRateLimit,
   rateLimitClassificar,
@@ -88,6 +89,7 @@ export async function buildServer() {
   await app.register(cors, { origin: corsOrigins() });
   await app.register(multipart, { limits: { fileSize: UPLOAD_MAX_BYTES } });
   await registrarAuth(app);
+  await registrarRotaLogin(app);
   await registrarRateLimit(app);
 
   app.setErrorHandler((error: Error & { code?: string; statusCode?: number }, _req, reply) => {
