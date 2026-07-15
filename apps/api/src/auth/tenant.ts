@@ -11,9 +11,9 @@
  */
 
 import { prisma } from "@cia/db";
-import type { ClerkClaims } from "./clerk.js";
+import type { JwtClaims } from "./jwt.js";
 
-export function resolverTenantSlug(claims: ClerkClaims): string {
+export function resolverTenantSlug(claims: JwtClaims): string {
   if (claims.tenantSlugMeta) return claims.tenantSlugMeta;
   return `user_${claims.userId}`;
 }

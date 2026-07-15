@@ -1,10 +1,9 @@
-/** Injeta Authorization Bearer (Clerk), x-api-key interno ou x-demo-auth em dev. */
+/** Injeta Authorization Bearer (JWT próprio), x-api-key interno ou x-demo-auth em dev. */
 
 export type TokenOptions = { forceRefresh?: boolean };
 type TokenFn = (opts?: TokenOptions) => Promise<string | null>;
 type SessionExpiredFn = () => void;
 export interface AuthFetchOptions {
-  /** Pede token Clerk com skipCache antes da primeira tentativa. */
   forceRefreshToken?: boolean;
 }
 
@@ -39,7 +38,7 @@ async function respostaJwtExpirado(res: Response): Promise<boolean> {
   if (res.status !== 401) return false;
   try {
     const txt = await res.clone().text();
-    return /jwt is expired|token expired|expirad/i.test(txt);
+    return /expir|expired|jwt|token|não autenticado|nao autenticado/i.test(txt);
   } catch {
     return false;
   }
@@ -76,15 +75,11 @@ export async function fetchAutenticado(
   init: RequestInit = {},
   opts: AuthFetchOptions = {},
 ): Promise<Response> {
-  let res = await fetch(url, await withAuthHeaders(init, opts.forceRefreshToken === true));
-  if (res.status === 401 && tokenFn) {
-    const expirado = await respostaJwtExpirado(res);
-    res = await fetch(url, await withAuthHeaders(init, true));
-    if (res.status === 401 && (expirado || (await respostaJwtExpirado(res)))) {
-      if (!sessionExpiredHandled) {
-        sessionExpiredHandled = true;
-        onSessionExpired?.();
-      }
+  const res = await fetch(url, await withAuthHeaders(init, opts.forceRefreshToken === true));
+  if (res.status === 401 && (await respostaJwtExpirado(res))) {
+    if (!sessionExpiredHandled) {
+      sessionExpiredHandled = true;
+      onSessionExpired?.();
     }
   }
   return res;
