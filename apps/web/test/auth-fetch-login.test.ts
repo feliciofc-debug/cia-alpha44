@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TOKEN_KEY } from "../src/auth/token-storage.ts";
 import {
   fetchAutenticado,
-  registerAuthToken,
   registerSessionExpiredHandler,
   withAuthHeaders,
 } from "../src/lib/auth-fetch.ts";
@@ -12,7 +11,7 @@ function jwtValido(): string {
   return `hdr.${payload}.sig`;
 }
 
-describe("auth-fetch — bearer após login (race pós-mount)", () => {
+describe("auth-fetch — bearer sempre do localStorage", () => {
   const fetchMock = vi.fn();
   const onExpired = vi.fn();
 
@@ -20,51 +19,71 @@ describe("auth-fetch — bearer após login (race pós-mount)", () => {
     vi.stubGlobal("fetch", fetchMock);
     localStorage.clear();
     registerSessionExpiredHandler(onExpired);
-    registerAuthToken(async () => null);
     fetchMock.mockReset();
     onExpired.mockReset();
   });
 
   afterEach(() => {
-    registerAuthToken(null);
     registerSessionExpiredHandler(null);
     vi.unstubAllGlobals();
   });
 
-  it("withAuthHeaders lê token do localStorage mesmo com tokenFn null (simula race pós-login)", async () => {
+  it("withAuthHeaders anexa Bearer lido do localStorage", async () => {
     localStorage.setItem(TOKEN_KEY, jwtValido());
-    registerAuthToken(async () => null);
-
     const init = await withAuthHeaders({});
-    const auth = new Headers(init.headers).get("Authorization");
-    expect(auth).toMatch(/^Bearer /);
+    expect(new Headers(init.headers).get("Authorization")).toMatch(/^Bearer /);
   });
 
-  it("fetchAutenticado faz retry quando 401 sem bearer e token gravado antes do retry", async () => {
+  it("fetchAutenticado faz retry quando 401 sem bearer e token gravado no mesmo tick", async () => {
     fetchMock
       .mockImplementationOnce(async () => {
         localStorage.setItem(TOKEN_KEY, jwtValido());
-        return new Response(JSON.stringify({ erro: "missing bearer" }), { status: 401 });
+        return new Response(JSON.stringify({ erro: "Não autenticado." }), { status: 401 });
       })
       .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
-
-    registerAuthToken(async () => null);
 
     const res = await fetchAutenticado("https://api.test/kpis");
     expect(res.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    const segunda = fetchMock.mock.calls[1]?.[1] as RequestInit;
-    expect(new Headers(segunda.headers).get("Authorization")).toMatch(/^Bearer /);
     expect(onExpired).not.toHaveBeenCalled();
   });
 
-  it("401 com bearer inválido dispara logout de sessão", async () => {
+  it("401 genérico com bearer NÃO desloga (evita loga/desloga)", async () => {
     localStorage.setItem(TOKEN_KEY, jwtValido());
     fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ erro: "jwt expired" }), { status: 401 }),
+      new Response(JSON.stringify({ erro: "Não autenticado.", detalhe: "Authorization Bearer ausente." }), {
+        status: 401,
+      }),
+    );
+
+    await fetchAutenticado("https://api.test/kpis");
+    expect(onExpired).not.toHaveBeenCalled();
+  });
+
+  it("401 jwt expired com bearer desloga", async () => {
+    localStorage.setItem(TOKEN_KEY, jwtValido());
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ erro: "Não autenticado.", detalhe: "jwt expired" }), { status: 401 }),
     );
 
     await fetchAutenticado("https://api.test/kpis");
     expect(onExpired).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("fluxo login → kpis", () => {
+  it("token persistido é lido na primeira requisição autenticada", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const token = jwtValido();
+    localStorage.setItem(TOKEN_KEY, token);
+
+    const res = await fetchAutenticado("https://api.test/api/dashboard/kpis");
+    expect(res.status).toBe(200);
+    const headers = new Headers((fetchMock.mock.calls[0]?.[1] as RequestInit).headers);
+    expect(headers.get("Authorization")).toBe(`Bearer ${token}`);
+
+    vi.unstubAllGlobals();
   });
 });

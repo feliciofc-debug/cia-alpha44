@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "./auth/auth.tsx";
+import { lerTokenArmazenado } from "./auth/token-storage.ts";
 import { api, type AnaliseCompleta, type Meta, type UsuarioAdmin } from "./lib/api.ts";
 import { brl, fmtNcm, pct, usdKg } from "./lib/format.ts";
 import { fobKgItem } from "./lib/fob-kg.ts";
@@ -1253,7 +1254,7 @@ export function Dashboard() {
   }, [isAdmin]);
 
   useEffect(() => {
-    if (!isLoaded || !user) return;
+    if (!isLoaded || !user || !lerTokenArmazenado()) return;
     api.meta().then(setMeta).catch(() => {});
     void carregarPainel();
     void carregarLista();
