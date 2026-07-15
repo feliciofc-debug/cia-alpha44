@@ -37,10 +37,11 @@ function lerSessao(): { user: User | null; token: string | null } {
   }
 }
 
-function persistirSessao(token: string, email: string) {
+function persistirSessao(token: string, email: string, nome: string, role?: "admin" | "operador") {
   const user: User = {
     email,
-    nome: email.split("@")[0] || email,
+    nome: nome || email.split("@")[0] || email,
+    role,
   };
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(USER_KEY, JSON.stringify(user));
@@ -84,16 +85,35 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, senha }),
     });
-    const body = (await res.json().catch(() => ({}))) as { token?: string; email?: string; erro?: string };
+    const body = (await res.json().catch(() => ({}))) as {
+      token?: string;
+      email?: string;
+      nome?: string;
+      role?: "admin" | "operador";
+      erro?: string;
+    };
     if (!res.ok) {
       throw new Error(body.erro || "E-mail ou senha incorretos.");
     }
     if (!body.token || !body.email) {
       throw new Error("Resposta de login inválida.");
     }
-    const u = persistirSessao(body.token, body.email);
+    const u = persistirSessao(body.token, body.email, body.nome ?? "", body.role);
     setToken(body.token);
     setUser(u);
+  }, []);
+
+  const register = useCallback(async (nome: string, email: string, senha: string) => {
+    const res = await fetch(`${apiBaseUrl()}/api/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nome, email, senha }),
+    });
+    const body = (await res.json().catch(() => ({}))) as { mensagem?: string; erro?: string };
+    if (!res.ok) {
+      throw new Error(body.erro || "Não foi possível criar a conta.");
+    }
+    return body.mensagem || "Cadastro enviado — aguarde aprovação do administrador.";
   }, []);
 
   const value = useMemo<AuthContextValue>(
@@ -101,10 +121,11 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
       isLoaded,
       user,
       login,
+      register,
       logout,
       getToken: async () => token,
     }),
-    [isLoaded, user, login, logout, token],
+    [isLoaded, user, login, register, logout, token],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

@@ -11,6 +11,30 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UsuarioStatus {
+  pendente
+  aprovado
+  bloqueado
+}
+
+enum UsuarioRole {
+  admin
+  operador
+}
+
+/// Conta de acesso à plataforma — autocadastro com aprovação do administrador.
+model Usuario {
+  id          String        @id @default(cuid())
+  email       String        @unique
+  senhaHash   String
+  nome        String
+  status      UsuarioStatus @default(pendente)
+  role        UsuarioRole   @default(operador)
+  criadoEm    DateTime      @default(now())
+  aprovadoEm  DateTime?
+  aprovadoPor String?
+}
+
 /// Importadora / cliente do SaaS (v1: apenas tenant default).
 model Tenant {
   id       String    @id @default(cuid())

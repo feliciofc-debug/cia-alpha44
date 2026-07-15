@@ -1,19 +1,22 @@
 import type { ReactNode } from "react";
 
-export type NavItem = "painel" | "lista" | "clientes" | "nova" | "referencia";
+export type NavItem = "painel" | "lista" | "clientes" | "nova" | "referencia" | "usuarios";
 
-const NAV: { id: NavItem; label: string; icon: string }[] = [
+const NAV_BASE: { id: NavItem; label: string; icon: string; adminOnly?: boolean }[] = [
   { id: "painel", label: "Painel", icon: "◉" },
   { id: "lista", label: "Cotações", icon: "☰" },
   { id: "clientes", label: "Clientes", icon: "◎" },
   { id: "referencia", label: "FOB/kg ref.", icon: "📊" },
   { id: "nova", label: "Nova cotação", icon: "+" },
+  { id: "usuarios", label: "Usuários", icon: "👤", adminOnly: true },
 ];
 
 export function AppShell({
   nav,
   onNav,
   userEmail,
+  isAdmin = false,
+  usuariosPendentes = 0,
   totalHoje,
   busca,
   onBuscaChange,
@@ -24,6 +27,8 @@ export function AppShell({
   nav: NavItem;
   onNav: (n: NavItem) => void;
   userEmail?: string;
+  isAdmin?: boolean;
+  usuariosPendentes?: number;
   totalHoje: number;
   busca: string;
   onBuscaChange: (v: string) => void;
@@ -31,6 +36,14 @@ export function AppShell({
   onLogout: () => void;
   children: ReactNode;
 }) {
+  const navItems = NAV_BASE.filter((item) => !item.adminOnly || isAdmin);
+
+  function labelNav(item: (typeof NAV_BASE)[number]) {
+    if (item.id === "usuarios" && usuariosPendentes > 0) {
+      return `${item.label} (${usuariosPendentes})`;
+    }
+    return item.label;
+  }
   return (
     <div className="flex min-h-full bg-ink-900">
       <aside className="hidden w-56 shrink-0 flex-col border-r border-white/5 bg-ink-950/80 md:flex">
@@ -46,7 +59,7 @@ export function AppShell({
           </div>
         </div>
         <nav className="flex-1 space-y-1 p-3">
-          {NAV.map((item) => (
+          {navItems.map((item) => (
             <button
               key={item.id}
               type="button"
@@ -58,7 +71,12 @@ export function AppShell({
               }`}
             >
               <span className="w-5 text-center text-base">{item.icon}</span>
-              {item.label}
+              <span className="flex-1">{labelNav(item)}</span>
+              {item.id === "usuarios" && usuariosPendentes > 0 && (
+                <span className="rounded-full bg-amber-500/30 px-2 py-0.5 text-[10px] font-bold text-amber-200">
+                  {usuariosPendentes}
+                </span>
+              )}
             </button>
           ))}
         </nav>
@@ -81,14 +99,14 @@ export function AppShell({
             <span className="text-sm font-bold text-white">INNOVE 888</span>
           </div>
           <div className="flex gap-1 md:hidden">
-            {NAV.map((item) => (
+            {navItems.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 className={`rounded-lg px-2 py-1 text-xs ${nav === item.id ? "bg-white/10 text-white" : "text-slate-500"}`}
                 onClick={() => onNav(item.id)}
               >
-                {item.label}
+                {labelNav(item)}
               </button>
             ))}
           </div>

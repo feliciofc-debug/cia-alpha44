@@ -1,8 +1,7 @@
 /**
- * Usuários locais — CIA_USERS="email:hashBcrypt,email2:hash2"
+ * Parser legado CIA_USERS — usado apenas no seed de migração inicial.
+ * Login/cadastro usam tabela Usuario no banco.
  */
-
-import bcrypt from "bcryptjs";
 
 export function parseCiaUsers(raw: string | undefined): Map<string, string> {
   const map = new Map<string, string>();
@@ -19,16 +18,4 @@ export function parseCiaUsers(raw: string | undefined): Map<string, string> {
     if (email && hash) map.set(email, hash);
   }
   return map;
-}
-
-export function ciaUsersConfigurados(): boolean {
-  return parseCiaUsers(process.env.CIA_USERS).size > 0;
-}
-
-export async function validarCredenciais(email: string, senha: string): Promise<string | null> {
-  const normalizado = email.trim().toLowerCase();
-  const hash = parseCiaUsers(process.env.CIA_USERS).get(normalizado);
-  if (!hash) return null;
-  const ok = await bcrypt.compare(senha, hash);
-  return ok ? normalizado : null;
 }

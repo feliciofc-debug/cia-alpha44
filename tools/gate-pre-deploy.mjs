@@ -10,7 +10,7 @@ import { dirname, join } from "node:path";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 const tests = [
-  "apps/api/test/auth-login-jwt.test.ts",
+  "apps/api/test/auth-autocadastro.test.ts",
   "apps/api/test/configurar-auth-env.test.ts",
   "apps/api/test/dif-ipi-saida.test.ts",
   "apps/api/test/gate-embarque-89-total-row.test.ts",

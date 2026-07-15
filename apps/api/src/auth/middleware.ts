@@ -28,6 +28,7 @@ const ROTAS_PUBLICAS = new Set<string>([
   "/api/meta",
   "/api/cambio",
   "/api/auth/login",
+  "/api/auth/register",
 ]);
 
 function ehRotaPublica(url: string): boolean {

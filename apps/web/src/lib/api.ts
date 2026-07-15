@@ -100,6 +100,17 @@ export interface Cambio {
   fonte: "PTAX" | "indisponível";
 }
 
+export interface UsuarioAdmin {
+  id: string;
+  email: string;
+  nome: string;
+  status: "pendente" | "aprovado" | "bloqueado";
+  role: "admin" | "operador";
+  criadoEm: string;
+  aprovadoEm: string | null;
+  aprovadoPor: string | null;
+}
+
 export interface BenchmarkPlanilhaStatus {
   carregado: boolean;
   total: number;
@@ -646,4 +657,25 @@ export const api = {
         ufs: { sigla: string; nome: string; icmsInterno: number; icmsEfetivoSaida: number }[];
       }>,
     ),
+
+  listarUsuariosAdmin: () =>
+    fetchComTimeout(`${BASE}/api/admin/usuarios`, {}, API_TIMEOUT_MS).then(
+      handle<{ usuarios: UsuarioAdmin[]; pendentes: number }>,
+    ),
+
+  contarUsuariosPendentes: () =>
+    fetchComTimeout(`${BASE}/api/admin/usuarios/pendentes-count`, {}, API_TIMEOUT_MS).then(
+      handle<{ pendentes: number }>,
+    ),
+
+  atualizarUsuarioAdmin: (id: string, acao: "aprovar" | "bloquear") =>
+    fetchComTimeout(
+      `${BASE}/api/admin/usuarios/${encodeURIComponent(id)}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ acao }),
+      },
+      API_TIMEOUT_MS,
+    ).then(handle<{ usuario: UsuarioAdmin; pendentes: number }>),
 };
