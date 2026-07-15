@@ -31,6 +31,7 @@ const pipelineTests = [
   "test/planilha-china-ncm.test.ts",
   "test/parser-fatura92-layout-china.test.ts",
   "test/parser-mescla-vertical.test.ts",
+  "test/parser-ncm1-peso.test.ts",
   "test/mapear-colunas-matematica.test.ts",
   "test/relatorio-fob-fonte.test.ts",
 ];

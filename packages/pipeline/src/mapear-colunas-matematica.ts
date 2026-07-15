@@ -5,6 +5,7 @@
 
 import type { ColunaDetectada, ColunaMapeada } from "./parser.js";
 import type { MapeamentoColunasIA } from "./parser-sinonimos.js";
+import { RE_QTD_CAIXAS_MULTILINGUE } from "./parser-sinonimos.js";
 
 const TOLERANCIA = 0.01;
 const MIN_LINHAS = 3;
@@ -282,4 +283,104 @@ export function colunasFromMapeamentoMatematico(
     colunas.push({ indice, header: mapa.headersSinteticos[indice] ?? header, tipo, confianca });
   }
   return colunas;
+}
+
+const RE_PESO_TOTAL_HEADER = /总毛重|总净重|总重|total.*weight|peso\s*total/i;
+const RE_HEADER_NAO_PESO = /数量|qty|quant|单价|总价|price|amount|件数|每箱|体积|总体积|dim|size/i;
+
+function colunasCandidatasPeso(colunas: ColunaMapeada[]): number[] {
+  return colunas
+    .filter((c) => {
+      const h = c.header.replace(/\s+/g, " ");
+      if (c.tipo === "qtd" || c.tipo === "preco" || c.tipo === "fob" || c.tipo === "descricao") return false;
+      if (RE_HEADER_NAO_PESO.test(h)) return false;
+      if (c.tipo === "peso_bruto" || c.tipo === "peso") return true;
+      if (c.tipo === "desconhecido" && /重|weight|peso|gross|net/i.test(h)) return true;
+      return false;
+    })
+    .map((c) => c.indice);
+}
+
+function melhorParPesoEntre(
+  rows: unknown[][],
+  colCaixas: number,
+  candidatos: number[],
+): { unit: number; total: number; score: number } | null {
+  let best: { unit: number; total: number; score: number } | null = null;
+  for (const unit of candidatos) {
+    if (unit === colCaixas) continue;
+    for (const total of candidatos) {
+      if (total === colCaixas || total === unit) continue;
+      const stats = matchMultiplica(rows, unit, colCaixas, total);
+      if (!taxaOk(stats)) continue;
+      const score = stats.matches / stats.total;
+      if (!best || score > best.score) best = { unit, total, score };
+    }
+  }
+  return best;
+}
+
+function semanticaPesoBrutoJaResolvida(colunas: ColunaMapeada[]): boolean {
+  const brutos = colunas.filter((c) => c.tipo === "peso_bruto");
+  const temUnit = brutos.some(
+    (c) => /毛重|gross|gw\b|brutt/i.test(c.header) && !RE_PESO_TOTAL_HEADER.test(c.header),
+  );
+  const temTotal = brutos.some((c) => RE_PESO_TOTAL_HEADER.test(c.header));
+  return temUnit && temTotal;
+}
+
+function indiceColunaCaixas(colunas: ColunaMapeada[]): number | undefined {
+  const porHeader = colunas.find((c) => RE_QTD_CAIXAS_MULTILINGUE.test(c.header.replace(/\s+/g, " ")));
+  return porHeader?.indice;
+}
+
+function linhasDadosComCabecalho(rows: unknown[][], headerRow: number): unknown[][] {
+  return rows.slice(headerRow + 1).filter((r) => {
+    if (!r?.length) return false;
+    return r.some((c) => c != null && String(c).trim() !== "");
+  });
+}
+
+export interface AjustePesoMatematico {
+  colunas: ColunaMapeada[];
+  /** 毛重 × caixas ≈ total detectado — não multiplicar peso/caixa por peças. */
+  pesoUnitarioPorCaixa: boolean;
+}
+
+/**
+ * Planilhas com cabeçalho: se colUnit × caixas ≈ colTotal (±1%, ≥80% linhas),
+ * confirma colUnit = peso/caixa e colTotal = peso total da linha.
+ */
+export function ajustarColunasPesoPorMatematica(
+  colunas: ColunaMapeada[],
+  rows: unknown[][],
+  headerRow: number,
+): AjustePesoMatematico {
+  const colCaixas = indiceColunaCaixas(colunas);
+  if (colCaixas == null) return { colunas, pesoUnitarioPorCaixa: false };
+
+  if (semanticaPesoBrutoJaResolvida(colunas)) {
+    return { colunas, pesoUnitarioPorCaixa: true };
+  }
+
+  const dataRows = linhasDadosComCabecalho(rows, headerRow);
+  if (dataRows.length < MIN_LINHAS) return { colunas, pesoUnitarioPorCaixa: false };
+
+  const candidatos = colunasCandidatasPeso(colunas);
+  if (candidatos.length < 2) return { colunas, pesoUnitarioPorCaixa: false };
+
+  const pesoBrutoPar = melhorParPesoEntre(dataRows, colCaixas, candidatos);
+  if (!pesoBrutoPar) return { colunas, pesoUnitarioPorCaixa: false };
+
+  const out = colunas.map((c) => ({ ...c }));
+  const marcar = (idx: number, tipo: ColunaDetectada) => {
+    const atual = out[idx];
+    if (!atual) return;
+    out[idx] = { ...atual, tipo, confianca: Math.max(atual.confianca, 0.93) };
+  };
+
+  marcar(pesoBrutoPar.unit, "peso_bruto");
+  marcar(pesoBrutoPar.total, "peso_bruto");
+
+  return { colunas: out, pesoUnitarioPorCaixa: true };
 }

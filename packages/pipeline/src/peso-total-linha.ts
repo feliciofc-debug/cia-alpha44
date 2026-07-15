@@ -8,6 +8,8 @@ export interface EntradaPesoLinha {
   qtd?: number | null;
   qtdCaixas?: number | null;
   qtdPorCaixa?: number | null;
+  /** 毛重 por caixa (não por peça) — multiplica por qtdCaixas, nunca por qtd total. */
+  pesoUnitarioPorCaixa?: boolean;
 }
 
 export function quantidadeTotalLinha(entrada: EntradaPesoLinha): number | null {
@@ -38,13 +40,25 @@ export function calcularPesosTotaisLinha(entrada: EntradaPesoLinha): {
   let pesoLiqFromUnit = false;
   let pesoBrutoFromUnit = false;
 
-  if (pesoLiqKg === null && entrada.pesoLiqUnit != null && qtd != null && qtd > 0) {
-    pesoLiqKg = entrada.pesoLiqUnit * qtd;
-    pesoLiqFromUnit = true;
+  if (pesoLiqKg === null && entrada.pesoLiqUnit != null) {
+    const mult =
+      entrada.pesoUnitarioPorCaixa && entrada.qtdCaixas != null && entrada.qtdCaixas > 0
+        ? entrada.qtdCaixas
+        : qtd;
+    if (mult != null && mult > 0) {
+      pesoLiqKg = entrada.pesoLiqUnit * mult;
+      pesoLiqFromUnit = true;
+    }
   }
-  if (pesoBrutoKg === null && entrada.pesoBrutoUnit != null && qtd != null && qtd > 0) {
-    pesoBrutoKg = entrada.pesoBrutoUnit * qtd;
-    pesoBrutoFromUnit = true;
+  if (pesoBrutoKg === null && entrada.pesoBrutoUnit != null) {
+    const mult =
+      entrada.pesoUnitarioPorCaixa && entrada.qtdCaixas != null && entrada.qtdCaixas > 0
+        ? entrada.qtdCaixas
+        : qtd;
+    if (mult != null && mult > 0) {
+      pesoBrutoKg = entrada.pesoBrutoUnit * mult;
+      pesoBrutoFromUnit = true;
+    }
   }
 
   return { pesoLiqKg, pesoBrutoKg, qtd, pesoLiqFromUnit, pesoBrutoFromUnit };
