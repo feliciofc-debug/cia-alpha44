@@ -13,6 +13,7 @@ import {
   AVISO_MAPEAMENTO_SINONIMOS,
   AVISO_MAPEAMENTO_MANUAL_INEXISTENTE,
   AVISO_MAPEAMENTO_IA,
+  AVISO_MAPEAMENTO_MATEMATICA,
   RE_QTD_CAIXAS_MULTILINGUE,
   RE_QTD_POR_CAIXA_MULTILINGUE,
   RE_MATERIAL_MULTILINGUE,
@@ -30,6 +31,12 @@ import { linhaPesoAbsurdo, ncmSuspeitoLixo } from "./fob-escala.js";
 import { associarFotosLinhas, extrairFotosXlsx, type FotoPlanilha } from "./xlsx-images.js";
 import { extrairImagensWpsOle, isOleXls, isZipXlsx, mapDispimgLinhas } from "./wps-images.js";
 import { normalizarCodigoNcmCliente } from "./ncm-catalog.js";
+import {
+  colunasFromMapeamentoMatematico,
+  inferirMapeamentoColunasPorMatematica,
+  mesclarMapeamentoMatematicaPrevalece,
+  planilhaProvavelmenteSemCabecalho,
+} from "./mapear-colunas-matematica.js";
 
 export type ColunaDetectada =
   | "descricao"
@@ -228,6 +235,7 @@ function extrairLinhasComColunas(
   colunas: ColunaMapeada[],
   sammelkarton?: string,
   stats?: { linhasTotaisDescartadas: number },
+  dataStartRow?: number,
 ): LinhaFornecedor[] {
   const iDescPt = colunas.find((c) => RE_DESC_PT_MULTILINGUE.test(c.header))?.indice;
   const iModel = colunas.find((c) => /model|modelo|产品型号/i.test(c.header))?.indice;
@@ -269,7 +277,8 @@ function extrairLinhasComColunas(
 
   const linhasBrutas: LinhaFornecedor[] = [];
   const rowsItensRaw: unknown[][] = [];
-  for (let r = headerRow + 1; r < rows.length; r++) {
+  const inicioDados = dataStartRow ?? headerRow + 1;
+  for (let r = inicioDados; r < rows.length; r++) {
     const row = rows[r] as unknown[] | undefined;
     if (!row) continue;
 
@@ -1114,6 +1123,7 @@ function parseRows(
   ctx: Pick<ParsePlanilhaOpts, "sammelkarton" | "moedaPlanilha"> = {},
   colunasOverride?: ColunaMapeada[],
   merges?: XLSX.Range[],
+  parseOpts?: { dataStartRow?: number },
 ): ResultadoParse {
   const avisos: string[] = [...avisosExtras];
   const headerRow = encontrarHeader(rows);
@@ -1161,7 +1171,14 @@ function parseRows(
   }
 
   const stats = { linhasTotaisDescartadas: 0 };
-  const linhas = extrairLinhasComColunas(rowsEfetivas, headerRow, colunas, ctx.sammelkarton, stats);
+  const linhas = extrairLinhasComColunas(
+    rowsEfetivas,
+    headerRow,
+    colunas,
+    ctx.sammelkarton,
+    stats,
+    parseOpts?.dataStartRow,
+  );
 
   if (linhas.length === 0) {
     avisos.push("Nenhuma linha de item encontrada após o cabeçalho.");
@@ -1247,27 +1264,33 @@ export async function parsePlanilhaBuffer(
     }
   }
 
-  if (
-    opcoes.mapearColunasIA &&
-    (parsed.linhas.length === 0 || indiceDescricao(parsed.colunas) === undefined)
-  ) {
-    const headerRow = parsed.headerRow;
+  const headerRow = parsed.headerRow;
+  const semCabecalho = planilhaProvavelmenteSemCabecalho(rows, headerRow);
+  const mapaMath = inferirMapeamentoColunasPorMatematica(rows, headerRow, semCabecalho);
+  const precisaRemapear =
+    (opcoes.mapearColunasIA || mapaMath) &&
+    (parsed.linhas.length === 0 ||
+      indiceDescricao(parsed.colunas) === undefined ||
+      (semCabecalho && mapaMath != null));
+
+  if (precisaRemapear) {
     const headerCells = (rows[headerRow] ?? []) as unknown[];
-    const headers = headerCells.map((h) => String(h ?? ""));
-    const amostras = rows.slice(headerRow + 1, headerRow + 3);
-    const mapa = await opcoes.mapearColunasIA({ headers, amostras });
-    if (mapa && Object.keys(mapa).length > 0) {
-      const colunasIA = aplicarMapeamentoIA(
-        headers.map((header, indice) => ({
-          indice,
-          header,
-          tipo: "desconhecido" as ColunaDetectada,
-          confianca: 0,
-        })),
-        mapa,
-      );
+    const headers = headerCells.map((h) => String(h ?? `Col${headerCells.indexOf(h)}`));
+    const amostras = rows.slice(semCabecalho ? headerRow : headerRow + 1, semCabecalho ? headerRow + 2 : headerRow + 3);
+    const mapaIA = opcoes.mapearColunasIA
+      ? await opcoes.mapearColunasIA({ headers, amostras })
+      : null;
+    const mapaFinal = mesclarMapeamentoMatematicaPrevalece(mapaIA, mapaMath);
+    if (mapaFinal) {
+      const numCols = Math.max(...rows.map((r) => r?.length ?? 0), headers.length);
+      const colunasRemapeadas = colunasFromMapeamentoMatematico(numCols, mapaFinal);
+      const avisosMap = [...meta.avisos];
+      if (mapaMath) avisosMap.push(AVISO_MAPEAMENTO_MATEMATICA);
+      if (mapaIA) avisosMap.push(AVISO_MAPEAMENTO_IA);
       parsed = {
-        ...parseRows(rows, aba, [...meta.avisos, AVISO_MAPEAMENTO_IA], ctx, colunasIA, merges),
+        ...parseRows(rows, aba, avisosMap, ctx, colunasRemapeadas, merges, {
+          dataStartRow: mapaFinal.semCabecalho ? headerRow : headerRow + 1,
+        }),
         abasCandidatas: escolhaAba.candidatas,
       };
     }

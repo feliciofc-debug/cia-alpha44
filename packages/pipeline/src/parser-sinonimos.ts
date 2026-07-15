@@ -124,6 +124,9 @@ export function aplicarMapeamentoIA(
 
 export const AVISO_MAPEAMENTO_IA = "Mapeamento de colunas por IA — confira descrição, qtd e preços.";
 
+export const AVISO_MAPEAMENTO_MATEMATICA =
+  "Mapeamento de colunas validado por matemática (unitário×qtd≈total) — prevalece sobre IA.";
+
 export const AVISO_MAPEAMENTO_SINONIMOS =
   "Mapeamento automático por sinônimos multilíngues — confira colunas se algo parecer errado.";
 
