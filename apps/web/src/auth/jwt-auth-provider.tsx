@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { registerAuthToken, registerSessionExpiredHandler } from "../lib/auth-fetch.ts";
+import { registerSessionExpiredHandler } from "../lib/auth-fetch.ts";
 import { apiBaseUrl } from "../lib/api.ts";
 import {
   lerTokenArmazenado,
@@ -40,19 +40,16 @@ const Ctx = createContext<AuthContextValue | null>(null);
 
 export function JwtAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
   const logout = useCallback(() => {
     limparToken();
     setUser(null);
-    setToken(null);
   }, []);
 
   useEffect(() => {
     const sessao = lerSessao();
     setUser(sessao.user);
-    setToken(sessao.token);
     setIsLoaded(true);
   }, []);
 
@@ -60,11 +57,6 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
     registerSessionExpiredHandler(() => logout());
     return () => registerSessionExpiredHandler(null);
   }, [logout]);
-
-  useEffect(() => {
-    registerAuthToken(async () => lerTokenArmazenado());
-    return () => registerAuthToken(null);
-  }, [token]);
 
   const login = useCallback(async (email: string, senha: string) => {
     const res = await fetch(`${apiBaseUrl()}/api/auth/login`, {
@@ -86,10 +78,7 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
       throw new Error("Resposta de login inválida.");
     }
     const u = persistirSessao(body.token, body.email, body.nome ?? "", body.role);
-    setToken(body.token);
     setUser(u);
-    // Garante que o próximo fetch já enxerga o token (antes do re-render/useEffect).
-    registerAuthToken(async () => body.token ?? lerTokenArmazenado());
   }, []);
 
   const register = useCallback(async (nome: string, email: string, senha: string) => {
