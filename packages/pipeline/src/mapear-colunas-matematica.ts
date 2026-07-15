@@ -122,23 +122,41 @@ function melhorParPeso(
   return best;
 }
 
+/** Código de referência/SKU (ex. TX2954-C11) — não é coluna de descrição de produto. */
+function pareceCodigoRefPlanilha(txt: string): boolean {
+  const t = txt.trim();
+  if (!t || t.length > 32) return false;
+  if (/[\u4e00-\u9fff]/.test(t)) return false;
+  return /^[A-Z]{1,4}[\w-]+$/i.test(t);
+}
+
 function colunaTextoDominante(rows: unknown[][], exclude: Set<number>): number | undefined {
-  const scores = new Map<number, number>();
+  const scores = new Map<number, { cjk: number; texto: number; ref: number }>();
   for (const row of rows) {
     for (let c = 0; c < row.length; c++) {
       if (exclude.has(c)) continue;
       const raw = String(row[c] ?? "").trim();
       if (!raw || num(raw) != null) continue;
-      if (/[\u4e00-\u9fff]/.test(raw) || raw.length >= 8) {
-        scores.set(c, (scores.get(c) ?? 0) + 1);
+      const entry = scores.get(c) ?? { cjk: 0, texto: 0, ref: 0 };
+      if (/[\u4e00-\u9fff]/.test(raw)) {
+        entry.cjk++;
+        entry.texto++;
+      } else if (pareceCodigoRefPlanilha(raw)) {
+        entry.ref++;
+      } else if (raw.length >= 4) {
+        entry.texto++;
       }
+      scores.set(c, entry);
     }
   }
-  let best: { c: number; n: number } | undefined;
-  for (const [c, n] of scores) {
-    if (!best || n > best.n) best = { c, n };
+  let best: { c: number; score: number } | undefined;
+  for (const [c, s] of scores) {
+    const hits = s.cjk + s.texto + s.ref;
+    if (hits < MIN_LINHAS) continue;
+    const score = s.cjk * 100 + s.texto * 10 - s.ref * 50;
+    if (!best || score > best.score) best = { c, score };
   }
-  return best && best.n >= MIN_LINHAS ? best.c : undefined;
+  return best?.c;
 }
 
 /** Planilha sem linha de cabeçalho — primeira linha já é item. */
