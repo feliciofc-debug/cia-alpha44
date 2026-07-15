@@ -1,0 +1,187 @@
+================================================================================
+HANDOFF — CIA / Alpha 44 — 15/07/2026 (sessão Felicio + Cloud Agent)
+Próximo agente: ler ESTE arquivo inteiro antes de qualquer código.
+================================================================================
+
+LIÇÃO DA SESSÃO (gritar sempre)
+────────────────────────────────
+Funcionava ontem + quebrou hoje = DIFF DE CÓDIGO, sempre.
+Não culpar API externa, rede ou Gemini até provar com git show + gate reproduzindo.
+Os gates existem exatamente para isso.
+
+================================================================================
+ESTADO DEPLOY (verificar ao responder "já fez deploy?")
+================================================================================
+API produção : https://api2.amzofertas.com.br/cia
+VPS          : 38.242.146.217 — /opt/cia-alpha44
+Web          : https://cia-alpha44.vercel.app
+main HEAD    : a8c7111 (após merge PR #56)
+
+Deploy API   : bash /opt/cia-alpha44/infra/vps/deploy-api.sh (após git reset --hard origin/main)
+Migration    : bash /opt/cia-alpha44/infra/vps/run-migrate.sh (uma vez — tabela Usuario)
+Deploy web   : merge main → Vercel redeploy automático (buildCommand em vercel.json)
+
+Auth atual   : JWT próprio (CIA_JWT_SECRET), tabela Usuario no Postgres, autocadastro + aprovação admin.
+               CIA_USERS legado só no seed inicial — pode remover do api.env depois do seed.
+               x-api-key continua para integrações/scripts.
+
+Admin bootstrap (VPS, uma vez se login falhar):
+  set -a && source /etc/cia-alpha44/api.env && set +a
+  node tools/upsert-admin-usuario.mjs feliciofc@gmail.com
+  (senha via CIA_ADMIN_SENHA=... — NUNCA commitar)
+
+Vercel env   : REMOVER VITE_CLERK_* e VITE_CIA_API_KEY (login JWT não precisa).
+               VITE_API_URL vem do vercel.json buildCommand (api2.amzofertas.com.br/cia).
+
+================================================================================
+PRs MERGEADOS NESTA SPRINT (48 → 56)
+================================================================================
+#48  mochilas mescla vertical + filtro total (parser ncm1)
+#49  upload 60MB + mapeamento matemático d003 (parse/ingest — NÃO classificação 12/12)
+#50  ncm1 peso 总重 + gate 14.226,5 kg
+#51  auth JWT próprio — Clerk removido
+#52  tools/configurar-auth.mjs (legado CIA_USERS)
+#53  autocadastro + aprovação admin (Usuario Prisma)
+#54  tools/upsert-admin-usuario.mjs
+#55  fix bearer race (localStorage no envio)
+#56  fix sessão persiste — logout só em JWT expirado/assinatura inválida
+
+PRs draft / abertos no fim da sessão: conferir GitHub antes de agir.
+
+================================================================================
+DIAGNÓSTICOS DE HOJE (Felicio + logs VPS)
+================================================================================
+
+1. LOGIN / SESSÃO (RESOLVIDO em #55 + #56)
+   Sintoma : login 200, ~1s depois desloga.
+   Causa   : race React (token no closure) + logout agressivo em qualquer 401 "Não autenticado".
+   Fix     : auth-fetch lê localStorage em cada request; logout só em expirado/assinatura.
+   Ação    : merge #56 → Redeploy Vercel → Ctrl+Shift+R → login feliciofc@gmail.com → menu Usuários.
+
+2. AUTOCADASTRO (PR #53 — em produção após migrate)
+   Fluxo   : Criar conta → pendente → admin aprova → login.
+   Admin   : feliciofc@gmail.com (seed/migrate) — painel Usuários com badge pendentes.
+
+3. D003 — PARSE vs CLASSIFICAÇÃO (DIAGNÓSTICO FELICIO — CRÍTICO, VER ITEM 6)
+   Parse OK: gate-d003-mapeamento-matematico — 13 itens, Σ FOB US$ 599.700, pesos OK.
+   Classif.: NO MESMO LOTE → 7 itens classificados + 5 pendentes NCM 00000000.
+   Conclusão Felicio (CORRETA): NÃO é API morta (morta = 0/12).
+                Helper/Gemini 200, sem erro de rede → REGRESSÃO DE CÓDIGO no caminho
+                de classificação, introduzida por PR recente (~14–15/07).
+
+4. PROVAS PARA PAULO (ainda pendentes de execução humana com prints)
+   a) Mochilas ncm1 — ≈14.226 kg total, FOB > 0 em todos
+   b) d003       — ≈599.700 US$ FOB + 12/12 NCM (hoje falha 7/12 — bloqueia prova)
+   c) Embarque 89 — FOB/kg editável
+
+================================================================================
+6. CRÍTICO — CLASSIFICAÇÃO PARCIAL d003 (PRIMEIRA AÇÃO DO PRÓXIMO AGENTE)
+================================================================================
+
+SINTOMA
+  Upload/classificar d003.xlsx: 7 itens com NCM válido, 5 ficam 00000000 no mesmo lote.
+  Gemini/helper responde 200 — não é falha de rede nem "API externa morta".
+
+HIPÓTESES (ordenar por probabilidade)
+  A) Validação/threshold da resposta Gemini rejeitando parte do lote (score mínimo, veto visão)
+  B) CLASSIFY_CONCURRENCY / mapComConcorrencia perdendo ou embaralhando resultados
+  C) Efeito colateral PR #48–#50 em pipeline compartilhado (descrição vazia pós-parse?)
+  D) Cache classificação tóxico/granularidade errada para linhas d003
+  E) PR auth (#51–#56) NÃO deve tocar classificação — descartar salvo prova em diff
+
+ZONA PROIBIDA (merge manual humano)
+  Loop de classificação em apps/api/src/services/cotacao.ts — classificarEmLotes,
+  CLASSIFY_CONCORRENCIA, fallbacks Gemini/2-passes/Siscomex.
+  Qualquer PR que tocou isso sem autorização = suspeito #1.
+  Reverter CIRURGICAMENTE só o trecho regressivo — não refactor.
+
+PRIMEIRA AÇÃO — CAÇAR O DIFF REGRESSIVO (VPS ou clone local)
+
+  ssh root@38.242.146.217
+  cd /opt/cia-alpha44
+  git log --oneline --since="2026-07-14" -- \
+    apps/api/src/services/ apps/api/src/llm/ packages/pipeline/src/ | head -20
+
+  Para cada commit suspeito:
+    git show <sha> --stat
+    git show <sha> -- packages/pipeline/src/classificar-ncm.ts
+    git show <sha> -- apps/api/src/services/cotacao.ts
+    git show <sha> -- apps/api/src/llm/
+
+  Commits já conhecidos no período (parser/ingest — verificar efeito colateral em classificação):
+    98a4f9e  PR #48 — mescla vertical, filtro total (parser.ts)
+    91f7ec3  PR #49 — mapeamento matemático d003 (mapear-colunas-matematica.ts)
+    3b132fa  PR #50 — peso 总重 ncm1 (parser, peso-total-linha)
+
+  Comparar comportamento ontem vs hoje:
+    git diff 2ad2433..HEAD -- apps/api/src/services/cotacao.ts
+    git diff 2ad2433..HEAD -- apps/api/src/llm/
+    git diff 2ad2433..HEAD -- packages/pipeline/src/classificar-ncm.ts
+    git diff 2ad2433..HEAD -- packages/pipeline/src/resolve-ncm.ts
+
+  Reproduzir em VPS com trace:
+    node tools/vps-diag-ncm-fonte.mjs   # se existir cotação d003 salva
+    # ou classificar fixture d003 via API com logs CLASSIFY_TRACE se habilitado
+
+CORREÇÃO ESPERADA
+  1. Identificar commit/linha regressiva
+  2. Revert cirúrgico OU fix mínimo (threshold, concorrência, descrição vazia)
+  3. NOVO GATE obrigatório:
+     apps/api/test/gate-d003-classificacao-12-12.test.ts (nome sugerido)
+     - Fixture tools/fixtures/d003.xlsx
+     - POST /api/classificar (ou montarItens + classificarEmLotes como gates ncm1)
+     - Assert: 13 itens, ZERO ncm === "00000000", todos 8 dígitos válidos
+  4. Adicionar ao tools/gate-pre-deploy.mjs
+  5. npm run gate:pre-deploy VERDE
+  6. PR draft — classificação = MERGE MANUAL (política repo)
+
+GATE ATUAL d003 (INSUFICIENTE para este bug)
+  apps/api/test/gate-d003-mapeamento-matematico.test.ts
+  → só valida PARSE/FOB/peso, NÃO valida 12/12 NCM classificados.
+
+================================================================================
+ARQUIVOS-CHAVE
+================================================================================
+Classificação (ZONA SENSÍVEL)
+  apps/api/src/services/cotacao.ts       — classificarEmLotes, CLASSIFY_CONCORRENCIA
+  apps/api/src/llm/classificar-gemini-lovable.ts
+  apps/api/src/llm/classificar-ncm-2passes.ts
+  packages/pipeline/src/classificar-ncm.ts
+  packages/pipeline/src/resolve-ncm.ts
+
+Parse d003 (já verde)
+  packages/pipeline/src/mapear-colunas-matematica.ts
+  apps/api/test/gate-d003-mapeamento-matematico.test.ts
+
+Auth (estável pós #56)
+  apps/web/src/lib/auth-fetch.ts
+  apps/web/src/auth/token-storage.ts
+  apps/web/src/auth/jwt-auth-provider.tsx
+
+Gates
+  tools/gate-pre-deploy.mjs
+
+Fixtures
+  tools/fixtures/d003.xlsx
+  tools/fixtures/ncm1.xlsx
+
+================================================================================
+CHECKLIST PRÓXIMO AGENTE
+================================================================================
+[ ] 1. git pull main — confirmar HEAD
+[ ] 2. ITEM 6: caçar diff regressivo (comandos acima)
+[ ] 3. Reproduzir 7+5 no d003 com logs/trace
+[ ] 4. Fix cirúrgico + gate 12/12 NCM
+[ ] 5. gate:pre-deploy VERDE
+[ ] 6. PR draft — AGUARDANDO REVISÃO HUMANA (classificação)
+[ ] 7. Confirmar login Vercel OK (Felicio) antes das 3 provas
+[ ] 8. Atualizar seção ESTADO DEPLOY neste arquivo após deploy confirmado
+
+================================================================================
+CONTATOS / CONTEXTO
+================================================================================
+Felicio : feliciofc@gmail.com (admin)
+Cliente : Paulo — aguarda resposta consolidada com 3 provas (prints)
+Tom     : diagnóstico cirúrgico, gates verdes, sem merge em motor fiscal/classificação
+
+Deus abençoe — tamo junto. 👊
