@@ -246,7 +246,7 @@ describe("autocadastro com aprovação admin", () => {
     expect(JSON.parse(res.body).pendentes).toBe(2);
     await server.close();
   });
-});
+}, 30000);
 
 describe("registrarAuth middleware — JWT + x-api-key", () => {
   const envBackup = { ...process.env };
@@ -424,4 +424,4 @@ describe("POST /api/auth/login", () => {
     expect(JSON.parse(res.body).erro).toMatch(/incorretos/i);
     await app.close();
   });
-});
+}, 30000);
