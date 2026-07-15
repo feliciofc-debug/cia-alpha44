@@ -32,6 +32,7 @@ describe("mapear-colunas-matematica — d003 sem cabeçalho", () => {
     expect(mapa!.qtd).toBe(5);
     expect(mapa!.qtdCaixas).toBe(3);
     expect(mapa!.qtdPorCaixa).toBe(4);
+    expect(mapa!.descricao).toBe(2);
   });
 
   it("mapa matemático prevalece quando IA confunde preço unitário com FOB", async () => {
