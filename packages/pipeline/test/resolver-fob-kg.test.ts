@@ -13,6 +13,7 @@ import {
   FOB_KG_FONTE_PRECO_CUSTO,
   FOB_KG_FONTE_PENDENTE,
   FOB_KG_FONTE_LINHA,
+  FOB_KG_FONTE_CLIENTE_DECLARADO,
   type LinhaCrua,
 } from "../src/index.js";
 
@@ -99,6 +100,31 @@ describe("detectarBasePesoFob", () => {
 
 describe("resolver FOB/kg — trava e rastro", () => {
   const indexVazio = buildBenchmarkIndex([]);
+
+  it("unitário×qtd sem coluna FOB/kg → planilha-cliente (FOB declarado) mesmo com NCM na China", () => {
+    substituirHistoricoBenchmark([
+      { ncm: "85167910", fobKgMedioDI: 1.2, fobKg: 1.2, amostra: 5 },
+    ]);
+    const indexChina = buildBenchmarkIndex([], "ref", { planilhaPeriodo: "2023-S1" });
+    const { linhas, metas } = resolverFobKgPlanilha(
+      [
+        linha({
+          descOriginal: "咖啡研磨器",
+          ncm: "85167910",
+          qtd: 1800,
+          pesoBrutoKg: 785,
+          pesoLiqKg: 735,
+          fobUnitarioUS: 12,
+          fobTotalUS: 21600,
+          fobDeclaradoMatematica: true,
+        }),
+      ],
+      indexChina,
+    );
+    expect(metas[0]?.fobKgFonte).toBe(FOB_KG_FONTE_CLIENTE_DECLARADO);
+    expect(linhas[0]?.fobTotalUS).toBeCloseTo(21600, 2);
+    expect(metas[0]?.fobEmbarqueUS).toBeCloseTo(21600, 2);
+  });
 
   it("herança intra-carga dist≤4 → ncm-irmao", () => {
     const { linhas, metas } = resolverFobKgPlanilha(

@@ -108,12 +108,33 @@ function linhaTemFobExplicito(l: LinhaCrua): boolean {
   return (l.fobTotalUS ?? 0) > 0;
 }
 
+const TOLERANCIA_FOB_UNIT_QTD = 0.01;
+
+function relDiffFob(a: number, b: number): number {
+  const base = Math.max(Math.abs(a), Math.abs(b), 1);
+  return Math.abs(a - b) / base;
+}
+
+/** Preço unitário × qtd ≈ total — FOB declarado validado (planilha sem coluna FOB/kg). */
+function linhaTemFobUnitarioQtdConsistente(l: LinhaCrua): boolean {
+  const total = l.fobTotalUS ?? 0;
+  const unit = l.fobUnitarioUS ?? 0;
+  const qtd = l.qtd ?? 0;
+  if (total <= 0 || unit <= 0 || qtd <= 0) return false;
+  return relDiffFob(total, unit * qtd) <= TOLERANCIA_FOB_UNIT_QTD;
+}
+
 function linhaTemFobDeclaradoConsistente(l: LinhaCrua, det: ResultadoDeteccaoBasePeso): boolean {
   return (
     (l.fobTotalUS ?? 0) > 0 &&
     (l.fobKgReferencia ?? 0) > 0 &&
     det.fobKgBase !== "indeterminado"
   );
+}
+
+function linhaTemFobDeclaradoSoberano(l: LinhaCrua, det: ResultadoDeteccaoBasePeso): boolean {
+  if (linhaTemFobDeclaradoConsistente(l, det)) return true;
+  return (l.fobDeclaradoMatematica ?? false) && linhaTemFobUnitarioQtdConsistente(l);
 }
 
 function detectarMetaLinha(l: LinhaCrua, fobKgCol?: number | null): ResultadoDeteccaoBasePeso {
@@ -248,7 +269,7 @@ export function resolverFobKgPlanilha(
     const pesoBaseLinha = pesoParaBaseFob(baseDetLinha.fobKgBase, l.pesoBrutoKg, l.pesoLiqKg);
     const pesoRateio = resolvePesoLiqRateio(l);
 
-    if (linhaTemFobDeclaradoConsistente(l, baseDetLinha)) {
+    if (linhaTemFobDeclaradoSoberano(l, baseDetLinha)) {
       const avisos = [...baseDetLinha.avisos];
       if (l.avisosQtd?.length) avisos.push(...l.avisosQtd);
       metas.push({

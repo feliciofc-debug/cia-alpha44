@@ -1403,6 +1403,7 @@ function resultadoParaSupplier(parsed: ResultadoParse): ParsedSupplierFile {
     if (c.tipo !== "desconhecido") mapeamento[c.tipo] = c.indice;
   }
   const avisos = [...parsed.avisos];
+  const fobDeclaradoMatematica = avisos.some((a) => a === AVISO_MAPEAMENTO_MATEMATICA);
 
   const comQtd = aplicarQuantidadesLinhas(
     parsed.linhas.map((l) => ({
@@ -1440,6 +1441,7 @@ function resultadoParaSupplier(parsed: ResultadoParse): ParsedSupplierFile {
       fobTotalUS,
       fobKgReferencia: l.fobKgReferencia ?? null,
       valoresSemCabecalho: l.valoresSemCabecalho,
+      ...(fobDeclaradoMatematica ? { fobDeclaradoMatematica: true } : {}),
       dimensoes: null,
       material: l.material ?? null,
       uso: l.uso ?? null,
