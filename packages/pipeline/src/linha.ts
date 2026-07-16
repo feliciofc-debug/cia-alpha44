@@ -18,6 +18,8 @@ export interface LinhaCrua {
   fobKgReferencia?: number | null;
   /** Números em colunas sem cabeçalho reconhecido à direita da planilha. */
   valoresSemCabecalho?: number[];
+  /** Planilha sem cabeçalho: preço unitário × qtd validado pelo mapeador matemático. */
+  fobDeclaradoMatematica?: boolean;
   dimensoes?: string | null;
   /** Material (材质) — coluna fornecedor. */
   material?: string | null;

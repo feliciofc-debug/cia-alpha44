@@ -2,6 +2,7 @@
  * Gate d003 — planilha sem cabeçalho: mapeamento matemático prevalece sobre IA.
  */
 import { describe, expect, it, vi } from "vitest";
+import { PARAMS_SAIDA_PADRAO } from "@cia/fiscal-engine";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,6 +11,7 @@ import {
   buildBenchmarkIndex,
   criarNcmCatalog,
   criarTecSource,
+  FOB_KG_FONTE_CLIENTE_DECLARADO,
   loadComexSeed,
   loadNcmVigenteCache,
   loadTecCache,
@@ -17,9 +19,10 @@ import {
   temCaractereCjk,
 } from "@cia/pipeline";
 import { ingerirArquivo } from "../src/services/ingest.js";
-import { montarItens } from "../src/services/cotacao.js";
+import { calcularCotacao, montarItens } from "../src/services/cotacao.js";
 import type { AppState } from "../src/state.js";
 import type { ClassifyItemInput, LlmProvider } from "../src/llm/types.js";
+import type { Cotacao } from "@cia/shared";
 
 vi.mock("@cia/db", () => ({
   prisma: {
@@ -89,6 +92,27 @@ function stateTeste(provider: LlmProvider): AppState {
     ocr: null,
     provider,
   } as unknown as AppState;
+}
+
+function cotacaoTeste(itens: Cotacao["itens"]): Cotacao {
+  return {
+    cliente: "gate d003",
+    benefFiscal: "NENHUM",
+    moeda: "USD",
+    cambio: 5.5,
+    freteTotalUS: 0,
+    adicionaisVaUS: 0,
+    reducaoBaseUS: 0,
+    siscomex: 0,
+    antidumpingBRL: 0,
+    origem: "CN",
+    destino: "SP",
+    incoterm: "FOB",
+    despesas: [],
+    outrasDespesasBaseBRL: 0,
+    params: { ...PARAMS_SAIDA_PADRAO, markupPct: 0.04, ipiAliqSaida: 0 },
+    itens,
+  };
 }
 
 function refsDaPlanilha(): string[] {
@@ -175,6 +199,24 @@ describe("gate d003 — mapeamento matemático sem cabeçalho", () => {
       const it = itens[idx]!;
       expect(it.ncm).not.toBe("00000000");
       expect(it.descOriginal).toContain(spot.trecho);
+    }
+  }, 90000);
+
+  it("calcularCotacao E2E — FOB DI = 599.700 com fonte planilha-cliente (FOB declarado)", async () => {
+    const parsed = await parseSupplierFile(FIXTURE_D003, { mapearColunasIA: mapaIaErrado });
+    const state = stateTeste(providerD003);
+    const { itens } = await montarItens(parsed.linhas, state, { gravarCacheClassificacao: false });
+    const calc = calcularCotacao(cotacaoTeste(itens), state);
+
+    expect(calc.itens).toHaveLength(13);
+    expect(calc.resultado.entrada.fobTotalUS).toBeCloseTo(599700, 2);
+    expect(calc.itens.every((it) => it.fobKgFonte === FOB_KG_FONTE_CLIENTE_DECLARADO)).toBe(true);
+
+    const sumDeclarado = parsed.linhas.reduce((s, l) => s + (l.fobTotalUS ?? 0), 0);
+    expect(sumDeclarado).toBeCloseTo(599700, 2);
+
+    for (const it of calc.itens) {
+      expect(it.fobEmbarqueUS).toBeCloseTo(it.fobTotalUS, 2);
     }
   }, 90000);
 });
