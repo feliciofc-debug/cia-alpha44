@@ -122,6 +122,7 @@ export interface ParamsSaida {
   irrfBaseNotaPct: number;
   ipiTetoAliqMedia: number;
   icmsEntrada: number;
+  aliqFundos?: number;
 }
 
 export type BeneficioFiscal = "ALAGOAS" | "NENHUM";
@@ -131,11 +132,24 @@ export type RegimeIcmsPersistido = "AL_DIFERIDO" | "NORMAL";
 export interface IcmsCotacaoMeta {
   icmsSaidaEfetivo: number;
   icmsEntradaEfetivo: number;
+  icmsImportacaoAliq?: number;
   fundamentoSaida: string;
   avisoRegimeIcms?: string;
   operacaoInterestadual: boolean;
   icmsSaidaManualFlag: boolean;
   avisosFiscais: string[];
+  regimeDestinoId?: string | null;
+  regimeDestinoNome?: string;
+  regimeDestinoFonteLegal?: string;
+  aliqFundos?: number;
+  difalAliq?: number;
+}
+
+export interface RegimeDestinoParams {
+  icmsImportacaoAliq: number;
+  icmsSaidaEfetivaAliq: number;
+  aliqFundos: number;
+  difalAliq?: number;
 }
 
 export interface Cotacao {
@@ -168,6 +182,8 @@ export interface Cotacao {
   ufEmpresa?: string;
   regimeIcms?: RegimeIcmsPersistido;
   icmsSaidaManualFlag?: boolean;
+  regimeDestinoId?: string | null;
+  regimeDestinoParams?: RegimeDestinoParams | null;
 }
 
 export interface ItemResult {
@@ -212,6 +228,7 @@ export interface ResultadoCotacao {
     difPIS: number;
     difCOFINS: number;
     icmsSaida: number;
+    fundosObrigatorios?: number;
     csll: number;
     irrf: number;
     baseNotaSaida: number;

@@ -40,6 +40,7 @@ import {
   defaultsIcmsPersistencia,
   inferirQtdContainers,
   normalizarUf,
+  parseDestinoSelecao,
   type ChaveTributoRastro,
   type Cotacao,
   type Despesa,
@@ -48,7 +49,7 @@ import {
   type RegimeIcmsPersistido,
   type AvisoValoracao,
 } from "@cia/shared";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { extrairResumoFinanceiro } from "../lib/financeiro.js";
 import { calcularCotacao, fobKgFinalItem, montarItens, type ResultadoCompleto } from "./cotacao.js";
 import { calcAvisoValoracaoFobKg } from "./fob-kg-manual.js";
@@ -167,11 +168,17 @@ function regimePersistido(raw: string | null | undefined): RegimeIcmsPersistido 
 
 function icmsPersistData(cotacao: Cotacao) {
   const d = defaultsIcmsPersistencia();
+  const regimeParams = cotacao.regimeDestinoParams;
   return {
     ufEmpresa: cotacao.ufEmpresa ?? d.ufEmpresa,
     regimeIcms: cotacao.regimeIcms ?? d.regimeIcms,
     icmsSaidaManualFlag: cotacao.icmsSaidaManualFlag ?? d.icmsSaidaManualFlag,
     avisosFiscais: cotacao.avisosFiscais ?? d.avisosFiscais,
+    regimeDestinoId: cotacao.regimeDestinoId ?? null,
+    regimeDestinoParams:
+      regimeParams != null
+        ? (regimeParams as Prisma.InputJsonValue)
+        : Prisma.JsonNull,
   };
 }
 
@@ -249,6 +256,8 @@ export function mapRowParaDominio(row: CotacaoComRelacoes): {
     regimeIcms: regimePersistido(row.regimeIcms),
     icmsSaidaManualFlag: row.icmsSaidaManualFlag ?? false,
     avisosFiscais: parseAvisosFiscais(row.avisosFiscais),
+    regimeDestinoId: row.regimeDestinoId ?? undefined,
+    regimeDestinoParams: (row.regimeDestinoParams as Cotacao["regimeDestinoParams"]) ?? undefined,
     itens,
     despesas,
     qtdContainers: inferirQtdContainers(despesas),
@@ -780,9 +789,13 @@ export async function duplicarCotacao(
 export interface AtualizarCotacaoInput {
   origem?: string;
   destino?: string;
+  /** Valor do seletor (UF integral ou id do regime). */
+  destinoSelecao?: string;
   benefFiscal?: Cotacao["benefFiscal"];
   ufEmpresa?: string;
   regimeIcms?: Cotacao["regimeIcms"];
+  regimeDestinoId?: string | null;
+  regimeDestinoParams?: Cotacao["regimeDestinoParams"];
   empresaTrade?: string;
   cliente?: string;
   cambio?: number;
@@ -836,6 +849,9 @@ function mergeIcmsAtualizacao(
     icmsSaidaManualFlag: manualFlag,
     params,
     avisosFiscais: avisos,
+    regimeDestinoId: opts.regimeDestinoId !== undefined ? opts.regimeDestinoId : cotacao.regimeDestinoId,
+    regimeDestinoParams:
+      opts.regimeDestinoParams !== undefined ? opts.regimeDestinoParams : cotacao.regimeDestinoParams,
   });
 
   return {
@@ -866,19 +882,36 @@ export async function atualizarCotacao(id: string, tenantSlug: string, state: Ap
       : itensAtuais;
 
   const origem = opts.origem ? (normalizarUf(opts.origem) ?? cotacao.origem) : cotacao.origem;
-  const destino = opts.destino ? (normalizarUf(opts.destino) ?? cotacao.destino) : cotacao.destino;
+  const destinoParsed = opts.destinoSelecao
+    ? parseDestinoSelecao(opts.destinoSelecao)
+    : opts.destino
+      ? parseDestinoSelecao(opts.destino)
+      : { destino: normalizarUf(cotacao.destino) ?? cotacao.destino, regimeDestinoId: cotacao.regimeDestinoId ?? null };
+  const destino = destinoParsed.destino;
+  const regimeDestinoIdFromDestino =
+    opts.destinoSelecao || (opts.destino && opts.destino !== cotacao.destino)
+      ? destinoParsed.regimeDestinoId
+      : undefined;
   const ufEmpresa =
     opts.ufEmpresa != null
       ? (normalizarUf(opts.ufEmpresa) ?? cotacao.ufEmpresa ?? "AL")
       : (cotacao.ufEmpresa ?? "AL");
   const regimeIcms = opts.regimeIcms ?? cotacao.regimeIcms ?? "AL_DIFERIDO";
+  const regimeDestinoId =
+    opts.regimeDestinoId !== undefined
+      ? opts.regimeDestinoId
+      : regimeDestinoIdFromDestino !== undefined
+        ? regimeDestinoIdFromDestino
+        : cotacao.regimeDestinoId;
+  const regimeDestinoParams =
+    opts.regimeDestinoParams !== undefined ? opts.regimeDestinoParams : cotacao.regimeDestinoParams;
   const benefFiscal = opts.benefFiscal ?? cotacao.benefFiscal;
   const empresaTrade = opts.empresaTrade !== undefined ? opts.empresaTrade.trim() : cotacao.empresaTrade;
   const cliente = opts.cliente !== undefined ? opts.cliente.trim() || "Sem cliente" : cotacao.cliente;
   const despesas = opts.despesas ?? cotacao.despesas;
   const outrasDespesasBaseBRL = opts.outrasDespesasBaseBRL ?? cotacao.outrasDespesasBaseBRL;
   const icmsMerged = mergeIcmsAtualizacao(
-    { ...cotacao, ufEmpresa, destino, regimeIcms },
+    { ...cotacao, ufEmpresa, destino, regimeIcms, regimeDestinoId, regimeDestinoParams },
     opts,
   );
 
@@ -888,6 +921,8 @@ export async function atualizarCotacao(id: string, tenantSlug: string, state: Ap
     destino,
     ufEmpresa,
     regimeIcms,
+    regimeDestinoId: regimeDestinoId ?? undefined,
+    regimeDestinoParams: regimeDestinoParams ?? undefined,
     benefFiscal,
     empresaTrade,
     cliente,

@@ -11,3 +11,4 @@ export * from "./ordem-item.js";
 export * from "./ncm-confirmacao.js";
 export * from "./aliquota-rastro.js";
 export * from "./moeda-cotacao.js";
+export * from "./regimes-destino.js";

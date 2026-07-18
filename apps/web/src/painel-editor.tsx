@@ -1,7 +1,8 @@
-import { aplicarIcmsCotacao } from "@cia/shared";
+import { aplicarIcmsCotacao, listarOpcoesDestino, presetRegimeDestino } from "@cia/shared";
 import { UFS_BRASIL, UF_NOMES, type UfBrasil } from "./lib/icms-uf.ts";
 import { despesasParaContainers, totalDespesas } from "./lib/despesas.ts";
 import type { EditorDraft } from "./lib/editor-cotacao.ts";
+import { aplicarDestinoSelecao } from "./lib/editor-cotacao.ts";
 import { pct } from "./lib/format.ts";
 import type { IcmsCotacaoMeta } from "./lib/types.ts";
 
@@ -16,11 +17,14 @@ const REGIMES: { id: EditorDraft["regimeIcms"]; label: string }[] = [
 ];
 
 function previewIcmsMeta(draft: EditorDraft, avisosFiscais: string[] = []): IcmsCotacaoMeta {
+  const regimeParams = draft.regimeDestinoParams;
   const { meta } = aplicarIcmsCotacao({
     ufEmpresa: draft.ufEmpresa,
     destino: draft.destino,
     regimeIcms: draft.regimeIcms,
     icmsSaidaManualFlag: draft.icmsSaidaManualFlag,
+    regimeDestinoId: draft.regimeDestinoId,
+    regimeDestinoParams: regimeParams,
     params: {
       markupPct: draft.markupPct,
       pisSaida: draft.paramsAvancados.pisSaida,
@@ -31,6 +35,7 @@ function previewIcmsMeta(draft: EditorDraft, avisosFiscais: string[] = []): Icms
       irrfBaseNotaPct: draft.paramsAvancados.irrfBaseNotaPct,
       ipiTetoAliqMedia: 0.15,
       icmsEntrada: 0,
+      aliqFundos: regimeParams?.aliqFundos ?? 0,
     },
     avisosFiscais,
   });
@@ -46,22 +51,36 @@ export function PainelEditorCotacao({
   avisosFiscais = [],
   onConfirmarIcmsSaida,
   confirmandoIcms,
+  comparacaoRegimes,
+  comparandoRegimes,
+  onCompararRegimes,
 }: {
   draft: EditorDraft;
   onChange: (d: EditorDraft) => void;
   onAplicar: () => void;
   aplicando?: boolean;
   modo: "analise" | "salva";
-  /** Avisos persistidos (backfill legado) — exibidos no bloco ICMS. */
   avisosFiscais?: string[];
   onConfirmarIcmsSaida?: () => void;
   confirmandoIcms?: boolean;
+  comparacaoRegimes?: Array<{
+    nome: string;
+    totalBRL: number;
+    economiaVsIntegral?: number;
+  }>;
+  comparandoRegimes?: boolean;
+  onCompararRegimes?: () => void;
 }) {
   const ufOpts = (UFS_BRASIL as readonly UfBrasil[]).map((sigla) => (
     <option key={sigla} value={sigla}>
       {sigla} — {UF_NOMES[sigla]}
     </option>
   ));
+
+  const opcoesDestino = listarOpcoesDestino();
+  const presetAtivo = draft.regimeDestinoId
+    ? presetRegimeDestino(draft.regimeDestinoId as import("@cia/shared").RegimeDestinoId)
+    : null;
 
   const icmsMeta = previewIcmsMeta(draft, avisosFiscais);
   const icmsLegadoPendente = avisosFiscais.some(
@@ -70,6 +89,13 @@ export function PainelEditorCotacao({
 
   function patch(p: Partial<EditorDraft>) {
     onChange({ ...draft, ...p });
+  }
+
+  function patchRegimeParams(field: keyof NonNullable<EditorDraft["regimeDestinoParams"]>, value: number) {
+    if (!draft.regimeDestinoParams) return;
+    patch({
+      regimeDestinoParams: { ...draft.regimeDestinoParams, [field]: value },
+    });
   }
 
   return (
@@ -161,9 +187,17 @@ export function PainelEditorCotacao({
           </select>
         </div>
         <div>
-          <label className="label">Destino (UF)</label>
-          <select className="input" value={draft.destino} onChange={(e) => patch({ destino: e.target.value })}>
-            {ufOpts}
+          <label className="label">Destino (UF / regime)</label>
+          <select
+            className="input"
+            value={draft.destinoSelecao}
+            onChange={(e) => onChange(aplicarDestinoSelecao(draft, e.target.value))}
+          >
+            {opcoesDestino.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
           </select>
         </div>
         <div>
@@ -181,6 +215,70 @@ export function PainelEditorCotacao({
           </select>
         </div>
       </div>
+
+      {presetAtivo && draft.regimeDestinoParams && (
+        <div className="space-y-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+          <p className="text-sm font-semibold text-emerald-100">
+            Regime de destino — {presetAtivo.nome}
+          </p>
+          <p className="text-[11px] text-slate-400" title={presetAtivo.fonteLegal}>
+            {presetAtivo.fonteLegal}
+            {presetAtivo.observacao ? ` — ${presetAtivo.observacao}` : ""}
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <label className="label text-xs">ICMS importação (antecipação)</label>
+              <input
+                type="number"
+                min={0}
+                max={1}
+                step={0.001}
+                className="input py-1"
+                value={draft.regimeDestinoParams.icmsImportacaoAliq}
+                onChange={(e) => patchRegimeParams("icmsImportacaoAliq", Number(e.target.value) || 0)}
+              />
+            </div>
+            <div>
+              <label className="label text-xs">ICMS saída efetiva</label>
+              <input
+                type="number"
+                min={presetAtivo.icmsSaidaMin ?? 0}
+                max={presetAtivo.icmsSaidaMax ?? 1}
+                step={0.001}
+                className="input py-1"
+                value={draft.regimeDestinoParams.icmsSaidaEfetivaAliq}
+                onChange={(e) => patchRegimeParams("icmsSaidaEfetivaAliq", Number(e.target.value) || 0)}
+              />
+            </div>
+            <div>
+              <label className="label text-xs">Fundos obrigatórios (%)</label>
+              <input
+                type="number"
+                min={0}
+                max={1}
+                step={0.001}
+                className="input py-1"
+                value={draft.regimeDestinoParams.aliqFundos}
+                onChange={(e) => patchRegimeParams("aliqFundos", Number(e.target.value) || 0)}
+              />
+            </div>
+            {draft.regimeDestinoParams.difalAliq !== undefined && (
+              <div>
+                <label className="label text-xs">DIFAL (%)</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={1}
+                  step={0.001}
+                  className="input py-1"
+                  value={draft.regimeDestinoParams.difalAliq ?? 0}
+                  onChange={(e) => patchRegimeParams("difalAliq", Number(e.target.value) || 0)}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="space-y-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
         <p className="text-sm font-semibold text-amber-100">ICMS — empresa e regime (P2.3)</p>
@@ -216,6 +314,11 @@ export function PainelEditorCotacao({
               {draft.icmsSaidaManualFlag && (
                 <span className="rounded bg-amber-600/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-200">
                   Override manual em vigor
+                </span>
+              )}
+              {icmsMeta.regimeDestinoNome && (
+                <span className="rounded bg-emerald-600/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-200">
+                  {icmsMeta.regimeDestinoNome}
                 </span>
               )}
             </div>
@@ -291,6 +394,54 @@ export function PainelEditorCotacao({
           </div>
         </details>
       </div>
+
+      {onCompararRegimes && (
+        <div className="space-y-2 rounded-lg border border-brand-500/30 bg-brand-500/5 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-brand-100">Comparar regimes de destino</p>
+            <button
+              type="button"
+              className="btn-ghost text-xs"
+              disabled={comparandoRegimes}
+              onClick={onCompararRegimes}
+            >
+              {comparandoRegimes ? "Calculando…" : "Comparar regimes"}
+            </button>
+          </div>
+          {comparacaoRegimes && comparacaoRegimes.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="text-slate-400">
+                    <th className="py-1 pr-2">Regime</th>
+                    <th className="py-1 pr-2 text-right">Total R$</th>
+                    <th className="py-1 text-right">Economia vs Integral</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {comparacaoRegimes.map((linha) => (
+                    <tr key={linha.nome} className="border-t border-white/5 text-slate-200">
+                      <td className="py-1 pr-2">{linha.nome}</td>
+                      <td className="py-1 pr-2 text-right font-mono">
+                        {linha.totalBRL.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </td>
+                      <td
+                        className={`py-1 text-right font-mono ${
+                          (linha.economiaVsIntegral ?? 0) > 0 ? "text-emerald-300" : "text-slate-400"
+                        }`}
+                      >
+                        {(linha.economiaVsIntegral ?? 0) > 0
+                          ? `− ${(linha.economiaVsIntegral ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+                          : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       <div>
         <label className="label">Markup (lucro da trade) — {pct(draft.markupPct)}</label>

@@ -1,3 +1,11 @@
+import {
+  destinoSelecaoFromCotacao,
+  parseDestinoSelecao,
+  presetRegimeDestino,
+  resolverParamsRegimeDestino,
+  type RegimeDestinoId,
+  type RegimeDestinoParams,
+} from "@cia/shared";
 import { despesasParaEditor, inferirQtdContainers, outrasDespesasBaseParaContainers, DEFAULT_FRETE_US, DEFAULT_SISCOMEX_BRL } from "./despesas.ts";
 import type { Cotacao, Despesa, ParamsSaida, RegimeIcmsPersistido } from "./types.ts";
 
@@ -6,6 +14,10 @@ export type BeneficioFiscal = "ALAGOAS" | "NENHUM";
 export interface EditorDraft {
   origem: string;
   destino: string;
+  /** Valor do seletor UF/regime (sigla ou id do preset). */
+  destinoSelecao: string;
+  regimeDestinoId: string | null;
+  regimeDestinoParams: RegimeDestinoParams | null;
   /** UF sede importadora — coluna P2.2 ufEmpresa. */
   ufEmpresa: string;
   /** Regime ICMS entrada — coluna P2.2 regimeIcms. */
@@ -31,9 +43,18 @@ export interface EditorDraft {
 
 export function editorFromCotacao(cotacao: Cotacao, clienteOverride?: string): EditorDraft {
   const p = cotacao.params;
+  const destinoSelecao = destinoSelecaoFromCotacao(cotacao.destino, cotacao.regimeDestinoId);
+  const regimeParams =
+    cotacao.regimeDestinoParams ??
+    (cotacao.regimeDestinoId
+      ? resolverParamsRegimeDestino(cotacao.regimeDestinoId as RegimeDestinoId, null)
+      : null);
   return {
     origem: cotacao.origem,
     destino: cotacao.destino,
+    destinoSelecao: String(destinoSelecao),
+    regimeDestinoId: cotacao.regimeDestinoId ?? null,
+    regimeDestinoParams: regimeParams,
     ufEmpresa: cotacao.ufEmpresa ?? "AL",
     regimeIcms: cotacao.regimeIcms === "NORMAL" ? "NORMAL" : "AL_DIFERIDO",
     benefFiscal: (cotacao.benefFiscal === "NENHUM" ? "NENHUM" : "ALAGOAS") as BeneficioFiscal,
@@ -59,11 +80,28 @@ export function editorFromCotacao(cotacao: Cotacao, clienteOverride?: string): E
   };
 }
 
+export function aplicarDestinoSelecao(draft: EditorDraft, destinoSelecao: string): EditorDraft {
+  const parsed = parseDestinoSelecao(destinoSelecao);
+  const preset = parsed.regimeDestinoId ? presetRegimeDestino(parsed.regimeDestinoId) : null;
+  const regimeDestinoParams = preset
+    ? resolverParamsRegimeDestino(parsed.regimeDestinoId, draft.regimeDestinoParams)
+    : null;
+  return {
+    ...draft,
+    destinoSelecao,
+    destino: parsed.destino,
+    regimeDestinoId: parsed.regimeDestinoId,
+    regimeDestinoParams,
+  };
+}
+
 export function aplicarEditorNaCotacao(cotacao: Cotacao, draft: EditorDraft): Cotacao {
   return {
     ...cotacao,
     origem: draft.origem,
     destino: draft.destino,
+    regimeDestinoId: draft.regimeDestinoId ?? undefined,
+    regimeDestinoParams: draft.regimeDestinoParams ?? undefined,
     ufEmpresa: draft.ufEmpresa,
     regimeIcms: draft.regimeIcms,
     benefFiscal: draft.benefFiscal,
@@ -89,6 +127,7 @@ export function aplicarEditorNaCotacao(cotacao: Cotacao, draft: EditorDraft): Co
       csllSobreMarkup: draft.paramsAvancados.csllSobreMarkup,
       irrfAliq: draft.paramsAvancados.irrfAliq,
       irrfBaseNotaPct: draft.paramsAvancados.irrfBaseNotaPct,
+      aliqFundos: draft.regimeDestinoParams?.aliqFundos ?? cotacao.params.aliqFundos ?? 0,
     },
   };
 }
@@ -97,6 +136,9 @@ export function payloadAtualizar(draft: EditorDraft) {
   return {
     origem: draft.origem,
     destino: draft.destino,
+    destinoSelecao: draft.destinoSelecao,
+    regimeDestinoId: draft.regimeDestinoId,
+    regimeDestinoParams: draft.regimeDestinoParams,
     ufEmpresa: draft.ufEmpresa,
     regimeIcms: draft.regimeIcms,
     benefFiscal: draft.benefFiscal,

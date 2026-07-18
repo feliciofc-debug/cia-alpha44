@@ -336,6 +336,9 @@ function AnalisePainel({
   confirmandoIcms,
   onReclassificarNcm,
   reclassificandoNcm,
+  comparacaoRegimes,
+  comparandoRegimes,
+  onCompararRegimes,
 }: {
   analise: AnaliseView;
   onSalvar?: () => void;
@@ -373,6 +376,9 @@ function AnalisePainel({
   confirmandoIcms?: boolean;
   onReclassificarNcm?: () => void | Promise<void>;
   reclassificandoNcm?: boolean;
+  comparacaoRegimes?: Array<{ nome: string; totalBRL: number; economiaVsIntegral?: number }>;
+  comparandoRegimes?: boolean;
+  onCompararRegimes?: () => void | Promise<void>;
 }) {
   const itens = analise.itens;
   const qtdPendentesNcm = itensPendentesConfirmacaoNcm(itens).length;
@@ -877,6 +883,9 @@ function AnalisePainel({
           avisosFiscais={avisosFiscaisIcms}
           onConfirmarIcmsSaida={salvaId ? onConfirmarIcmsSaida : undefined}
           confirmandoIcms={confirmandoIcms}
+          comparacaoRegimes={comparacaoRegimes}
+          comparandoRegimes={comparandoRegimes}
+          onCompararRegimes={salvaId ? onCompararRegimes : undefined}
         />
       )}
 
@@ -1150,6 +1159,28 @@ export function Dashboard() {
   const [irParaOrcamento, setIrParaOrcamento] = useState(0);
   const [solicitarResolucaoNcm, setSolicitarResolucaoNcm] = useState(0);
   const [resolucaoNcmIdx, setResolucaoNcmIdx] = useState<number | undefined>(undefined);
+  const [comparacaoRegimes, setComparacaoRegimes] = useState<
+    Array<{ nome: string; totalBRL: number; economiaVsIntegral?: number }>
+  >([]);
+  const [comparandoRegimes, setComparandoRegimes] = useState(false);
+
+  async function compararRegimesCotacao(id: string) {
+    setComparandoRegimes(true);
+    try {
+      const { linhas } = await api.compararRegimesCotacao(id);
+      setComparacaoRegimes(
+        linhas.map((l) => ({
+          nome: l.nome,
+          totalBRL: l.totalBRL,
+          economiaVsIntegral: l.economiaVsIntegral,
+        })),
+      );
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao comparar regimes.");
+    } finally {
+      setComparandoRegimes(false);
+    }
+  }
 
   function solicitarResolucaoNcmComFoco(idx?: number) {
     setResolucaoNcmIdx(idx);
@@ -2307,6 +2338,9 @@ export function Dashboard() {
                 confirmandoIcms={confirmandoIcms}
                 onReclassificarNcm={() => void reclassificarNcmCotacao()}
                 reclassificandoNcm={reclassificandoNcm}
+                comparacaoRegimes={comparacaoRegimes}
+                comparandoRegimes={comparandoRegimes}
+                onCompararRegimes={() => void compararRegimesCotacao(detalhe.id)}
               />
             </div>
           </div>
