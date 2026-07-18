@@ -14,9 +14,6 @@
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
-    "paths": {
-      "@cia/shared": ["../../packages/shared/src/index.ts"]
-    },
 
     /* Linting */
     "noUnusedLocals": true,
