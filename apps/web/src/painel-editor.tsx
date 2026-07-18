@@ -187,8 +187,9 @@ export function PainelEditorCotacao({
           </select>
         </div>
         <div>
-          <label className="label">Destino (UF / regime)</label>
+          <label className="label" htmlFor="cotacao-destino-selecao">Destino (UF / regime)</label>
           <select
+            id="cotacao-destino-selecao"
             className="input"
             value={draft.destinoSelecao}
             onChange={(e) => onChange(aplicarDestinoSelecao(draft, e.target.value))}

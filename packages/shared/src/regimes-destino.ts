@@ -51,7 +51,7 @@ export const REGIMES_DESTINO_PRESETS: Record<Exclude<RegimeDestinoId, typeof REG
   SC_TTD_FASE2: {
     id: "SC_TTD_FASE2",
     nome: "SC TTD fase 2",
-    labelLista: "Santa Catarina — TTD 1% (fase 2, após 36º mês)",
+    labelLista: "Santa Catarina — TTD 1% (fase 2)",
     uf: "SC",
     icmsImportacaoAliq: 0.01,
     icmsSaidaEfetivaAliq: 0.01,
@@ -62,7 +62,7 @@ export const REGIMES_DESTINO_PRESETS: Record<Exclude<RegimeDestinoId, typeof REG
   MG_CORREDOR: {
     id: "MG_CORREDOR",
     nome: "MG Corredor de Importação",
-    labelLista: "Minas Gerais — Corredor de Importação",
+    labelLista: "Minas Gerais — Corredor",
     uf: "MG",
     icmsImportacaoAliq: 0,
     icmsSaidaEfetivaAliq: 0.03,
@@ -75,7 +75,7 @@ export const REGIMES_DESTINO_PRESETS: Record<Exclude<RegimeDestinoId, typeof REG
   MG_TTS_ECOMMERCE: {
     id: "MG_TTS_ECOMMERCE",
     nome: "MG TTS E-commerce",
-    labelLista: "Minas Gerais — TTS E-commerce 1,3%",
+    labelLista: "Minas Gerais — TTS E-commerce",
     uf: "MG",
     icmsImportacaoAliq: 0,
     icmsSaidaEfetivaAliq: 0.013,
