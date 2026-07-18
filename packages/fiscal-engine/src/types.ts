@@ -71,6 +71,11 @@ export interface ParamsSaida {
   ipiAliqSaida?: number;
   /** ICMS de entrada (crédito) — diferido em Alagoas. Default 0. */
   icmsEntrada: number;
+  /**
+   * Fundos obrigatórios do regime de destino (% sobre venda líquida).
+   * Default 0 — regime Integral não altera o total.
+   */
+  aliqFundos?: number;
 }
 
 /** Cabeçalho da cotação. */
@@ -151,10 +156,12 @@ export interface ResultadoSaida {
   difPIS: number;
   difCOFINS: number;
   icmsSaida: number;
+  /** Fundos obrigatórios do regime (SC TTD etc.) — linha própria na invoice. */
+  fundosObrigatorios: number;
   csll: number;
   irrf: number;
   baseNotaSaida: number;
-  /** Soma dos impostos de saída (DIFs + ICMS + CSLL + IRRF). */
+  /** Soma dos impostos de saída (DIFs + ICMS + fundos + CSLL + IRRF). */
   impostosSaidaTotal: number;
 }
 

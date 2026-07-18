@@ -413,6 +413,22 @@ export const api = {
       body: JSON.stringify(opts),
     }).then(handle<CotacaoSalva>),
 
+  compararRegimesCotacao: (id: string) =>
+    fetchAutenticado(`${BASE}/api/cotacoes/${id}/comparar-regimes`, {}).then(
+      handle<{
+        linhas: Array<{
+          regimeDestinoId: string;
+          nome: string;
+          fonteLegal?: string;
+          totalBRL: number;
+          icmsEntradaAntecipado: number;
+          icmsSaida: number;
+          fundosObrigatorios: number;
+          economiaVsIntegral?: number;
+        }>;
+      }>,
+    ),
+
   confirmarNcmItem: (cotacaoId: string, ordem: number, confirmadoPor?: string) =>
     fetchComTimeout(
       `${BASE}/api/cotacoes/${cotacaoId}/itens/${ordem}/confirmar-ncm`,

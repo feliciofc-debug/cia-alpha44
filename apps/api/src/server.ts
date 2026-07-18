@@ -9,7 +9,7 @@ import type { LinhaCrua } from "@cia/pipeline";
 import { criarPdfNcmAuditCtx, enriquecerItensPdfNcmAudit, getHistoricoBenchmarkStats } from "@cia/pipeline";
 import { getState, recarregarNcmCatalog, recarregarComexBenchmark } from "./state.js";
 import { buscarCambioPtax } from "./services/cambio.js";
-import { calcularCotacao, montarItens } from "./services/cotacao.js";
+import { calcularCotacao, compararRegimesDestino, montarItens } from "./services/cotacao.js";
 import {
   atualizarCotacao,
   alterarCustoUnitarioVeiculoItem,
@@ -797,9 +797,20 @@ export async function buildServer() {
   const atualizarCotacaoBody = z.object({
     origem: z.string().optional(),
     destino: z.string().optional(),
+    destinoSelecao: z.string().optional(),
     benefFiscal: z.enum(["ALAGOAS", "NENHUM"]).optional(),
     ufEmpresa: z.string().optional(),
     regimeIcms: z.enum(["AL_DIFERIDO", "NORMAL"]).optional(),
+    regimeDestinoId: z.string().nullable().optional(),
+    regimeDestinoParams: z
+      .object({
+        icmsImportacaoAliq: z.number().min(0).max(1),
+        icmsSaidaEfetivaAliq: z.number().min(0).max(1),
+        aliqFundos: z.number().min(0).max(1),
+        difalAliq: z.number().min(0).max(1).optional(),
+      })
+      .nullable()
+      .optional(),
     empresaTrade: z.string().optional(),
     cliente: z.string().optional(),
     cambio: z.number().positive().optional(),
@@ -870,6 +881,18 @@ export async function buildServer() {
     if (!parsed.success) return reply.status(400).send({ erro: "Body inválido", detalhe: parsed.error.flatten() });
     const { id } = req.params as { id: string };
     return handleAtualizarCotacao(id, parsed.data, req, reply);
+  });
+
+  app.get("/api/cotacoes/:id/comparar-regimes", async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string };
+      const salva = await buscarCotacao(id, tenantSlug(req), getState());
+      if (!salva) return reply.status(404).send({ erro: "Cotação não encontrada." });
+      const linhas = compararRegimesDestino(salva.cotacao, getState());
+      return { linhas };
+    } catch (e) {
+      return persistenciaErro(reply, e);
+    }
   });
 
   app.post("/api/cotacoes/:id/duplicar", async (req, reply) => {

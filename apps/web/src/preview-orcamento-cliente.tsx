@@ -204,7 +204,14 @@ export function PreviewOrcamentoCliente({
 
         <div className="mt-3 grid grid-cols-3 border border-black text-center text-[11px] font-bold">
           <div className="border-r border-black px-2 py-1.5 text-left">DATA: {dataStr}</div>
-          <div className="border-r border-black px-2 py-1.5 text-blue-700">{porto}</div>
+          <div className="border-r border-black px-2 py-1.5 text-blue-700">
+            {porto}
+            {cotacao.regimeDestinoId ? (
+              <span className="mt-0.5 block text-[9px] font-normal text-emerald-800">
+                Regime: {cotacao.regimeDestinoId.replace(/_/g, " ")}
+              </span>
+            ) : null}
+          </div>
           <div className="px-2 py-1.5 text-right text-red-600">ESTIMATIVA</div>
         </div>
 
@@ -290,6 +297,9 @@ export function PreviewOrcamentoCliente({
               <Linha label="DIF PIS:" valor={`R$ ${fmtBrl(s.difPIS)}`} />
               <Linha label="DIF COFINS:" valor={`R$ ${fmtBrl(s.difCOFINS)}`} />
               <Linha label="ICMS SAIDA:" valor={`R$ ${fmtBrl(s.icmsSaida)}`} />
+              {(s.fundosObrigatorios ?? 0) > 0 && (
+                <Linha label="FUNDOS (regime):" valor={`R$ ${fmtBrl(s.fundosObrigatorios ?? 0)}`} />
+              )}
               <Linha label="CSLL:" valor={`R$ ${fmtBrl(s.csll)}`} />
               <Linha label="IRRF:" valor={`R$ ${fmtBrl(s.irrf)}`} />
               <Linha label="MARKUP:" valor={`R$ ${fmtBrl(s.markup)}`} />

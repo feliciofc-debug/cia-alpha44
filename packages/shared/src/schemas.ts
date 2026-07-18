@@ -259,8 +259,18 @@ export const paramsSaidaSchema = z.object({
   /** 0 = crédito integral IPI (Comex Plus). Omitido = média FOB (planilha 66). */
   ipiAliqSaida: z.number().min(0).max(1).optional(),
   icmsEntrada: z.number().min(0).default(0),
+  /** Fundos obrigatórios do regime de destino (% sobre venda líquida). Default 0. */
+  aliqFundos: z.number().min(0).max(1).default(0),
 });
 export type ParamsSaida = z.infer<typeof paramsSaidaSchema>;
+
+export const regimeDestinoParamsSchema = z.object({
+  icmsImportacaoAliq: z.number().min(0).max(1),
+  icmsSaidaEfetivaAliq: z.number().min(0).max(1),
+  aliqFundos: z.number().min(0).max(1),
+  difalAliq: z.number().min(0).max(1).optional(),
+});
+export type RegimeDestinoParamsPersistido = z.infer<typeof regimeDestinoParamsSchema>;
 
 /** Benefícios fiscais suportados na formação de preço (v1). */
 export const BENEFICIOS_FISCAIS = ["ALAGOAS", "NENHUM"] as const;
@@ -300,6 +310,10 @@ export const cotacaoSchema = z.object({
   icmsSaidaManualFlag: z.boolean().default(false),
   /** Avisos fiscais persistidos (ex.: legado ICMS). */
   avisosFiscais: z.array(z.string()).default([]),
+  /** Preset de regime de destino (null/INTEGRAL = comportamento atual). */
+  regimeDestinoId: z.string().nullable().optional(),
+  /** Overrides editáveis do preset de regime. */
+  regimeDestinoParams: regimeDestinoParamsSchema.nullable().optional(),
   itens: z.array(itemSchema),
   despesas: z.array(despesaSchema),
   /** Número de containers — despesas locais são escaladas por este fator (default planilha 66). */

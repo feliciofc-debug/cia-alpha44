@@ -89,7 +89,8 @@ export function calcSaida(
 
   const irrf = (markup + baseNotaSaida * params.irrfBaseNotaPct) * params.irrfAliq;
 
-  const impostosSaidaTotal = difIPI + difPIS + difCOFINS + icmsSaida + csll + irrf;
+  const fundosObrigatorios = (params.aliqFundos ?? 0) * vendaLiquida;
+  const impostosSaidaTotal = difIPI + difPIS + difCOFINS + icmsSaida + fundosObrigatorios + csll + irrf;
 
   return {
     outrasDespesasBaseBRL,
@@ -102,6 +103,7 @@ export function calcSaida(
     difPIS,
     difCOFINS,
     icmsSaida,
+    fundosObrigatorios,
     csll,
     irrf,
     baseNotaSaida,

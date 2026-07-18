@@ -1,7 +1,16 @@
 /** Orquestração da cotação: montar itens (parser→IA→TEC) e calcular (engine+benchmark+risco). */
 
 import { calcCotacao, type CotacaoFiscalInput } from "@cia/fiscal-engine";
-import { validarConfirmacaoNcmItens, aplicarIcmsCotacao, ncmInformadoParaFechamento, type IcmsCotacaoMeta } from "@cia/shared";
+import {
+  validarConfirmacaoNcmItens,
+  aplicarIcmsCotacao,
+  ncmInformadoParaFechamento,
+  REGIMES_COMPARADOR,
+  REGIME_DESTINO_INTEGRAL,
+  presetRegimeDestino,
+  type IcmsCotacaoMeta,
+  type RegimeDestinoId,
+} from "@cia/shared";
 import {
   analisarRisco,
   anexarMetaFobItem,
@@ -871,7 +880,7 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
     ...cotacao,
     params: normalizarParamsIpiSaidaLegado(cotacao.params),
   };
-  const { params: paramsIcms, meta: icms } = aplicarIcmsCotacao(cotacaoSemOverrideIpiLegado);
+  const { params: paramsIcms, meta: icms, icmsEntradaItemAliq } = aplicarIcmsCotacao(cotacaoSemOverrideIpiLegado);
   const paramsEngine = { ...paramsIcms };
   const cotacaoIcms = { ...cotacaoSemOverrideIpiLegado, params: paramsEngine };
 
@@ -958,7 +967,8 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
       aliqIPI: it.aliquotas.ipi,
       aliqPIS: it.aliquotas.pis,
       aliqCOFINS: it.aliquotas.cofins,
-      aliqICMSEntrada: it.aliquotas.icmsEntrada,
+      aliqICMSEntrada:
+        icmsEntradaItemAliq > 0 ? icmsEntradaItemAliq : it.aliquotas.icmsEntrada,
     })),
     despesas: cotacaoIcms.despesas.map((d) => ({
       nome: d.nome,
@@ -970,8 +980,62 @@ export function calcularCotacao(cotacao: Cotacao, state: AppState): ResultadoCom
     params: paramsEngine,
   };
 
-  const resultado = calcCotacao(engineInput);
-  return { resultado, itens: validarConfirmacaoNcmItens(itensEnriquecidos), icms, params: paramsEngine };
+  const resultadoPre = calcCotacao(engineInput);
+  const creditoIcmsEntrada =
+    icmsEntradaItemAliq > 0
+      ? resultadoPre.itens.reduce((acc, it) => acc + it.icmsEntrada, 0)
+      : paramsEngine.icmsEntrada ?? 0;
+  const paramsFinal =
+    creditoIcmsEntrada > 0 && creditoIcmsEntrada !== paramsEngine.icmsEntrada
+      ? { ...paramsEngine, icmsEntrada: creditoIcmsEntrada }
+      : paramsEngine;
+  const resultado =
+    paramsFinal === paramsEngine
+      ? resultadoPre
+      : calcCotacao({ ...engineInput, params: paramsFinal });
+  return { resultado, itens: validarConfirmacaoNcmItens(itensEnriquecidos), icms, params: paramsFinal };
+}
+
+export interface ComparacaoRegimeLinha {
+  regimeDestinoId: RegimeDestinoId;
+  nome: string;
+  fonteLegal?: string;
+  totalBRL: number;
+  icmsEntradaAntecipado: number;
+  icmsSaida: number;
+  fundosObrigatorios: number;
+  economiaVsIntegral?: number;
+}
+
+/** Roda o motor N vezes (mesma cotação, presets distintos) — argumento de venda. */
+export function compararRegimesDestino(cotacao: Cotacao, state: AppState): ComparacaoRegimeLinha[] {
+  const integral = calcularCotacao(
+    { ...cotacao, regimeDestinoId: undefined, regimeDestinoParams: undefined },
+    state,
+  );
+  const totalIntegral = integral.resultado.totalBRL;
+
+  return REGIMES_COMPARADOR.map((regimeId) => {
+    const preset = presetRegimeDestino(regimeId);
+    const nome =
+      regimeId === REGIME_DESTINO_INTEGRAL ? "Integral (atual)" : (preset?.nome ?? regimeId);
+    const variant: Cotacao =
+      regimeId === REGIME_DESTINO_INTEGRAL
+        ? { ...cotacao, regimeDestinoId: undefined, regimeDestinoParams: undefined }
+        : { ...cotacao, regimeDestinoId: regimeId, regimeDestinoParams: undefined };
+    const { resultado } = calcularCotacao(variant, state);
+    const antecipado = resultado.itens.reduce((a, it) => a + it.icmsEntrada, 0);
+    return {
+      regimeDestinoId: regimeId,
+      nome,
+      fonteLegal: preset?.fonteLegal,
+      totalBRL: resultado.totalBRL,
+      icmsEntradaAntecipado: antecipado,
+      icmsSaida: resultado.saida.icmsSaida,
+      fundosObrigatorios: resultado.saida.fundosObrigatorios ?? 0,
+      economiaVsIntegral: totalIntegral - resultado.totalBRL,
+    };
+  });
 }
 
 export { fobKgFinalItem, fobKgReferenciaItem, fobTotalPlanilhaItem, fobUsadoNoEngine, pesoEngineItem, pesoFobPlanilhaItem };
