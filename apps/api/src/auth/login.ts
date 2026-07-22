@@ -12,6 +12,10 @@ const bodySchema = z.object({
   senha: z.string().min(1),
 });
 
+function mensagemUsuarioBloqueado(): string {
+  return process.env.AVISO_BLOQUEIO_MSG?.trim() || "Conta bloqueada — contate o administrador.";
+}
+
 export async function registrarRotaLogin(app: FastifyInstance): Promise<void> {
   app.post("/api/auth/login", async (req, reply) => {
     if (!jwtConfigurado()) {
@@ -32,7 +36,7 @@ export async function registrarRotaLogin(app: FastifyInstance): Promise<void> {
         return reply.status(403).send({ erro: "Aguardando aprovação do administrador." });
       }
       if (resultado.motivo === "bloqueado") {
-        return reply.status(403).send({ erro: "Conta bloqueada — contate o administrador." });
+        return reply.status(403).send({ erro: mensagemUsuarioBloqueado() });
       }
       return reply.status(401).send({ erro: "E-mail ou senha incorretos." });
     }

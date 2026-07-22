@@ -83,6 +83,7 @@ export interface Meta {
   ncmVigenteTotal?: number;
   ncmVigenteAtualizado?: string | null;
   benefFiscal: string;
+  avisoBannerMsg?: string | null;
   planilhaFobKg?: {
     carregado: boolean;
     total: number;

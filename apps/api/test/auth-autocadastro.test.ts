@@ -257,6 +257,28 @@ describe("autocadastro com aprovação admin", () => {
     await server.close();
   });
 
+  it("login bloqueado usa AVISO_BLOQUEIO_MSG quando configurado", async () => {
+    const hash = await bcrypt.hash("senha-forte", 12);
+    seedUsuario({
+      email: "bloq-msg@test.com",
+      senhaHash: hash,
+      status: "bloqueado",
+    });
+    process.env.AVISO_BLOQUEIO_MSG = "Acesso suspenso. Regularize o pagamento com financeiro@empresa.test.";
+
+    const server = await app();
+    const login = await server.inject({
+      method: "POST",
+      url: "/api/auth/login",
+      payload: { email: "bloq-msg@test.com", senha: "senha-forte" },
+    });
+    expect(login.statusCode).toBe(403);
+    expect(JSON.parse(login.body).erro).toBe(
+      "Acesso suspenso. Regularize o pagamento com financeiro@empresa.test.",
+    );
+    await server.close();
+  });
+
   it("rotas admin — operador recebe 403", async () => {
     seedUsuario({
       email: "ops@test.com",

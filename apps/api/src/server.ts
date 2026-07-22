@@ -121,6 +121,7 @@ export async function buildServer() {
       ncmVigenteTotal: s.ncmCatalog.total,
       ncmVigenteAtualizado: s.ncmCatalog.dataUltimaAtualizacao,
       benefFiscal: "ALAGOAS",
+      avisoBannerMsg: process.env.AVISO_BANNER_MSG?.trim() || null,
       planilhaFobKg: {
         carregado: planilha.carregado,
         total: planilha.total,
