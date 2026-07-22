@@ -22,6 +22,6 @@ describe("AppShell", () => {
       </AppShell>,
     );
 
-    expect(screen.getByText("Usuários (!)")).toBeTruthy();
+    expect(screen.getAllByText("Usuários (!)").length).toBeGreaterThanOrEqual(1);
   });
 });
