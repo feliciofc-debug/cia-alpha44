@@ -3,14 +3,21 @@
  */
 
 import bcrypt from "bcryptjs";
-import { prisma, type Usuario, type UsuarioRole, type UsuarioStatus } from "@cia/db";
+import {
+  prisma,
+  type LoginEvento,
+  type LoginEventoMotivo,
+  type Usuario,
+  type UsuarioRole,
+  type UsuarioStatus,
+} from "@cia/db";
 
 const BCRYPT_ROUNDS = 12;
 const ADMIN_EMAIL_PADRAO = "feliciofc@gmail.com";
 
 export type UsuarioPublico = Pick<
   Usuario,
-  "id" | "email" | "nome" | "status" | "role" | "criadoEm" | "aprovadoEm" | "aprovadoPor"
+  "id" | "email" | "nome" | "status" | "role" | "criadoEm" | "aprovadoEm" | "aprovadoPor" | "ultimoLoginEm"
 >;
 
 export function usuarioParaPublico(u: Usuario): UsuarioPublico {
@@ -23,6 +30,7 @@ export function usuarioParaPublico(u: Usuario): UsuarioPublico {
     criadoEm: u.criadoEm,
     aprovadoEm: u.aprovadoEm,
     aprovadoPor: u.aprovadoPor,
+    ultimoLoginEm: u.ultimoLoginEm,
   };
 }
 
@@ -38,6 +46,70 @@ export async function listarUsuarios(): Promise<UsuarioPublico[]> {
 
 export async function contarUsuariosPendentes(): Promise<number> {
   return prisma.usuario.count({ where: { status: "pendente" } });
+}
+
+export type LoginEventoPublico = Pick<
+  LoginEvento,
+  "id" | "usuarioId" | "email" | "sucesso" | "motivo" | "criadoEm"
+>;
+
+function normalizarEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function eventoParaPublico(e: LoginEvento): LoginEventoPublico {
+  return {
+    id: e.id,
+    usuarioId: e.usuarioId,
+    email: e.email,
+    sucesso: e.sucesso,
+    motivo: e.motivo,
+    criadoEm: e.criadoEm,
+  };
+}
+
+async function registrarLoginEvento(input: {
+  usuario?: Usuario | null;
+  email: string;
+  sucesso: boolean;
+  motivo: LoginEventoMotivo;
+}): Promise<void> {
+  await prisma.loginEvento.create({
+    data: {
+      usuarioId: input.usuario?.id ?? null,
+      email: normalizarEmail(input.email),
+      sucesso: input.sucesso,
+      motivo: input.motivo,
+    },
+  });
+}
+
+export async function listarLoginEventos(opts?: { limite?: number; offset?: number }): Promise<{
+  eventos: LoginEventoPublico[];
+  total: number;
+}> {
+  const limite = Math.min(Math.max(opts?.limite ?? 20, 1), 100);
+  const offset = Math.max(opts?.offset ?? 0, 0);
+  const [rows, total] = await Promise.all([
+    prisma.loginEvento.findMany({
+      orderBy: { criadoEm: "desc" },
+      take: limite,
+      skip: offset,
+    }),
+    prisma.loginEvento.count(),
+  ]);
+  return { eventos: rows.map(eventoParaPublico), total };
+}
+
+export async function contarLoginsBloqueadosRecentes(horas = 24): Promise<number> {
+  const horasNormalizadas = Number.isFinite(horas) ? Math.min(Math.max(horas, 1), 24 * 30) : 24;
+  const desde = new Date(Date.now() - horasNormalizadas * 60 * 60 * 1000);
+  return prisma.loginEvento.count({
+    where: {
+      motivo: "bloqueado",
+      criadoEm: { gte: desde },
+    },
+  });
 }
 
 export async function criarUsuarioPendente(dados: {
@@ -70,13 +142,43 @@ export type ResultadoLogin =
   | { ok: false; motivo: "credenciais" | "pendente" | "bloqueado" };
 
 export async function validarLogin(email: string, senha: string): Promise<ResultadoLogin> {
-  const usuario = await buscarUsuarioPorEmail(email);
-  if (!usuario) return { ok: false, motivo: "credenciais" };
+  const emailNormalizado = normalizarEmail(email);
+  const usuario = await buscarUsuarioPorEmail(emailNormalizado);
+  if (!usuario) {
+    await registrarLoginEvento({ email: emailNormalizado, sucesso: false, motivo: "senha_errada" });
+    return { ok: false, motivo: "credenciais" };
+  }
   const senhaOk = await bcrypt.compare(senha, usuario.senhaHash);
-  if (!senhaOk) return { ok: false, motivo: "credenciais" };
-  if (usuario.status === "pendente") return { ok: false, motivo: "pendente" };
-  if (usuario.status === "bloqueado") return { ok: false, motivo: "bloqueado" };
-  return { ok: true, usuario };
+  if (!senhaOk) {
+    await registrarLoginEvento({ usuario, email: emailNormalizado, sucesso: false, motivo: "senha_errada" });
+    return { ok: false, motivo: "credenciais" };
+  }
+  if (usuario.status === "pendente") {
+    await registrarLoginEvento({ usuario, email: emailNormalizado, sucesso: false, motivo: "pendente" });
+    return { ok: false, motivo: "pendente" };
+  }
+  if (usuario.status === "bloqueado") {
+    await registrarLoginEvento({ usuario, email: emailNormalizado, sucesso: false, motivo: "bloqueado" });
+    return { ok: false, motivo: "bloqueado" };
+  }
+
+  const agora = new Date();
+  const [atualizado] = await prisma.$transaction([
+    prisma.usuario.update({
+      where: { id: usuario.id },
+      data: { ultimoLoginEm: agora },
+    }),
+    prisma.loginEvento.create({
+      data: {
+        usuarioId: usuario.id,
+        email: emailNormalizado,
+        sucesso: true,
+        motivo: "ok",
+        criadoEm: agora,
+      },
+    }),
+  ]);
+  return { ok: true, usuario: atualizado };
 }
 
 export async function aprovarUsuario(id: string, adminEmail: string): Promise<UsuarioPublico | null> {

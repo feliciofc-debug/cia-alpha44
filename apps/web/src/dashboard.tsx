@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "./auth/auth.tsx";
 import { lerTokenArmazenado } from "./auth/token-storage.ts";
-import { api, type AnaliseCompleta, type Meta, type UsuarioAdmin } from "./lib/api.ts";
+import { api, type AnaliseCompleta, type LoginEventoAdmin, type Meta, type UsuarioAdmin } from "./lib/api.ts";
 import { brl, fmtNcm, pct, usdKg } from "./lib/format.ts";
 import { fobKgItem } from "./lib/fob-kg.ts";
 import { contarItensComFoto, fotoItemSrc } from "./lib/item-foto.ts";
@@ -35,6 +35,18 @@ import { DetalheRastroAliquota } from "./lib/aliquota-rastro-ui.tsx";
 import type { ClienteResumo, DashboardKpis, DashboardSeries } from "./lib/types.ts";
 
 type View = NavItem | "detalhe";
+
+export function AvisoBannerPainel({ mensagem, isAdmin }: { mensagem?: string | null; isAdmin: boolean }) {
+  if (isAdmin || !mensagem?.trim()) return null;
+  return (
+    <div
+      role="status"
+      className="sticky top-0 z-20 mb-4 rounded-xl border border-amber-400/40 bg-amber-500/15 px-4 py-3 text-sm font-medium text-amber-100 shadow-lg shadow-amber-950/20"
+    >
+      {mensagem}
+    </div>
+  );
+}
 
 const CANAL_LABEL: Record<Canal, string> = {
   VERDE_PROVAVEL: "Verde",
@@ -1210,8 +1222,10 @@ export function Dashboard() {
   const [clientes, setClientes] = useState<ClienteResumo[]>([]);
   const [clientesLoading, setClientesLoading] = useState(false);
   const [usuarios, setUsuarios] = useState<UsuarioAdmin[]>([]);
+  const [loginEventos, setLoginEventos] = useState<LoginEventoAdmin[]>([]);
   const [usuariosLoading, setUsuariosLoading] = useState(false);
   const [usuariosPendentes, setUsuariosPendentes] = useState(0);
+  const [usuariosAlertaBloqueados, setUsuariosAlertaBloqueados] = useState(0);
   const [usuarioAcaoId, setUsuarioAcaoId] = useState<string | null>(null);
 
   const isAdmin = user?.role === "admin";
@@ -1263,11 +1277,16 @@ export function Dashboard() {
     if (!isAdmin) return;
     setUsuariosLoading(true);
     try {
-      const res = await api.listarUsuariosAdmin();
-      setUsuarios(res.usuarios);
-      setUsuariosPendentes(res.pendentes);
+      const [usuariosRes, eventosRes] = await Promise.all([
+        api.listarUsuariosAdmin(),
+        api.listarLoginEventosAdmin(20),
+      ]);
+      setUsuarios(usuariosRes.usuarios);
+      setUsuariosPendentes(usuariosRes.pendentes);
+      setLoginEventos(eventosRes.eventos);
     } catch (e) {
       setUsuarios([]);
+      setLoginEventos([]);
       setErro(e instanceof Error ? e.message : "Falha ao carregar usuários.");
     } finally {
       setUsuariosLoading(false);
@@ -1279,6 +1298,8 @@ export function Dashboard() {
     try {
       const res = await api.contarUsuariosPendentes();
       setUsuariosPendentes(res.pendentes);
+      const bloqueados = await api.contarLoginsBloqueadosRecentes();
+      setUsuariosAlertaBloqueados(bloqueados.bloqueados24h);
     } catch {
       /* badge opcional */
     }
@@ -1308,6 +1329,7 @@ export function Dashboard() {
       setView("referencia");
     } else if (n === "usuarios") {
       setView("usuarios");
+      setUsuariosAlertaBloqueados(0);
       void carregarUsuarios();
     }
   }
@@ -2049,6 +2071,7 @@ export function Dashboard() {
       userEmail={user?.email}
       isAdmin={isAdmin}
       usuariosPendentes={usuariosPendentes}
+      usuariosAlertaBloqueados={usuariosAlertaBloqueados}
       totalHoje={totalHoje}
       busca={busca}
       onBuscaChange={setBusca}
@@ -2056,6 +2079,7 @@ export function Dashboard() {
       onLogout={logout}
     >
       <div className="container-cia py-6 md:py-8">
+        <AvisoBannerPainel mensagem={meta?.avisoBannerMsg} isAdmin={isAdmin} />
         {erro && (
           <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-300">
             <p>{erro}</p>
@@ -2114,6 +2138,7 @@ export function Dashboard() {
           <div className="card overflow-hidden">
             <UsuariosView
               usuarios={usuarios}
+              loginEventos={loginEventos}
               loading={usuariosLoading}
               acaoId={usuarioAcaoId}
               onAprovar={aprovarUsuario}

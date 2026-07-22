@@ -22,7 +22,7 @@ function IconOlhoFechado() {
 
 type AuthTab = "entrar" | "criar";
 
-function LoginScreen() {
+export function LoginScreen() {
   const { login, register } = useAuth();
   const [tab, setTab] = useState<AuthTab>("entrar");
   const [email, setEmail] = useState("");
@@ -161,7 +161,14 @@ function LoginScreen() {
                     </button>
                   </div>
                 </div>
-                {erro && <p className="text-sm text-red-400">{erro}</p>}
+                {erro && (
+                  <div
+                    role="alert"
+                    className="rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-100 shadow-lg shadow-red-950/20"
+                  >
+                    {erro}
+                  </div>
+                )}
                 <button type="submit" className="btn-primary w-full" disabled={loading}>
                   {loading ? "Aguarde…" : "Entrar"}
                 </button>

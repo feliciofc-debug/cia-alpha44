@@ -17,6 +17,7 @@ export function AppShell({
   userEmail,
   isAdmin = false,
   usuariosPendentes = 0,
+  usuariosAlertaBloqueados = 0,
   totalHoje,
   busca,
   onBuscaChange,
@@ -29,6 +30,7 @@ export function AppShell({
   userEmail?: string;
   isAdmin?: boolean;
   usuariosPendentes?: number;
+  usuariosAlertaBloqueados?: number;
   totalHoje: number;
   busca: string;
   onBuscaChange: (v: string) => void;
@@ -39,6 +41,9 @@ export function AppShell({
   const navItems = NAV_BASE.filter((item) => !item.adminOnly || isAdmin);
 
   function labelNav(item: (typeof NAV_BASE)[number]) {
+    if (item.id === "usuarios" && usuariosAlertaBloqueados > 0) {
+      return `${item.label} (!)`;
+    }
     if (item.id === "usuarios" && usuariosPendentes > 0) {
       return `${item.label} (${usuariosPendentes})`;
     }
@@ -75,6 +80,11 @@ export function AppShell({
               {item.id === "usuarios" && usuariosPendentes > 0 && (
                 <span className="rounded-full bg-amber-500/30 px-2 py-0.5 text-[10px] font-bold text-amber-200">
                   {usuariosPendentes}
+                </span>
+              )}
+              {item.id === "usuarios" && usuariosAlertaBloqueados > 0 && (
+                <span className="rounded-full bg-red-500/30 px-2 py-0.5 text-[10px] font-bold text-red-200">
+                  !
                 </span>
               )}
             </button>

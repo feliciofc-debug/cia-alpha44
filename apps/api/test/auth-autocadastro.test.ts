@@ -13,12 +13,24 @@ type UsuarioRow = {
   criadoEm: Date;
   aprovadoEm: Date | null;
   aprovadoPor: string | null;
+  ultimoLoginEm: Date | null;
+};
+
+type LoginEventoRow = {
+  id: string;
+  usuarioId: string | null;
+  email: string;
+  sucesso: boolean;
+  motivo: "ok" | "bloqueado" | "pendente" | "senha_errada";
+  criadoEm: Date;
 };
 
 const usuarios = new Map<string, UsuarioRow>();
+const loginEventos: LoginEventoRow[] = [];
 
 function resetUsuarios() {
   usuarios.clear();
+  loginEventos.length = 0;
 }
 
 function seedUsuario(partial: Partial<UsuarioRow> & Pick<UsuarioRow, "email" | "senhaHash">) {
@@ -33,8 +45,22 @@ function seedUsuario(partial: Partial<UsuarioRow> & Pick<UsuarioRow, "email" | "
     criadoEm: partial.criadoEm ?? new Date(),
     aprovadoEm: partial.aprovadoEm ?? null,
     aprovadoPor: partial.aprovadoPor ?? null,
+    ultimoLoginEm: partial.ultimoLoginEm ?? null,
   };
   usuarios.set(email, row);
+  return row;
+}
+
+function seedLoginEvento(partial: Partial<LoginEventoRow> & Pick<LoginEventoRow, "email" | "motivo">) {
+  const row: LoginEventoRow = {
+    id: partial.id ?? `le-${loginEventos.length + 1}`,
+    usuarioId: partial.usuarioId ?? null,
+    email: partial.email.trim().toLowerCase(),
+    sucesso: partial.sucesso ?? partial.motivo === "ok",
+    motivo: partial.motivo,
+    criadoEm: partial.criadoEm ?? new Date(),
+  };
+  loginEventos.push(row);
   return row;
 }
 
@@ -48,6 +74,7 @@ vi.mock("../src/auth/tenant.js", async (importOriginal) => {
 
 vi.mock("@cia/db", () => ({
   prisma: {
+    $transaction: vi.fn(async (ops: Array<Promise<unknown>>) => Promise.all(ops)),
     tenant: {
       upsert: vi.fn(async () => ({ id: "tid-default", slug: "default", nome: "default" })),
     },
@@ -78,6 +105,31 @@ vi.mock("@cia/db", () => ({
         const atualizado = { ...row, ...data };
         usuarios.set(row.email, atualizado);
         return atualizado;
+      }),
+    },
+    loginEvento: {
+      create: vi.fn(async ({ data }: { data: Omit<LoginEventoRow, "id" | "criadoEm"> & { criadoEm?: Date } }) => {
+        const row = seedLoginEvento({
+          id: `le-${loginEventos.length + 1}`,
+          usuarioId: data.usuarioId,
+          email: data.email,
+          sucesso: data.sucesso,
+          motivo: data.motivo,
+          criadoEm: data.criadoEm ?? new Date(),
+        });
+        return row;
+      }),
+      findMany: vi.fn(async ({ take, skip }: { take?: number; skip?: number }) => {
+        return [...loginEventos]
+          .sort((a, b) => b.criadoEm.getTime() - a.criadoEm.getTime())
+          .slice(skip ?? 0, (skip ?? 0) + (take ?? loginEventos.length));
+      }),
+      count: vi.fn(async ({ where }: { where?: { motivo?: string; criadoEm?: { gte?: Date } } } = {}) => {
+        return loginEventos.filter((ev) => {
+          if (where?.motivo && ev.motivo !== where.motivo) return false;
+          if (where?.criadoEm?.gte && ev.criadoEm < where.criadoEm.gte) return false;
+          return true;
+        }).length;
       }),
     },
   },
@@ -195,6 +247,35 @@ describe("autocadastro com aprovação admin", () => {
     });
     expect(login.statusCode).toBe(403);
     expect(JSON.parse(login.body).erro).toMatch(/bloquead/i);
+    expect(loginEventos).toHaveLength(1);
+    expect(loginEventos[0]).toMatchObject({
+      usuarioId: bloqueado.id,
+      email: "bloq@test.com",
+      sucesso: false,
+      motivo: "bloqueado",
+    });
+    await server.close();
+  });
+
+  it("login bloqueado usa AVISO_BLOQUEIO_MSG quando configurado", async () => {
+    const hash = await bcrypt.hash("senha-forte", 12);
+    seedUsuario({
+      email: "bloq-msg@test.com",
+      senhaHash: hash,
+      status: "bloqueado",
+    });
+    process.env.AVISO_BLOQUEIO_MSG = "Acesso suspenso. Regularize o pagamento com financeiro@empresa.test.";
+
+    const server = await app();
+    const login = await server.inject({
+      method: "POST",
+      url: "/api/auth/login",
+      payload: { email: "bloq-msg@test.com", senha: "senha-forte" },
+    });
+    expect(login.statusCode).toBe(403);
+    expect(JSON.parse(login.body).erro).toBe(
+      "Acesso suspenso. Regularize o pagamento com financeiro@empresa.test.",
+    );
     await server.close();
   });
 
@@ -214,6 +295,12 @@ describe("autocadastro com aprovação admin", () => {
       headers: { authorization: `Bearer ${token}` },
     });
     expect(res.statusCode).toBe(403);
+    const eventos = await server.inject({
+      method: "GET",
+      url: "/api/admin/login-eventos",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(eventos.statusCode).toBe(403);
     await server.close();
   });
 
@@ -244,6 +331,29 @@ describe("autocadastro com aprovação admin", () => {
     });
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body).pendentes).toBe(2);
+    await server.close();
+  });
+
+  it("badge bloqueados — conta só tentativas bloqueadas nas últimas 24h", async () => {
+    seedUsuario({
+      email: "admin@test.com",
+      senhaHash: "x",
+      status: "aprovado",
+      role: "admin",
+    });
+    seedLoginEvento({ email: "bloq1@test.com", motivo: "bloqueado" });
+    seedLoginEvento({ email: "bloq2@test.com", motivo: "bloqueado", criadoEm: new Date(Date.now() - 25 * 60 * 60 * 1000) });
+    seedLoginEvento({ email: "ops@test.com", motivo: "senha_errada" });
+
+    const server = await app();
+    const token = await emitirToken({ email: "admin@test.com", role: "admin" });
+    const res = await server.inject({
+      method: "GET",
+      url: "/api/admin/login-eventos/bloqueados-count",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).bloqueados24h).toBe(1);
     await server.close();
   });
 });
@@ -406,6 +516,15 @@ describe("POST /api/auth/login", () => {
     expect(body.nome).toBe("Operador");
     expect(body.role).toBe("operador");
     expect(body.token.split(".")).toHaveLength(3);
+    const usuario = usuarios.get("ops@cia.com.br");
+    expect(usuario?.ultimoLoginEm).toBeInstanceOf(Date);
+    expect(loginEventos).toHaveLength(1);
+    expect(loginEventos[0]).toMatchObject({
+      usuarioId: usuario?.id,
+      email: "ops@cia.com.br",
+      sucesso: true,
+      motivo: "ok",
+    });
     await app.close();
   });
 
@@ -422,6 +541,12 @@ describe("POST /api/auth/login", () => {
 
     expect(res.statusCode).toBe(401);
     expect(JSON.parse(res.body).erro).toMatch(/incorretos/i);
+    expect(loginEventos).toHaveLength(1);
+    expect(loginEventos[0]).toMatchObject({
+      email: "ops@cia.com.br",
+      sucesso: false,
+      motivo: "senha_errada",
+    });
     await app.close();
   });
 });
