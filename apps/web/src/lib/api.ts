@@ -109,6 +109,16 @@ export interface UsuarioAdmin {
   criadoEm: string;
   aprovadoEm: string | null;
   aprovadoPor: string | null;
+  ultimoLoginEm: string | null;
+}
+
+export interface LoginEventoAdmin {
+  id: string;
+  usuarioId: string | null;
+  email: string;
+  sucesso: boolean;
+  motivo: "ok" | "bloqueado" | "pendente" | "senha_errada";
+  criadoEm: string;
 }
 
 export interface BenchmarkPlanilhaStatus {
@@ -682,6 +692,18 @@ export const api = {
   contarUsuariosPendentes: () =>
     fetchComTimeout(`${BASE}/api/admin/usuarios/pendentes-count`, {}, API_TIMEOUT_MS).then(
       handle<{ pendentes: number }>,
+    ),
+
+  listarLoginEventosAdmin: (limite = 20, offset = 0) =>
+    fetchComTimeout(
+      `${BASE}/api/admin/login-eventos?limite=${limite}&offset=${offset}`,
+      {},
+      API_TIMEOUT_MS,
+    ).then(handle<{ eventos: LoginEventoAdmin[]; total: number }>),
+
+  contarLoginsBloqueadosRecentes: () =>
+    fetchComTimeout(`${BASE}/api/admin/login-eventos/bloqueados-count`, {}, API_TIMEOUT_MS).then(
+      handle<{ bloqueados24h: number }>,
     ),
 
   atualizarUsuarioAdmin: (id: string, acao: "aprovar" | "bloquear") =>

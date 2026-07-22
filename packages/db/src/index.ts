@@ -11,4 +11,6 @@ export type {
   Usuario,
   UsuarioStatus,
   UsuarioRole,
+  LoginEvento,
+  LoginEventoMotivo,
 } from "@prisma/client";

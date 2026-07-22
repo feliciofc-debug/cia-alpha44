@@ -7,7 +7,9 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import {
   aprovarUsuario,
   bloquearUsuario,
+  contarLoginsBloqueadosRecentes,
   contarUsuariosPendentes,
+  listarLoginEventos,
   listarUsuarios,
   usuarioEhAdmin,
 } from "./usuario-db.js";
@@ -30,6 +32,11 @@ const patchSchema = z.object({
   acao: z.enum(["aprovar", "bloquear"]),
 });
 
+const loginEventosQuerySchema = z.object({
+  limite: z.coerce.number().int().min(1).max(100).default(20),
+  offset: z.coerce.number().int().min(0).default(0),
+});
+
 export async function registrarRotasAdminUsuarios(app: FastifyInstance): Promise<void> {
   app.get("/api/admin/usuarios", async (req, reply) => {
     if (!(await exigirAdmin(req, reply))) return;
@@ -41,6 +48,21 @@ export async function registrarRotasAdminUsuarios(app: FastifyInstance): Promise
     if (!(await exigirAdmin(req, reply))) return;
     const pendentes = await contarUsuariosPendentes();
     return { pendentes };
+  });
+
+  app.get("/api/admin/login-eventos", async (req, reply) => {
+    if (!(await exigirAdmin(req, reply))) return;
+    const parsed = loginEventosQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return reply.status(400).send({ erro: "Parâmetros inválidos para eventos de login." });
+    }
+    return listarLoginEventos(parsed.data);
+  });
+
+  app.get("/api/admin/login-eventos/bloqueados-count", async (req, reply) => {
+    if (!(await exigirAdmin(req, reply))) return;
+    const bloqueados24h = await contarLoginsBloqueadosRecentes(24);
+    return { bloqueados24h };
   });
 
   app.patch("/api/admin/usuarios/:id", async (req, reply) => {
