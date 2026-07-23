@@ -148,20 +148,19 @@ export async function validarLogin(email: string, senha: string): Promise<Result
     await registrarLoginEvento({ email: emailNormalizado, sucesso: false, motivo: "senha_errada" });
     return { ok: false, motivo: "credenciais" };
   }
-  const senhaOk = await bcrypt.compare(senha, usuario.senhaHash);
-  if (!senhaOk) {
-    await registrarLoginEvento({ usuario, email: emailNormalizado, sucesso: false, motivo: "senha_errada" });
-    return { ok: false, motivo: "credenciais" };
+  if (usuario.status === "bloqueado") {
+    await registrarLoginEvento({ usuario, email: emailNormalizado, sucesso: false, motivo: "bloqueado" });
+    return { ok: false, motivo: "bloqueado" };
   }
   if (usuario.status === "pendente") {
     await registrarLoginEvento({ usuario, email: emailNormalizado, sucesso: false, motivo: "pendente" });
     return { ok: false, motivo: "pendente" };
   }
-  if (usuario.status === "bloqueado") {
-    await registrarLoginEvento({ usuario, email: emailNormalizado, sucesso: false, motivo: "bloqueado" });
-    return { ok: false, motivo: "bloqueado" };
+  const senhaOk = await bcrypt.compare(senha, usuario.senhaHash);
+  if (!senhaOk) {
+    await registrarLoginEvento({ usuario, email: emailNormalizado, sucesso: false, motivo: "senha_errada" });
+    return { ok: false, motivo: "credenciais" };
   }
-
   const agora = new Date();
   const [atualizado] = await prisma.$transaction([
     prisma.usuario.update({

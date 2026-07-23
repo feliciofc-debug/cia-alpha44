@@ -279,6 +279,60 @@ describe("autocadastro com aprovação admin", () => {
     await server.close();
   });
 
+  it("login de usuário bloqueado registra tentativa mesmo com senha errada", async () => {
+    const hash = await bcrypt.hash("senha-forte", 12);
+    const bloqueado = seedUsuario({
+      email: "bloq-senha@test.com",
+      senhaHash: hash,
+      status: "bloqueado",
+    });
+
+    const server = await app();
+    const login = await server.inject({
+      method: "POST",
+      url: "/api/auth/login",
+      payload: { email: "bloq-senha@test.com", senha: "senha-errada" },
+    });
+
+    expect(login.statusCode).toBe(403);
+    expect(JSON.parse(login.body).erro).toMatch(/bloquead/i);
+    expect(loginEventos).toHaveLength(1);
+    expect(loginEventos[0]).toMatchObject({
+      usuarioId: bloqueado.id,
+      email: "bloq-senha@test.com",
+      sucesso: false,
+      motivo: "bloqueado",
+    });
+    await server.close();
+  });
+
+  it("login de usuário pendente registra tentativa mesmo com senha errada", async () => {
+    const hash = await bcrypt.hash("senha-forte", 12);
+    const pendente = seedUsuario({
+      email: "pendente-senha@test.com",
+      senhaHash: hash,
+      status: "pendente",
+    });
+
+    const server = await app();
+    const login = await server.inject({
+      method: "POST",
+      url: "/api/auth/login",
+      payload: { email: "pendente-senha@test.com", senha: "senha-errada" },
+    });
+
+    expect(login.statusCode).toBe(403);
+    expect(JSON.parse(login.body).erro).toMatch(/aprovação/i);
+    expect(loginEventos).toHaveLength(1);
+    expect(loginEventos[0]).toMatchObject({
+      usuarioId: pendente.id,
+      email: "pendente-senha@test.com",
+      sucesso: false,
+      motivo: "pendente",
+    });
+    await server.close();
+  });
+
   it("rotas admin — operador recebe 403", async () => {
     seedUsuario({
       email: "ops@test.com",
