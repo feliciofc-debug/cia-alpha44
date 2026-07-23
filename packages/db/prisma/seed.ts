@@ -33,9 +33,13 @@ async function seedUsuarios() {
 
   for (const [email, senhaHash] of legado) {
     const role = email === ADMIN_EMAIL ? "admin" : "operador";
-    await prisma.usuario.upsert({
-      where: { email },
-      create: {
+    const existente = await prisma.usuario.findUnique({ where: { email } });
+    if (existente) {
+      console.log(`[seed] usuário já existe, preservado: ${email} (${existente.role}, ${existente.status})`);
+      continue;
+    }
+    await prisma.usuario.create({
+      data: {
         email,
         senhaHash,
         nome: email.split("@")[0] || email,
@@ -43,11 +47,6 @@ async function seedUsuarios() {
         role,
         aprovadoEm: new Date(),
         aprovadoPor: "seed-cia-users",
-      },
-      update: {
-        senhaHash,
-        status: "aprovado",
-        role,
       },
     });
     console.log(`[seed] usuário importado: ${email} (${role})`);
