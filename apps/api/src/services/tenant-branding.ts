@@ -78,7 +78,8 @@ export async function lerTenantLogo(tenantId: string): Promise<TenantLogo | null
     where: { id: tenantId },
     select: { logoPath: true, logoMime: true },
   });
-  const logoPath = tenant?.logoPath?.trim();
+  if (!tenant) return null;
+  const logoPath = tenant.logoPath?.trim();
   if (!logoPath) return null;
 
   const caminho = resolverLogoPath(logoPath);
