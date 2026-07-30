@@ -19,6 +19,7 @@ import { ClientesView } from "./clientes-view.tsx";
 import { UsuariosView } from "./usuarios-view.tsx";
 import { PainelKpisView } from "./painel-kpis.tsx";
 import { BenchmarkReferenciaView } from "./benchmark-referencia-view.tsx";
+import { TenantBrandingView } from "./tenant-branding-view.tsx";
 import { PreviewOrcamentoCliente } from "./preview-orcamento-cliente.tsx";
 import { cotacaoParaSalvar, itensParaSalvar } from "./lib/cotacao-payload.ts";
 import { pdfBloqueadoPorNcm, mensagemBloqueioPdf, avisoCompatibilidadePdf, itemPodeConfirmarNcmIndividual, itemPodeDesfazerNcm, itensPendentesConfirmacaoNcm, itensResolucaoNcm, metaConfirmacaoNcm, limparConfirmacaoNcm, idxPorOrdem, ordemDoItem, pendenciasNcmOrdenadas, mesclarItensInvalidosPdfAudit, ncmInformadoParaFechamento } from "./lib/ncm.ts";
@@ -1375,6 +1376,8 @@ export function Dashboard() {
       void carregarClientes(busca || undefined);
     } else if (n === "referencia") {
       setView("referencia");
+    } else if (n === "marca") {
+      setView("marca");
     } else if (n === "usuarios") {
       setView("usuarios");
       setUsuariosAlertaBloqueados(0);
@@ -1983,6 +1986,7 @@ export function Dashboard() {
         cambioEurUsd: parsed.cambioEurUsd,
         cambioEurUsdData: parsed.cambioEurUsdData,
         cambioEurUsdFonte: parsed.cambioEurUsdFonte,
+        empresaTradeDefault: brandingSite(tenantBranding, user?.email).displayName,
       });
       setAnalise(res);
       setEditorDraft(editorFromCotacao(res.cotacao, cliente));
@@ -2151,6 +2155,10 @@ export function Dashboard() {
 
         {view === "referencia" && (
           <BenchmarkReferenciaView />
+        )}
+
+        {view === "marca" && (
+          <TenantBrandingView branding={tenantBranding} onBrandingChange={setTenantBranding} />
         )}
 
         {view === "painel" && (

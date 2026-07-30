@@ -13,7 +13,7 @@ function draftBase(): EditorDraft {
     ufEmpresa: "AL",
     regimeIcms: "AL_DIFERIDO",
     benefFiscal: "ALAGOAS",
-    empresaTrade: "Alpha 44",
+    empresaTrade: "comexia",
     cliente: "Cliente teste",
     cambio: 5.5,
     freteTotalUS: 3500,

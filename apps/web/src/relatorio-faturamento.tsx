@@ -258,7 +258,7 @@ export function RelatorioFaturamentoPainel() {
           )}
 
           <p className="border-t border-slate-100 px-6 py-3 text-center text-[10px] text-slate-400">
-            CIA / Alpha 44 · Relatório para controle interno e envio ao contador · Ticket médio{" "}
+            comexia · Relatório para controle interno e envio ao contador · Ticket médio{" "}
             {brl(rel.totais.ticketMedioBRL)}
           </p>
         </div>

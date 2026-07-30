@@ -82,11 +82,9 @@ export function LoginScreen() {
 
       <div className="container-cia relative flex min-h-screen flex-col items-center justify-center py-12">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-500 text-lg font-black text-white shadow-glow">
-            α
-          </div>
-          <h1 className="text-2xl font-bold text-white">CIA / Alpha 44</h1>
-          <p className="mt-2 text-sm text-slate-400">Sistema de Cotação de Importação</p>
+          <img src="/logo-comexia.svg" alt="comexia" className="mx-auto mb-4 h-16 w-auto max-w-[220px]" />
+          <h1 className="text-2xl font-bold text-white">comexia</h1>
+          <p className="mt-2 text-sm text-slate-400">Cotação de importação inteligente</p>
           {meta && (
             <p className="mt-3 text-xs text-slate-500">
               API online · {meta.comexTotal.toLocaleString("pt-BR")} NCMs no benchmark

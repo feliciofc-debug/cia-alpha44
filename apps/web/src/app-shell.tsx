@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export type NavItem = "painel" | "lista" | "clientes" | "nova" | "referencia" | "usuarios";
+export type NavItem = "painel" | "lista" | "clientes" | "nova" | "referencia" | "marca" | "usuarios";
 
 export type AppBranding = {
   displayName: string;
@@ -13,6 +13,7 @@ const NAV_BASE: { id: NavItem; label: string; icon: string; adminOnly?: boolean 
   { id: "lista", label: "Cotações", icon: "☰" },
   { id: "clientes", label: "Clientes", icon: "◎" },
   { id: "referencia", label: "FOB/kg ref.", icon: "📊" },
+  { id: "marca", label: "Minha marca", icon: "◇" },
   { id: "nova", label: "Nova cotação", icon: "+" },
   { id: "usuarios", label: "Usuários", icon: "👤", adminOnly: true },
 ];

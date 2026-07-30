@@ -1,20 +1,30 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import sharp from "sharp";
 
-const { findUnique } = vi.hoisted(() => ({ findUnique: vi.fn() }));
+const { findUnique, update } = vi.hoisted(() => ({ findUnique: vi.fn(), update: vi.fn() }));
 
 vi.mock("@cia/db", () => ({
   prisma: {
     tenant: {
       findUnique,
+      update,
     },
   },
 }));
 
-import { lerTenantLogo, obterTenantBranding } from "../src/services/tenant-branding.js";
+import { lerTenantLogo, obterTenantBranding, salvarTenantLogo, TenantLogoInvalidaError } from "../src/services/tenant-branding.js";
 
 describe("tenant branding", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     findUnique.mockReset();
+    update.mockReset();
+    if (process.env.CIA_BRANDING_DIR) {
+      await rm(process.env.CIA_BRANDING_DIR, { recursive: true, force: true });
+    }
+    process.env.CIA_BRANDING_DIR = await mkdtemp(path.join(os.tmpdir(), "cia-branding-"));
   });
 
   it("retorna branding com logoUrl quando o tenant tem logo configurada", async () => {
@@ -70,5 +80,46 @@ describe("tenant branding", () => {
     });
 
     await expect(lerTenantLogo("tenant-path-absoluto")).resolves.toBeNull();
+  });
+
+  it("salva logo PNG válida no diretório seguro do tenant", async () => {
+    const png = await sharp({
+      create: {
+        width: 1,
+        height: 1,
+        channels: 4,
+        background: "#1FA67A",
+      },
+    })
+      .png()
+      .toBuffer();
+    update.mockResolvedValueOnce({});
+    findUnique.mockResolvedValueOnce({
+      slug: "user_cliente@example.com",
+      nome: "Cliente Example",
+      displayName: "Cliente Example",
+      tagline: null,
+      logoPath: "tenant_logo/logo.png",
+      brandingAtualizadoEm: new Date("2026-07-30T00:00:00.000Z"),
+    });
+
+    await expect(salvarTenantLogo({ tenantId: "tenant_logo", buffer: png })).resolves.toMatchObject({
+      logoUrl: "/api/tenant/branding/logo",
+      hasTenantBranding: true,
+    });
+    expect(update).toHaveBeenCalledWith({
+      where: { id: "tenant_logo" },
+      data: expect.objectContaining({
+        logoPath: "tenant_logo/logo.png",
+        logoMime: "image/png",
+      }),
+    });
+  });
+
+  it("rejeita arquivo que não é imagem real", async () => {
+    await expect(salvarTenantLogo({ tenantId: "tenant_logo", buffer: Buffer.from("not an image") })).rejects.toBeInstanceOf(
+      TenantLogoInvalidaError,
+    );
+    expect(update).not.toHaveBeenCalled();
   });
 });
