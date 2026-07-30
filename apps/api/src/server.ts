@@ -40,6 +40,7 @@ import { conciliarNcm, lookupNcm } from "./services/ncm-helper.js";
 import { conferirNcmItens } from "./services/ncm-conferencia.js";
 import { exportarConciliacao, exportarConciliacaoSalva } from "./services/conciliacao-export.js";
 import { lerFotoItem } from "./services/fotos.js";
+import { lerTenantLogo, obterTenantBranding, TenantBrandingNotFoundError } from "./services/tenant-branding.js";
 import { registrarAuth } from "./auth/middleware.js";
 import { registrarRotaLogin } from "./auth/login.js";
 import { registrarRotaRegister } from "./auth/register.js";
@@ -131,6 +132,25 @@ export async function buildServer() {
         prioridade: "Fonte principal FOB/kg — prevalece sobre ComexStat",
       },
     };
+  });
+
+  app.get("/api/tenant/branding", async (req, reply) => {
+    try {
+      return await obterTenantBranding(req.auth!.tenantId);
+    } catch (e) {
+      if (e instanceof TenantBrandingNotFoundError) {
+        return reply.status(404).send({ erro: e.message });
+      }
+      throw e;
+    }
+  });
+
+  app.get("/api/tenant/branding/logo", async (req, reply) => {
+    const logo = await lerTenantLogo(req.auth!.tenantId);
+    if (!logo) {
+      return reply.status(404).send({ erro: "Logo não configurada para este tenant." });
+    }
+    return reply.type(logo.mime).send(logo.buffer);
   });
 
   app.get("/api/siscomex/status", async () => {

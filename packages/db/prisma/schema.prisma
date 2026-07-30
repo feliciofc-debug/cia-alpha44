@@ -62,11 +62,16 @@ model LoginEvento {
 
 /// Importadora / cliente do SaaS (v1: apenas tenant default).
 model Tenant {
-  id       String    @id @default(cuid())
-  nome     String
-  slug     String    @unique
-  criadoEm DateTime  @default(now())
-  cotacoes Cotacao[]
+  id                   String    @id @default(cuid())
+  nome                 String
+  slug                 String    @unique
+  criadoEm             DateTime  @default(now())
+  displayName          String?
+  tagline              String?
+  logoPath             String?
+  logoMime             String?
+  brandingAtualizadoEm DateTime?
+  cotacoes             Cotacao[]
 }
 
 enum CotacaoStatus {
