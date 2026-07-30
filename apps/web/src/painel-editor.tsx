@@ -117,7 +117,7 @@ export function PainelEditorCotacao({
             className="input"
             value={draft.empresaTrade}
             onChange={(e) => patch({ empresaTrade: e.target.value })}
-            placeholder="Ex.: Alpha 44 Comércio Exterior"
+            placeholder="Ex.: comexia"
           />
         </div>
         <div>

@@ -64,3 +64,18 @@ bash /opt/cia-alpha44/infra/vps/validate-api-env.sh
 
 O bloco `NCM helper / visão` deve mostrar `CLASSIFICACAO_NCM_PROVIDER=gemini` e
 `CLASSIFICACAO_NCM_VISION=1`.
+
+## CORS / WEB_ORIGIN
+
+Em produção, mantenha todos os origins existentes no `/etc/cia-alpha44/api.env` e
+adicione novos domínios separados por vírgula. Para liberar o app comexia:
+
+```bash
+WEB_ORIGIN=https://cia-alpha44-web.vercel.app,https://app.comexia.app
+```
+
+Depois de alterar o `api.env`, reinicie a API:
+
+```bash
+systemctl restart cia-api
+```

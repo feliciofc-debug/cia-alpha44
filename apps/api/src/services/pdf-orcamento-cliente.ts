@@ -177,7 +177,7 @@ export async function gerarPdfOrcamentoClienteModelo(
   const faturaTitulo = tituloFatura(cotacao.cliente || "CLIENTE", criadoEm, fmtDataFatura);
   const [fotoMerc, fotosCert] = await Promise.all([primeiraFotoParaPdf(itens), fotosParaPdf(itens)]);
   const usarLogoLegadaInnove = branding?.usarLogoLegadaInnove !== false;
-  const pdfAuthor = branding?.displayName?.trim() || (usarLogoLegadaInnove ? "INNOVE 888" : "CIA / Alpha 44");
+  const pdfAuthor = branding?.displayName?.trim() || (usarLogoLegadaInnove ? "INNOVE 888" : "comexia");
 
   const doc = new PDFDocument({
     size: "A4",

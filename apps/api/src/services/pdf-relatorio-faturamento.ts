@@ -120,7 +120,7 @@ export function gerarPdfRelatorioFaturamento(rel: RelatorioFaturamento): Promise
   doc.moveDown(1.5);
   doc.fontSize(8).fillColor("#666666");
   doc.text(
-    "Documento gerado pelo CIA / Alpha 44 para controle interno e envio ao contador. Valores baseados em cotações salvas no sistema.",
+    "Documento gerado pelo comexia para controle interno e envio ao contador. Valores baseados em cotações salvas no sistema.",
     { align: "center" },
   );
   doc.text("Volume orçado = soma dos totais de orçamento emitidos aos clientes no período.", { align: "center" });

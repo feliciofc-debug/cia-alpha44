@@ -40,7 +40,16 @@ import { conciliarNcm, lookupNcm } from "./services/ncm-helper.js";
 import { conferirNcmItens } from "./services/ncm-conferencia.js";
 import { exportarConciliacao, exportarConciliacaoSalva } from "./services/conciliacao-export.js";
 import { lerFotoItem } from "./services/fotos.js";
-import { lerTenantLogo, obterTenantBranding, TenantBrandingNotFoundError } from "./services/tenant-branding.js";
+import {
+  atualizarTenantBranding,
+  lerTenantLogo,
+  obterTenantBranding,
+  removerTenantLogo,
+  salvarTenantLogo,
+  TENANT_LOGO_MAX_BYTES,
+  TenantBrandingNotFoundError,
+  TenantLogoInvalidaError,
+} from "./services/tenant-branding.js";
 import { registrarAuth } from "./auth/middleware.js";
 import { registrarRotaLogin } from "./auth/login.js";
 import { registrarRotaRegister } from "./auth/register.js";
@@ -170,6 +179,59 @@ export async function buildServer() {
       return reply.status(404).send({ erro: "Logo não configurada para este tenant." });
     }
     return reply.type(logo.mime).send(logo.buffer);
+  });
+
+  const tenantBrandingBody = z.object({
+    displayName: z.string().trim().max(80).nullable().optional(),
+    tagline: z.string().trim().max(120).nullable().optional(),
+  });
+
+  app.put("/api/tenant/branding", async (req, reply) => {
+    const parsed = tenantBrandingBody.safeParse(req.body ?? {});
+    if (!parsed.success) return reply.status(400).send({ erro: "Body inválido", detalhe: parsed.error.flatten() });
+    try {
+      return await atualizarTenantBranding({
+        tenantId: req.auth!.tenantId,
+        displayName: parsed.data.displayName,
+        tagline: parsed.data.tagline,
+      });
+    } catch (e) {
+      if (e instanceof TenantBrandingNotFoundError) {
+        return reply.status(404).send({ erro: e.message });
+      }
+      throw e;
+    }
+  });
+
+  app.post("/api/tenant/branding/logo", async (req, reply) => {
+    const file = await req.file();
+    if (!file) return reply.status(400).send({ erro: "Envie a logo no campo 'file'." });
+    try {
+      const buffer = await file.toBuffer();
+      if (buffer.byteLength > TENANT_LOGO_MAX_BYTES) {
+        return reply.status(422).send({ erro: "Logo excede 2 MB." });
+      }
+      return await salvarTenantLogo({ tenantId: req.auth!.tenantId, buffer });
+    } catch (e) {
+      if (e instanceof TenantLogoInvalidaError) {
+        return reply.status(422).send({ erro: e.message });
+      }
+      if (e instanceof TenantBrandingNotFoundError) {
+        return reply.status(404).send({ erro: e.message });
+      }
+      throw e;
+    }
+  });
+
+  app.delete("/api/tenant/branding/logo", async (req, reply) => {
+    try {
+      return await removerTenantLogo(req.auth!.tenantId);
+    } catch (e) {
+      if (e instanceof TenantBrandingNotFoundError) {
+        return reply.status(404).send({ erro: e.message });
+      }
+      throw e;
+    }
   });
 
   app.get("/api/siscomex/status", async () => {

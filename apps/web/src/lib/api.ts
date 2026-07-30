@@ -188,6 +188,29 @@ export const api = {
     fetchComTimeout(`${BASE}/api/tenant/branding`, {}, API_TIMEOUT_MS)
       .then(handle<TenantBranding>)
       .then((branding) => ({ ...branding, logoUrl: apiAssetUrl(branding.logoUrl) })),
+  atualizarTenantBranding: (body: { displayName?: string | null; tagline?: string | null }) =>
+    fetchComTimeout(
+      `${BASE}/api/tenant/branding`,
+      {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      },
+      API_TIMEOUT_MS,
+    )
+      .then(handle<TenantBranding>)
+      .then((branding) => ({ ...branding, logoUrl: apiAssetUrl(branding.logoUrl) })),
+  uploadTenantLogo: (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return fetchComTimeout(`${BASE}/api/tenant/branding/logo`, { method: "POST", body: fd }, API_TIMEOUT_MS)
+      .then(handle<TenantBranding>)
+      .then((branding) => ({ ...branding, logoUrl: apiAssetUrl(branding.logoUrl) }));
+  },
+  removerTenantLogo: () =>
+    fetchComTimeout(`${BASE}/api/tenant/branding/logo`, { method: "DELETE" }, API_TIMEOUT_MS)
+      .then(handle<TenantBranding>)
+      .then((branding) => ({ ...branding, logoUrl: apiAssetUrl(branding.logoUrl) })),
   cambio: (moeda = "USD") =>
     fetchComTimeout(`${BASE}/api/cambio?moeda=${moeda}`, {}, API_TIMEOUT_MS).then(handle<Cambio>),
 
@@ -245,6 +268,7 @@ export const api = {
       cambioEurUsd?: number | null;
       cambioEurUsdData?: string | null;
       cambioEurUsdFonte?: string | null;
+      empresaTradeDefault?: string;
     },
   ): Promise<AnaliseCompleta> => {
     const classificado = await fetchComTimeout(
@@ -282,7 +306,7 @@ export const api = {
     const destino = "SP";
     const qtdContainers = 1;
     const cotacao = mesclarAvisoMoedaCotacao({
-      empresaTrade: "Alpha 44",
+      empresaTrade: opts?.empresaTradeDefault?.trim() || "comexia",
       cliente: "Análise importação",
       benefFiscal,
       moeda: "US$",
