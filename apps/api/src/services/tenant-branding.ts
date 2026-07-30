@@ -11,6 +11,7 @@ export type TenantBranding = {
   displayName: string;
   tagline: string | null;
   logoUrl: string | null;
+  hasTenantBranding: boolean;
   brandingAtualizadoEm: Date | null;
 };
 
@@ -69,6 +70,7 @@ export async function obterTenantBranding(tenantId: string): Promise<TenantBrand
     displayName: displayNameSeguro(tenant),
     tagline: tenant.tagline?.trim() || null,
     logoUrl: tenant.logoPath?.trim() ? "/api/tenant/branding/logo" : null,
+    hasTenantBranding: Boolean(tenant.displayName?.trim() || tenant.tagline?.trim() || tenant.logoPath?.trim()),
     brandingAtualizadoEm: tenant.brandingAtualizadoEm ?? null,
   };
 }

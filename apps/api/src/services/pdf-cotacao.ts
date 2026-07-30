@@ -8,7 +8,7 @@ import { extrairResumoFinanceiro } from "../lib/financeiro.js";
 import type { NcmCatalog } from "@cia/pipeline";
 import { fobKgRelatorioItem } from "@cia/pipeline";
 import { auditarNcmsParaPdf } from "./validar-ncm-pdf.js";
-import { gerarPdfOrcamentoClienteModelo } from "./pdf-orcamento-cliente.js";
+import { gerarPdfOrcamentoClienteModelo, type BrandingOrcamentoCliente } from "./pdf-orcamento-cliente.js";
 import { itensComFotosCarregadas } from "./fotos.js";
 import type { buscarCotacao } from "./cotacoes-persist.js";
 
@@ -25,6 +25,9 @@ export type PayloadPdf = {
 type PdfDoc = InstanceType<typeof PDFDocument>;
 
 export type TipoPdf = "cliente" | "trade";
+export type PdfBrandingOptions = {
+  cliente?: BrandingOrcamentoCliente;
+};
 
 function brl(n: number | null | undefined): string {
   if (n == null || Number.isNaN(n)) return "—";
@@ -75,16 +78,19 @@ function usdKg(n: number | null): string {
   return `US$ ${n.toFixed(4)}/kg`;
 }
 
-async function gerarPdfCliente(payload: PayloadPdf): Promise<Buffer> {
+async function gerarPdfCliente(payload: PayloadPdf, branding?: BrandingOrcamentoCliente): Promise<Buffer> {
   if (!payload.resultado) {
     throw new Error("Cotação sem resultado fiscal — recalcule antes de gerar o PDF do cliente.");
   }
-  return await gerarPdfOrcamentoClienteModelo({
-    cotacao: payload.cotacao,
-    itens: payload.itens,
-    resultado: payload.resultado,
-    criadoEm: payload.criadoEm,
-  });
+  return await gerarPdfOrcamentoClienteModelo(
+    {
+      cotacao: payload.cotacao,
+      itens: payload.itens,
+      resultado: payload.resultado,
+      criadoEm: payload.criadoEm,
+    },
+    branding,
+  );
 }
 
 function gerarPdfTrade(payload: PayloadPdf): Promise<Buffer> {
@@ -198,15 +204,21 @@ function salvaParaPayload(salva: CotacaoSalva): PayloadPdf {
   };
 }
 
-export async function gerarPdfCotacao(salva: CotacaoSalva, tipo: TipoPdf, catalog: NcmCatalog): Promise<Buffer> {
+export async function gerarPdfCotacao(
+  salva: CotacaoSalva,
+  tipo: TipoPdf,
+  catalog: NcmCatalog,
+  options?: PdfBrandingOptions,
+): Promise<Buffer> {
   const itens = await itensComFotosCarregadas(salva.itens);
-  return gerarPdfFromPayload({ ...salvaParaPayload(salva), itens }, tipo, catalog);
+  return gerarPdfFromPayload({ ...salvaParaPayload(salva), itens }, tipo, catalog, options);
 }
 
 export async function gerarPdfFromPayload(
   payload: PayloadPdf,
   tipo: TipoPdf,
   catalog: NcmCatalog,
+  options?: PdfBrandingOptions,
 ): Promise<Buffer> {
   if (!payload.resultado && tipo === "trade") {
     throw new Error("Cotação sem resultado fiscal — recalcule antes de gerar o PDF.");
@@ -217,5 +229,5 @@ export async function gerarPdfFromPayload(
       : payload.itens;
   auditarNcmsParaPdf(itens, catalog);
   const enriched = { ...payload, itens };
-  return tipo === "trade" ? gerarPdfTrade(enriched) : gerarPdfCliente(enriched);
+  return tipo === "trade" ? gerarPdfTrade(enriched) : gerarPdfCliente(enriched, options?.cliente);
 }

@@ -31,6 +31,7 @@ describe("tenant branding", () => {
       displayName: "INNOVE 888",
       tagline: "Gestão de trade",
       logoUrl: "/api/tenant/branding/logo",
+      hasTenantBranding: true,
     });
   });
 
@@ -48,6 +49,7 @@ describe("tenant branding", () => {
       displayName: "Cliente Example",
       tagline: null,
       logoUrl: null,
+      hasTenantBranding: false,
       brandingAtualizadoEm: null,
     });
   });

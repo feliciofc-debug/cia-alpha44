@@ -34,7 +34,7 @@ import { obterDashboardKpis } from "./services/dashboard-kpis.js";
 import { obterRelatorioFaturamento } from "./services/dashboard-relatorio.js";
 import { obterSeriesMensais } from "./services/dashboard-series.js";
 import { gerarPdfRelatorioFaturamento } from "./services/pdf-relatorio-faturamento.js";
-import { gerarPdfCotacao, gerarPdfFromPayload } from "./services/pdf-cotacao.js";
+import { gerarPdfCotacao, gerarPdfFromPayload, type PdfBrandingOptions } from "./services/pdf-cotacao.js";
 import { NcmInvalidoPdfError } from "./services/validar-ncm-pdf.js";
 import { conciliarNcm, lookupNcm } from "./services/ncm-helper.js";
 import { conferirNcmItens } from "./services/ncm-conferencia.js";
@@ -85,6 +85,25 @@ function corsOrigins(): string[] {
 
 function tenantSlug(req: FastifyRequest): string {
   return req.auth!.tenantSlug;
+}
+
+function pdfDynamicLogoEnabled(): boolean {
+  return process.env.PDF_DYNAMIC_LOGO_ENABLED !== "false";
+}
+
+async function pdfBrandingOptions(req: FastifyRequest, tipo: "cliente" | "trade"): Promise<PdfBrandingOptions | undefined> {
+  if (tipo !== "cliente" || !pdfDynamicLogoEnabled()) return undefined;
+  const [branding, logo] = await Promise.all([
+    obterTenantBranding(req.auth!.tenantId),
+    lerTenantLogo(req.auth!.tenantId),
+  ]);
+  return {
+    cliente: {
+      usarLogoLegadaInnove: false,
+      displayName: branding.hasTenantBranding ? branding.displayName : undefined,
+      logoBuffer: logo?.buffer ?? null,
+    },
+  };
 }
 
 export async function buildServer() {
@@ -499,8 +518,9 @@ export async function buildServer() {
       const tipo = (req.query as { tipo?: string }).tipo === "trade" ? "trade" : "cliente";
       const row = await buscarCotacao(id, tenantSlug(req), getState());
       if (!row) return reply.status(404).send({ erro: "Cotação não encontrada." });
+      const branding = await pdfBrandingOptions(req, tipo);
       const buf = await comTimeout(
-        gerarPdfCotacao(row, tipo, getState().ncmCatalog),
+        gerarPdfCotacao(row, tipo, getState().ncmCatalog, branding),
         PDF_GERACAO_TIMEOUT_MS,
         "Geração do PDF excedeu o tempo limite. Tente novamente.",
       );
@@ -765,6 +785,7 @@ export async function buildServer() {
     if (!parsed.success) return reply.status(400).send({ erro: "Body inválido", detalhe: parsed.error.flatten() });
     try {
       const tipo = (req.query as { tipo?: string }).tipo === "trade" ? "trade" : "cliente";
+      const branding = await pdfBrandingOptions(req, tipo);
       const buf = await comTimeout(
         gerarPdfFromPayload(
           {
@@ -774,6 +795,7 @@ export async function buildServer() {
           },
           tipo,
           getState().ncmCatalog,
+          branding,
         ),
         PDF_GERACAO_TIMEOUT_MS,
         "Geração do PDF excedeu o tempo limite. Tente novamente.",
