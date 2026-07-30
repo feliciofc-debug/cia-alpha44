@@ -3,6 +3,7 @@ import { fotoItemSrc } from "./lib/item-foto.ts";
 import type { Cotacao, Despesa, Item, ResultadoCotacao } from "./lib/types.ts";
 import { PdfDownloadBar } from "./pdf-download-bar.tsx";
 import type { PendenciaNcmItem } from "./lib/ncm.ts";
+import type { AppBranding } from "./app-shell.tsx";
 
 function parseDataIso(iso?: string) {
   const src = iso?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
@@ -123,6 +124,7 @@ export function PreviewOrcamentoCliente({
   cotacao,
   itens,
   resultado,
+  branding,
   onBaixarPdf,
   salvo = true,
   criadoEm,
@@ -137,6 +139,7 @@ export function PreviewOrcamentoCliente({
   cotacao: Cotacao;
   itens: Item[];
   resultado: ResultadoCotacao | null;
+  branding?: AppBranding;
   onBaixarPdf?: () => void | Promise<void>;
   /** Cotação já persistida — PDF usa ID salvo; senão gera preview temporário. */
   salvo?: boolean;
@@ -156,11 +159,12 @@ export function PreviewOrcamentoCliente({
   const dataStr = fmtDataBr(criadoEm);
   const porto = `PORTO ${cotacao.origem || "RJ"}`;
   const fatura = tituloFatura(cotacao.cliente || "CLIENTE", criadoEm);
+  const marca = branding ?? { displayName: "INNOVE 888", logoUrl: "/logo-innove888.jpeg" };
 
   if (!resultado) {
     return (
       <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-6 text-sm text-amber-100">
-        Recalcule a cotação para visualizar o orçamento no formato padrão INNOVE 888.
+        Recalcule a cotação para visualizar o orçamento do cliente.
       </div>
     );
   }
@@ -196,7 +200,11 @@ export function PreviewOrcamentoCliente({
       )}
       <div className="p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-black pb-3">
-          <img src="/logo-innove888.jpeg" alt="INNOVE 888" className="h-12 w-auto object-contain" />
+          {marca.logoUrl ? (
+            <img src={marca.logoUrl} alt={marca.displayName || "Logo"} className="h-12 w-auto object-contain" />
+          ) : (
+            <div className="h-12" aria-hidden="true" />
+          )}
           <p className="max-w-md text-right text-[10px] font-bold leading-snug sm:text-xs">
             FATURA: {fatura}
           </p>

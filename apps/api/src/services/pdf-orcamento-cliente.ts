@@ -18,6 +18,13 @@ type PdfDoc = InstanceType<typeof PDFDocument>;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const LOGO_PATH = path.join(__dirname, "..", "assets", "logo-innove888.jpeg");
 
+export type BrandingOrcamentoCliente = {
+  /** false = modo dinâmico: tenant sem logo fica sem marca visual. undefined/true = legado INNOVE. */
+  usarLogoLegadaInnove?: boolean;
+  displayName?: string;
+  logoBuffer?: Buffer | null;
+};
+
 export interface PayloadOrcamentoCliente {
   cotacao: Cotacao;
   itens: Item[];
@@ -148,7 +155,10 @@ function desenharFotosCertificacao(
   }
 }
 
-export async function gerarPdfOrcamentoClienteModelo(payload: PayloadOrcamentoCliente): Promise<Buffer> {
+export async function gerarPdfOrcamentoClienteModelo(
+  payload: PayloadOrcamentoCliente,
+  branding?: BrandingOrcamentoCliente,
+): Promise<Buffer> {
   const { cotacao, itens, resultado } = payload;
   const criadoEm = payload.criadoEm ?? new Date().toISOString();
   const cambio = cotacao.cambio;
@@ -166,11 +176,13 @@ export async function gerarPdfOrcamentoClienteModelo(payload: PayloadOrcamentoCl
   const porto = `PORTO ${cotacao.origem || "RJ"}`;
   const faturaTitulo = tituloFatura(cotacao.cliente || "CLIENTE", criadoEm, fmtDataFatura);
   const [fotoMerc, fotosCert] = await Promise.all([primeiraFotoParaPdf(itens), fotosParaPdf(itens)]);
+  const usarLogoLegadaInnove = branding?.usarLogoLegadaInnove !== false;
+  const pdfAuthor = branding?.displayName?.trim() || (usarLogoLegadaInnove ? "INNOVE 888" : "CIA / Alpha 44");
 
   const doc = new PDFDocument({
     size: "A4",
     margin: 36,
-    info: { Title: `Fatura ${faturaTitulo}`, Author: "INNOVE 888" },
+    info: { Title: `Fatura ${faturaTitulo}`, Author: pdfAuthor },
   });
   registrarFontesPdf(doc);
 
@@ -179,10 +191,18 @@ export async function gerarPdfOrcamentoClienteModelo(payload: PayloadOrcamentoCl
   const contentW = pageW - m * 2;
   let y = m;
 
-  try {
-    doc.image(LOGO_PATH, m, y, { width: 118 });
-  } catch {
-    doc.fontSize(14).font("Helvetica-Bold").text("INNOVE\n888", m, y);
+  if (usarLogoLegadaInnove) {
+    try {
+      doc.image(LOGO_PATH, m, y, { width: 118 });
+    } catch {
+      doc.fontSize(14).font("Helvetica-Bold").text("INNOVE\n888", m, y);
+    }
+  } else if (branding?.logoBuffer) {
+    try {
+      doc.image(branding.logoBuffer, m, y, { width: 118 });
+    } catch {
+      /* Tenant sem logo válida fica sem marca visual na invoice. */
+    }
   }
 
   headerCell(doc, `FATURA: ${faturaTitulo}`, m + 130, y + 4, contentW - 130, { bold: true, align: "right" });

@@ -2,6 +2,12 @@ import type { ReactNode } from "react";
 
 export type NavItem = "painel" | "lista" | "clientes" | "nova" | "referencia" | "usuarios";
 
+export type AppBranding = {
+  displayName: string;
+  tagline?: string | null;
+  logoUrl?: string | null;
+};
+
 const NAV_BASE: { id: NavItem; label: string; icon: string; adminOnly?: boolean }[] = [
   { id: "painel", label: "Painel", icon: "◉" },
   { id: "lista", label: "Cotações", icon: "☰" },
@@ -18,6 +24,7 @@ export function AppShell({
   isAdmin = false,
   usuariosPendentes = 0,
   usuariosAlertaBloqueados = 0,
+  branding,
   totalHoje,
   busca,
   onBuscaChange,
@@ -31,6 +38,7 @@ export function AppShell({
   isAdmin?: boolean;
   usuariosPendentes?: number;
   usuariosAlertaBloqueados?: number;
+  branding?: AppBranding;
   totalHoje: number;
   busca: string;
   onBuscaChange: (v: string) => void;
@@ -39,6 +47,11 @@ export function AppShell({
   children: ReactNode;
 }) {
   const navItems = NAV_BASE.filter((item) => !item.adminOnly || isAdmin);
+  const marca = branding ?? {
+    displayName: "INNOVE 888",
+    tagline: "Gestão de trade",
+    logoUrl: "/logo-innove888.jpeg",
+  };
 
   function labelNav(item: (typeof NAV_BASE)[number]) {
     if (item.id === "usuarios" && usuariosAlertaBloqueados > 0) {
@@ -53,14 +66,16 @@ export function AppShell({
     <div className="flex min-h-full bg-ink-900">
       <aside className="hidden w-56 shrink-0 flex-col border-r border-white/5 bg-ink-950/80 md:flex">
         <div className="flex h-14 items-center gap-2 border-b border-white/5 px-4">
-          <img
-            src="/logo-innove888.jpeg"
-            alt="INNOVE 888"
-            className="h-9 w-auto max-w-[72px] object-contain"
-          />
+          {marca.logoUrl ? (
+            <img
+              src={marca.logoUrl}
+              alt={marca.displayName}
+              className="h-9 w-auto max-w-[96px] object-contain"
+            />
+          ) : null}
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-white">INNOVE 888</p>
-            <p className="text-[10px] text-slate-500">Gestão de trade</p>
+            <p className="truncate text-sm font-bold text-white">{marca.displayName}</p>
+            {marca.tagline ? <p className="text-[10px] text-slate-500">{marca.tagline}</p> : null}
           </div>
         </div>
         <nav className="flex-1 space-y-1 p-3">
@@ -101,12 +116,14 @@ export function AppShell({
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 shrink-0 items-center gap-3 border-b border-white/5 px-4 md:px-6">
           <div className="flex items-center gap-2 md:hidden">
-            <img
-              src="/logo-innove888.jpeg"
-              alt="INNOVE 888"
-              className="h-8 w-auto max-w-[64px] object-contain"
-            />
-            <span className="text-sm font-bold text-white">INNOVE 888</span>
+            {marca.logoUrl ? (
+              <img
+                src={marca.logoUrl}
+                alt={marca.displayName}
+                className="h-8 w-auto max-w-[88px] object-contain"
+              />
+            ) : null}
+            <span className="text-sm font-bold text-white">{marca.displayName}</span>
           </div>
           <div className="flex gap-1 md:hidden">
             {navItems.map((item) => (

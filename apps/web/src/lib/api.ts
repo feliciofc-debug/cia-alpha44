@@ -93,6 +93,14 @@ export interface Meta {
   };
 }
 
+export interface TenantBranding {
+  displayName: string;
+  tagline: string | null;
+  logoUrl: string | null;
+  hasTenantBranding: boolean;
+  brandingAtualizadoEm: string | null;
+}
+
 export interface Cambio {
   moeda: string;
   cotacaoCompra: number | null;
@@ -168,8 +176,18 @@ async function handleJsonAlways<T>(res: Response): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+function apiAssetUrl(url: string | null): string | null {
+  if (!url) return null;
+  if (/^https?:\/\//i.test(url)) return url;
+  return `${BASE}${url}`;
+}
+
 export const api = {
   meta: () => fetchComTimeout(`${BASE}/api/meta`, {}, API_TIMEOUT_MS).then(handle<Meta>),
+  tenantBranding: () =>
+    fetchComTimeout(`${BASE}/api/tenant/branding`, {}, API_TIMEOUT_MS)
+      .then(handle<TenantBranding>)
+      .then((branding) => ({ ...branding, logoUrl: apiAssetUrl(branding.logoUrl) })),
   cambio: (moeda = "USD") =>
     fetchComTimeout(`${BASE}/api/cambio?moeda=${moeda}`, {}, API_TIMEOUT_MS).then(handle<Cambio>),
 

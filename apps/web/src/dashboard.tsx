@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "./auth/auth.tsx";
 import { lerTokenArmazenado } from "./auth/token-storage.ts";
-import { api, type AnaliseCompleta, type LoginEventoAdmin, type Meta, type UsuarioAdmin } from "./lib/api.ts";
+import { api, type AnaliseCompleta, type LoginEventoAdmin, type Meta, type TenantBranding, type UsuarioAdmin } from "./lib/api.ts";
 import { brl, fmtNcm, pct, usdKg } from "./lib/format.ts";
 import { fobKgItem } from "./lib/fob-kg.ts";
 import { contarItensComFoto, fotoItemSrc } from "./lib/item-foto.ts";
@@ -14,7 +14,7 @@ import {
 } from "./lib/editor-cotacao.ts";
 import type { Aliquotas, Canal, CotacaoResumo, CotacaoSalva, Item, ResultadoCotacao, AvisoValoracao } from "./lib/types.ts";
 import { PainelEditorCotacao } from "./painel-editor.tsx";
-import { AppShell, type NavItem } from "./app-shell.tsx";
+import { AppShell, type AppBranding, type NavItem } from "./app-shell.tsx";
 import { ClientesView } from "./clientes-view.tsx";
 import { UsuariosView } from "./usuarios-view.tsx";
 import { PainelKpisView } from "./painel-kpis.tsx";
@@ -35,6 +35,45 @@ import { DetalheRastroAliquota } from "./lib/aliquota-rastro-ui.tsx";
 import type { ClienteResumo, DashboardKpis, DashboardSeries } from "./lib/types.ts";
 
 type View = NavItem | "detalhe";
+
+const BRANDING_UI_ENABLED = import.meta.env.VITE_TENANT_BRANDING_UI_ENABLED !== "false";
+const COMEXIA_BRANDING: AppBranding = {
+  displayName: "comexia",
+  tagline: "Cotação de importação inteligente",
+  logoUrl: "/logo-comexia.svg",
+};
+const INNOVE_BRANDING: AppBranding = {
+  displayName: "INNOVE 888",
+  tagline: "Gestão de trade",
+  logoUrl: "/logo-innove888.jpeg",
+};
+
+function usuarioInnove(email?: string): boolean {
+  return /@innove888\.com\.br$/i.test(email ?? "");
+}
+
+function brandingSite(tenantBranding: TenantBranding | null, userEmail?: string): AppBranding {
+  if (!BRANDING_UI_ENABLED) return INNOVE_BRANDING;
+  if (tenantBranding?.hasTenantBranding) {
+    return {
+      displayName: tenantBranding.displayName,
+      tagline: tenantBranding.tagline,
+      logoUrl: tenantBranding.logoUrl,
+    };
+  }
+  return usuarioInnove(userEmail) ? INNOVE_BRANDING : COMEXIA_BRANDING;
+}
+
+function brandingInvoicePreview(tenantBranding: TenantBranding | null, userEmail?: string): AppBranding {
+  if (tenantBranding?.hasTenantBranding) {
+    return {
+      displayName: tenantBranding.displayName,
+      tagline: tenantBranding.tagline,
+      logoUrl: tenantBranding.logoUrl,
+    };
+  }
+  return usuarioInnove(userEmail) ? INNOVE_BRANDING : { displayName: "", logoUrl: null };
+}
 
 export function AvisoBannerPainel({ mensagem, isAdmin }: { mensagem?: string | null; isAdmin: boolean }) {
   if (isAdmin || !mensagem?.trim()) return null;
@@ -1046,6 +1085,7 @@ function AnalisePainel({
             cotacao={analise.cotacao}
             itens={itens}
             resultado={analise.resultado}
+            branding={brandingInvoicePreview(tenantBranding, user?.email)}
             onBaixarPdf={onBaixarPdfCliente}
             salvo={Boolean(salvaId)}
             criadoEm={"criadoEm" in analise ? analise.criadoEm : undefined}
@@ -1132,6 +1172,7 @@ export function Dashboard() {
   const [filtroAtivo, setFiltroAtivo] = useState("");
   const [origemVoltar, setOrigemVoltar] = useState<"lista" | "clientes">("lista");
   const [meta, setMeta] = useState<Meta | null>(null);
+  const [tenantBranding, setTenantBranding] = useState<TenantBranding | null>(null);
   const [erro, setErro] = useState("");
   const [avisoOperacao, setAvisoOperacao] = useState("");
 
@@ -1308,6 +1349,11 @@ export function Dashboard() {
   useEffect(() => {
     if (!isLoaded || !user || !lerTokenArmazenado()) return;
     api.meta().then(setMeta).catch(() => {});
+    if (BRANDING_UI_ENABLED) {
+      api.tenantBranding().then(setTenantBranding).catch(() => setTenantBranding(null));
+    } else {
+      setTenantBranding(null);
+    }
     void carregarPainel();
     void carregarLista();
     void atualizarPendentesBadge();
@@ -2072,6 +2118,7 @@ export function Dashboard() {
       isAdmin={isAdmin}
       usuariosPendentes={usuariosPendentes}
       usuariosAlertaBloqueados={usuariosAlertaBloqueados}
+      branding={brandingSite(tenantBranding, user?.email)}
       totalHoje={totalHoje}
       busca={busca}
       onBuscaChange={setBusca}
