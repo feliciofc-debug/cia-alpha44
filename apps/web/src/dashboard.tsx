@@ -363,6 +363,7 @@ function AnalisePainel({
   onAplicarEditor,
   aplicandoEditor,
   onBaixarPdfCliente,
+  invoiceBranding,
   irParaOrcamento,
   solicitarResolucaoNcm,
   resolucaoNcmIdx,
@@ -400,6 +401,7 @@ function AnalisePainel({
   onAplicarEditor?: () => void;
   aplicandoEditor?: boolean;
   onBaixarPdfCliente?: () => void | Promise<void>;
+  invoiceBranding?: AppBranding;
   /** Incrementar para abrir a aba Orçamento cliente e rolar até o preview. */
   irParaOrcamento?: number;
   /** Incrementar para abrir barra de resolução NCM (Detalhamento técnico). */
@@ -1085,7 +1087,7 @@ function AnalisePainel({
             cotacao={analise.cotacao}
             itens={itens}
             resultado={analise.resultado}
-            branding={brandingInvoicePreview(tenantBranding, user?.email)}
+            branding={invoiceBranding}
             onBaixarPdf={onBaixarPdfCliente}
             salvo={Boolean(salvaId)}
             criadoEm={"criadoEm" in analise ? analise.criadoEm : undefined}
@@ -2386,6 +2388,7 @@ export function Dashboard() {
                 onAplicarEditor={() => void aplicarEditorPersistido(detalhe.id)}
                 aplicandoEditor={aplicandoEditor}
                 onBaixarPdfCliente={baixarPdfClienteOrcamento}
+                invoiceBranding={brandingInvoicePreview(tenantBranding, user?.email)}
                 irParaOrcamento={irParaOrcamento}
                 solicitarResolucaoNcm={solicitarResolucaoNcm}
                 resolucaoNcmIdx={resolucaoNcmIdx}
@@ -2500,6 +2503,7 @@ export function Dashboard() {
                   }
                   aplicandoEditor={aplicandoEditor}
                   onBaixarPdfCliente={baixarPdfClienteOrcamento}
+                  invoiceBranding={brandingInvoicePreview(tenantBranding, user?.email)}
                   irParaOrcamento={irParaOrcamento}
                   solicitarResolucaoNcm={solicitarResolucaoNcm}
                   resolucaoNcmIdx={resolucaoNcmIdx}
