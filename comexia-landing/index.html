@@ -43,6 +43,13 @@
   .logo{display:flex;align-items:center;gap:11px;font-family:'Space Grotesk';font-weight:700;font-size:21px;letter-spacing:-.5px;color:var(--white)}
   .logo .dot{width:11px;height:11px;border-radius:50%;background:var(--jade);box-shadow:0 0 0 4px rgba(31,166,122,.2)}
   .logo span{color:var(--jade)}
+  .nav-actions{display:flex;align-items:center;gap:14px}
+  .nav-login{
+    font-family:'Space Grotesk';font-weight:500;font-size:14px;
+    color:var(--paper);text-decoration:none;
+    padding:10px 18px;border-radius:8px;border:1px solid rgba(228,222,210,.18);transition:.2s;
+  }
+  .nav-login:hover{border-color:var(--jade);color:var(--jade)}
   .nav-cta{
     font-family:'Space Grotesk';font-weight:600;font-size:14px;
     background:var(--jade);color:var(--ink);text-decoration:none;
@@ -178,7 +185,10 @@
 <nav>
   <div class="wrap nav-in">
     <div class="logo"><span class="dot"></span>comex<span>ia</span></div>
-    <a href="#contratar" class="nav-cta">Contrate agora</a>
+    <div class="nav-actions">
+      <a href="https://app.comexia.app" class="nav-login">Entrar</a>
+      <a href="#contratar" class="nav-cta">Contrate agora</a>
+    </div>
   </div>
 </nav>
 
