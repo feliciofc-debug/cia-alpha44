@@ -116,6 +116,14 @@ export {
   type MapeamentoColunasIA,
 } from "./parser-sinonimos.js";
 export { extrairMetadadosWorkbook, avisoMoedaPlanilha, type MetadadosPlanilha } from "./parser-metadados.js";
+export {
+  associarFotosLinhas,
+  associarFotosLinhasComSink,
+  extrairFotosXlsx,
+  type FotoPlanilha,
+  type FotoSink,
+  type FotoSinkInput,
+} from "./xlsx-images.js";
 export { loadComexSeed, loadTecCache, loadNcmVigenteCache, defaultSeedPath, tecCachePath, ncmVigenteDataPath } from "./seed.js";
 export {
   fetchComexStatImport,

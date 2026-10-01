@@ -4,7 +4,8 @@ import { lerTokenArmazenado } from "./auth/token-storage.ts";
 import { api, type AnaliseCompleta, type LoginEventoAdmin, type Meta, type TenantBranding, type UsuarioAdmin } from "./lib/api.ts";
 import { brl, fmtNcm, pct, usdKg } from "./lib/format.ts";
 import { fobKgItem } from "./lib/fob-kg.ts";
-import { contarItensComFoto, fotoItemSrc } from "./lib/item-foto.ts";
+import { contarItensComFoto, fotoItemSrc, itemTemFoto } from "./lib/item-foto.ts";
+import { FotoItemPorFeature } from "./foto-autenticada.tsx";
 import { extrairResumoFinanceiro, type ResumoFinanceiro } from "./lib/financeiro.ts";
 import {
   aplicarEditorNaCotacao,
@@ -392,6 +393,7 @@ function AnalisePainel({
   comparacaoRegimes,
   comparandoRegimes,
   onCompararRegimes,
+  upgradeUpload = false,
 }: {
   analise: AnaliseView;
   onSalvar?: () => void;
@@ -433,6 +435,7 @@ function AnalisePainel({
   comparacaoRegimes?: Array<{ nome: string; totalBRL: number; economiaVsIntegral?: number }>;
   comparandoRegimes?: boolean;
   onCompararRegimes?: () => void | Promise<void>;
+  upgradeUpload?: boolean;
 }) {
   const itens = analise.itens;
   const qtdPendentesNcm = itensPendentesConfirmacaoNcm(itens).length;
@@ -461,6 +464,7 @@ function AnalisePainel({
             provider: (analise as { provider?: string | null }).provider,
           },
           fmt,
+          upgradeUpload,
         );
       }
     } catch (e) {
@@ -584,13 +588,15 @@ function AnalisePainel({
             {itens.map((it, i) => {
               const fobKg = fobKgItem(it);
               const foto = fotoItemSrc(it);
+              const temFoto = itemTemFoto(it);
               const ordem = it.ordem ?? i;
               return (
                 <tr key={ordem} className="border-t border-white/5 text-slate-300">
                   <td className="p-2 align-top">
-                    {foto ? (
-                      <img
-                        src={foto}
+                    {(upgradeUpload ? temFoto : Boolean(foto)) ? (
+                      <FotoItemPorFeature
+                        item={it}
+                        upgradeUpload={upgradeUpload}
                         alt=""
                         className="h-12 w-12 rounded border border-white/10 object-contain bg-white"
                       />
@@ -1099,6 +1105,7 @@ function AnalisePainel({
             qtdPendenciasNcm={qtdResolucao}
             pendenciasNcm={pendenciasNcm}
             onIrParaResolucaoNcm={irParaResolucaoNcm}
+            upgradeUpload={upgradeUpload}
           />
         </div>
       ) : (
@@ -1176,6 +1183,13 @@ export function Dashboard() {
   const [origemVoltar, setOrigemVoltar] = useState<"lista" | "clientes">("lista");
   const [meta, setMeta] = useState<Meta | null>(null);
   const [tenantBranding, setTenantBranding] = useState<TenantBranding | null>(null);
+  const [upgradeUploadCarregado, setUpgradeUploadCarregado] = useState<{
+    email: string;
+    ativo: boolean;
+  } | null>(null);
+  const upgradeUpload = Boolean(
+    user && upgradeUploadCarregado?.email === user.email && upgradeUploadCarregado.ativo,
+  );
   const [erro, setErro] = useState("");
   const [avisoOperacao, setAvisoOperacao] = useState("");
 
@@ -1350,8 +1364,17 @@ export function Dashboard() {
   }, [isAdmin]);
 
   useEffect(() => {
+    setUpgradeUploadCarregado(null);
     if (!isLoaded || !user || !lerTokenArmazenado()) return;
+    let ativo = true;
     api.meta().then(setMeta).catch(() => {});
+    api.tenantFeatures()
+      .then((features) => {
+        if (ativo) setUpgradeUploadCarregado({ email: user.email, ativo: features.upgradeUpload });
+      })
+      .catch(() => {
+        if (ativo) setUpgradeUploadCarregado({ email: user.email, ativo: false });
+      });
     if (BRANDING_UI_ENABLED) {
       api.tenantBranding().then(setTenantBranding).catch(() => setTenantBranding(null));
     } else {
@@ -1360,6 +1383,9 @@ export function Dashboard() {
     void carregarPainel();
     void carregarLista();
     void atualizarPendentesBadge();
+    return () => {
+      ativo = false;
+    };
   }, [isLoaded, user, carregarPainel, carregarLista, atualizarPendentesBadge]);
 
   function irNav(n: NavItem) {
@@ -2397,6 +2423,7 @@ export function Dashboard() {
                 aplicandoEditor={aplicandoEditor}
                 onBaixarPdfCliente={baixarPdfClienteOrcamento}
                 invoiceBranding={brandingInvoicePreview(tenantBranding, user?.email)}
+                upgradeUpload={upgradeUpload}
                 irParaOrcamento={irParaOrcamento}
                 solicitarResolucaoNcm={solicitarResolucaoNcm}
                 resolucaoNcmIdx={resolucaoNcmIdx}
@@ -2512,6 +2539,7 @@ export function Dashboard() {
                   aplicandoEditor={aplicandoEditor}
                   onBaixarPdfCliente={baixarPdfClienteOrcamento}
                   invoiceBranding={brandingInvoicePreview(tenantBranding, user?.email)}
+                  upgradeUpload={upgradeUpload}
                   irParaOrcamento={irParaOrcamento}
                   solicitarResolucaoNcm={solicitarResolucaoNcm}
                   resolucaoNcmIdx={resolucaoNcmIdx}

@@ -28,7 +28,13 @@ import {
 } from "./parser-sinonimos.js";
 import { extrairMetadadosWorkbook, avisoMoedaPlanilha } from "./parser-metadados.js";
 import { linhaPesoAbsurdo, ncmSuspeitoLixo } from "./fob-escala.js";
-import { associarFotosLinhas, extrairFotosXlsx, type FotoPlanilha } from "./xlsx-images.js";
+import {
+  associarFotosLinhas,
+  associarFotosLinhasComSink,
+  extrairFotosXlsx,
+  type FotoPlanilha,
+  type FotoSink,
+} from "./xlsx-images.js";
 import { extrairImagensWpsOle, isOleXls, isZipXlsx, mapDispimgLinhas } from "./wps-images.js";
 import { normalizarCodigoNcmCliente } from "./ncm-catalog.js";
 import {
@@ -79,6 +85,7 @@ export interface LinhaFornecedor {
   avisosEscala?: string[];
   raw: Record<string, unknown>;
   fotoBase64?: string;
+  fotoRef?: string;
   fotoMime?: string;
 }
 
@@ -108,6 +115,8 @@ export interface ParsePlanilhaOpts {
   sammelkarton?: string;
   moedaPlanilha?: string;
   mapearColunasIA?: MapearColunasIAFn;
+  /** Persiste fotos fora da resposta; ausente preserva o contrato legado em base64. */
+  fotoSink?: FotoSink;
 }
 
 export interface AbaCandidataPontuada {
@@ -1341,8 +1350,10 @@ export async function parsePlanilhaBuffer(
     }
 
     if (fotos.size > 0) {
-      parsed.linhas = associarFotosLinhas(parsed.linhas, fotos);
-      const comFoto = parsed.linhas.filter((l) => l.fotoBase64).length;
+      parsed.linhas = opcoes.fotoSink
+        ? await associarFotosLinhasComSink(parsed.linhas, fotos, opcoes.fotoSink)
+        : associarFotosLinhas(parsed.linhas, fotos);
+      const comFoto = parsed.linhas.filter((l) => l.fotoBase64 || l.fotoRef).length;
       parsed.imagensArquivo = mediaCount;
       parsed.imagensMapeadas = comFoto;
       const fmt = isOleXls(buf) ? "WPS/.xls" : "Excel";
@@ -1446,6 +1457,7 @@ function resultadoParaSupplier(parsed: ResultadoParse): ParsedSupplierFile {
       material: l.material ?? null,
       uso: l.uso ?? null,
       ...(l.fotoBase64 ? { fotoBase64: l.fotoBase64, fotoMime: l.fotoMime } : {}),
+      ...(l.fotoRef ? { fotoRef: l.fotoRef, fotoMime: l.fotoMime } : {}),
     };
   });
   return {

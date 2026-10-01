@@ -8,6 +8,16 @@ export function fotoItemSrc(it: Item): string | null {
   return null;
 }
 
+export function fotoItemUrlAutenticada(it: Item): string | null {
+  if (it.fotoRef) return `${API_BASE}/api/parse/fotos/${encodeURIComponent(it.fotoRef)}`;
+  if (it.fotoUrl) return `${API_BASE}${it.fotoUrl}`;
+  return null;
+}
+
+export function itemTemFoto(it: Item): boolean {
+  return Boolean(it.fotoBase64 || it.fotoRef || it.fotoUrl);
+}
+
 export function contarItensComFoto(itens: Item[]): number {
-  return itens.filter((it) => it.fotoBase64 || it.fotoUrl).length;
+  return itens.filter(itemTemFoto).length;
 }

@@ -29,6 +29,8 @@ export interface LinhaCrua {
   avisosQtd?: string[];
   /** Foto do produto (base64) — extraída da planilha .xlsx. */
   fotoBase64?: string;
+  /** Referência opaca para foto persistida fora do payload. */
+  fotoRef?: string;
   fotoMime?: string;
 }
 

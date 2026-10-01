@@ -14,6 +14,14 @@ export interface FotoPlanilha {
   mime: string;
 }
 
+export interface FotoSinkInput {
+  buffer: Buffer;
+  mime: string;
+  linhaExcel: number;
+}
+
+export type FotoSink = (foto: FotoSinkInput) => Promise<string>;
+
 function mimePorExt(ext: string): string {
   const e = ext.toLowerCase().replace(/^\./, "");
   if (e === "png") return "image/png";
@@ -142,27 +150,18 @@ export async function extrairFotosXlsx(
 }
 
 /** Associa fotos às linhas de item (match por linha, ordem 1:1 ou proximidade). */
-export function associarFotosLinhas<T extends { linha: number }>(
+function fotosAssociadasPorLinha<T extends { linha: number }>(
   linhas: T[],
   fotos: Map<number, FotoPlanilha>,
-): (T & { fotoBase64?: string; fotoMime?: string })[] {
+): Array<FotoPlanilha | undefined> {
   if (linhas.length === 0 || fotos.size === 0) {
-    return linhas;
+    return linhas.map(() => undefined);
   }
 
   const orderKeys = [...fotos.keys()].filter((k) => k < 0).sort((a, b) => b - a);
   if (orderKeys.length > 0) {
     const max = Math.min(orderKeys.length, linhas.length);
-    return linhas.map((lin, idx) => {
-      if (idx >= max) return lin;
-      const foto = fotos.get(orderKeys[idx]!);
-      if (!foto) return lin;
-      return {
-        ...lin,
-        fotoBase64: foto.buffer.toString("base64"),
-        fotoMime: foto.mime,
-      };
-    });
+    return linhas.map((_lin, idx) => idx < max ? fotos.get(orderKeys[idx]!) : undefined);
   }
 
   const rowsImg = [...fotos.keys()].sort((a, b) => a - b);
@@ -184,6 +183,17 @@ export function associarFotosLinhas<T extends { linha: number }>(
         fotos.get(lin.linha + 2);
     }
 
+    return foto;
+  });
+}
+
+export function associarFotosLinhas<T extends { linha: number }>(
+  linhas: T[],
+  fotos: Map<number, FotoPlanilha>,
+): (T & { fotoBase64?: string; fotoMime?: string })[] {
+  const associadas = fotosAssociadasPorLinha(linhas, fotos);
+  return linhas.map((lin, idx) => {
+    const foto = associadas[idx];
     if (!foto) return lin;
     return {
       ...lin,
@@ -191,4 +201,25 @@ export function associarFotosLinhas<T extends { linha: number }>(
       fotoMime: foto.mime,
     };
   });
+}
+
+/** Variante por referência; mantém exatamente a mesma associação foto↔linha do modo legado. */
+export async function associarFotosLinhasComSink<T extends { linha: number }>(
+  linhas: T[],
+  fotos: Map<number, FotoPlanilha>,
+  fotoSink: FotoSink,
+): Promise<(T & { fotoRef?: string; fotoMime?: string })[]> {
+  const associadas = fotosAssociadasPorLinha(linhas, fotos);
+  return Promise.all(
+    linhas.map(async (lin, idx) => {
+      const foto = associadas[idx];
+      if (!foto) return lin;
+      const fotoRef = await fotoSink({
+        buffer: foto.buffer,
+        mime: foto.mime,
+        linhaExcel: foto.linhaExcel || lin.linha,
+      });
+      return { ...lin, fotoRef, fotoMime: foto.mime };
+    }),
+  );
 }

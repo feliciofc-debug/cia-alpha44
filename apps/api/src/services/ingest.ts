@@ -9,6 +9,7 @@ import {
   parseSupplierOcrText,
   rotuloPrecoCusto,
   type ParsedSupplierFile,
+  type ParseSupplierFileOpts,
 } from "@cia/pipeline";
 import type { OcrProvider } from "../ocr/types.js";
 import type { LlmProvider } from "../llm/types.js";
@@ -88,6 +89,7 @@ export async function ingerirArquivo(
   bytes: Uint8Array,
   ocr: OcrProvider,
   llm?: LlmProvider,
+  opts: ParseSupplierFileOpts = {},
 ): Promise<IngestResult> {
   const fonte = tipoIngestao(filename);
   if (!fonte) {
@@ -96,7 +98,7 @@ export async function ingerirArquivo(
 
   if (fonte === "planilha") {
     const mapearColunasIA = llm ? resolverMapearColunasPlanilha(llm) : undefined;
-    const parsed = aplicarPrecosCusto(await parseSupplierFile(bytes, { mapearColunasIA }));
+    const parsed = aplicarPrecosCusto(await parseSupplierFile(bytes, { ...opts, mapearColunasIA }));
     logDeteccaoNcmUpload(filename, bytes, parsed);
     const convertido = await converterLinhasEurParaUsd(parsed);
     return { ...convertido, arquivo: filename, fonte };

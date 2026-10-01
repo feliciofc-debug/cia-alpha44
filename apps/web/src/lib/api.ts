@@ -2,6 +2,7 @@ import { despesasParaContainers, outrasDespesasBaseParaContainers, DEFAULT_FRETE
 import { icmsSaidaParaDestino } from "./icms-uf.ts";
 import { PdfDownloadError, type ItemInvalidoPdf } from "./pdf-erro.ts";
 import { fetchAutenticado } from "./auth-fetch.ts";
+import { itensSemFotos } from "./cotacao-payload.ts";
 import { mesclarAvisoMoedaCotacao } from "@cia/shared";
 import type {
   Cotacao,
@@ -101,6 +102,10 @@ export interface TenantBranding {
   brandingAtualizadoEm: string | null;
 }
 
+export interface TenantFeatures {
+  upgradeUpload: boolean;
+}
+
 export interface Cambio {
   moeda: string;
   cotacaoCompra: number | null;
@@ -188,6 +193,8 @@ export const api = {
     fetchComTimeout(`${BASE}/api/tenant/branding`, {}, API_TIMEOUT_MS)
       .then(handle<TenantBranding>)
       .then((branding) => ({ ...branding, logoUrl: apiAssetUrl(branding.logoUrl) })),
+  tenantFeatures: () =>
+    fetchComTimeout(`${BASE}/api/tenant/features`, {}, API_TIMEOUT_MS).then(handle<TenantFeatures>),
   atualizarTenantBranding: (body: { displayName?: string | null; tagline?: string | null }) =>
     fetchComTimeout(
       `${BASE}/api/tenant/branding`,
@@ -674,6 +681,7 @@ export const api = {
       provider?: string | null;
     },
     formato: "xlsx" | "csv" = "xlsx",
+    upgradeUpload = false,
   ) => {
     const res = await fetchComTimeout(
       `${BASE}/api/conciliacao/export?formato=${formato}`,
@@ -682,7 +690,7 @@ export const api = {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           cotacao: payload.cotacao,
-          itens: payload.itens,
+          itens: upgradeUpload ? itensSemFotos(payload.itens) : payload.itens,
           resultado: payload.resultado,
           provider: payload.provider,
         }),

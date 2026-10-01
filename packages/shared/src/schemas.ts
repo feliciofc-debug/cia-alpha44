@@ -119,6 +119,8 @@ export const itemSchema = z.object({
   antidumping: z.boolean().default(false),
   /** Foto do produto (compliance) — base64 durante sessão ou após parse. */
   fotoBase64: z.string().optional(),
+  /** Referência opaca para foto temporária do parse. */
+  fotoRef: z.string().regex(/^[a-f0-9]{32}$/).optional(),
   fotoMime: z.string().optional(),
   /** Caminho relativo ao diretório de fotos da API após salvar cotação. */
   fotoPath: z.string().optional(),
