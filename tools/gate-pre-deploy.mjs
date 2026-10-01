@@ -16,6 +16,7 @@ const tests = [
   "apps/api/test/gate-embarque-89-total-row.test.ts",
   "apps/api/test/gate-mochilas-ncm1-mescla.test.ts",
   "apps/api/test/gate-upload-limit-ncm1.test.ts",
+  "apps/api/test/upload-grande-protecoes.test.ts",
   "apps/api/test/feature-flags.test.ts",
   "apps/api/test/feature-flag-disabled.test.ts",
   "apps/api/test/parse-fotoref-equivalencia.test.ts",
@@ -33,6 +34,7 @@ const tests = [
 ];
 
 const webTests = [
+  "src/api-parse-timeout.test.ts",
   "src/foto-feature-flag.test.tsx",
 ];
 
