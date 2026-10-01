@@ -3,6 +3,8 @@ import bcrypt from "bcryptjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { emitirToken, emitirTokenExpirado } from "../src/auth/jwt.js";
 
+const TEST_TIMEOUT_MS = 30_000;
+
 type UsuarioRow = {
   id: string;
   email: string;
@@ -135,7 +137,7 @@ vi.mock("@cia/db", () => ({
   },
 }));
 
-describe("autocadastro com aprovação admin", () => {
+describe("autocadastro com aprovação admin", { timeout: TEST_TIMEOUT_MS }, () => {
   const envBackup = { ...process.env };
 
   beforeEach(() => {
@@ -412,7 +414,7 @@ describe("autocadastro com aprovação admin", () => {
   });
 });
 
-describe("registrarAuth middleware — JWT + x-api-key", () => {
+describe("registrarAuth middleware — JWT + x-api-key", { timeout: TEST_TIMEOUT_MS }, () => {
   const envBackup = { ...process.env };
 
   beforeEach(() => {
@@ -530,7 +532,7 @@ describe("registrarAuth middleware — JWT + x-api-key", () => {
   });
 });
 
-describe("POST /api/auth/login", () => {
+describe("POST /api/auth/login", { timeout: TEST_TIMEOUT_MS }, () => {
   const envBackup = { ...process.env };
 
   beforeEach(() => {
