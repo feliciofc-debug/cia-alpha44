@@ -39,6 +39,7 @@ export function apiBaseUrl(): string {
 }
 
 const PARSE_TIMEOUT_MS = 120_000;
+const PARSE_UPGRADE_TIMEOUT_MS = 600_000;
 const CLASSIFY_TIMEOUT_MS = 600_000;
 const PDF_TIMEOUT_MS = 180_000;
 const API_TIMEOUT_MS = 30_000;
@@ -221,13 +222,13 @@ export const api = {
   cambio: (moeda = "USD") =>
     fetchComTimeout(`${BASE}/api/cambio?moeda=${moeda}`, {}, API_TIMEOUT_MS).then(handle<Cambio>),
 
-  parse: (file: File) => {
+  parse: (file: File, upgradeUpload = false) => {
     const fd = new FormData();
     fd.append("file", file);
     return fetchComTimeout(
       `${BASE}/api/parse`,
       { method: "POST", body: fd },
-      PARSE_TIMEOUT_MS,
+      upgradeUpload ? PARSE_UPGRADE_TIMEOUT_MS : PARSE_TIMEOUT_MS,
       { forceRefreshToken: true },
     ).then(
       handle<ParsedSheet>,

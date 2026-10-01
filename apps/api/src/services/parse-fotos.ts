@@ -1,10 +1,16 @@
 /** Fotos temporárias do parse, isoladas por tenant e referenciadas por ID opaco. */
 
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { FotoSink } from "@cia/pipeline";
-import { FOTOS_DIR } from "./fotos.js";
+import {
+  parseFotosDir,
+  parseFotosTenantDir,
+  verificarCotaParse,
+} from "./parse-storage.js";
+
+export { parseFotosDir } from "./parse-storage.js";
 
 const FOTO_REF_RE = /^[a-f0-9]{32}$/;
 const DEFAULT_TTL_HORAS = 168;
@@ -21,19 +27,13 @@ export interface FotoParse {
   mime: string;
 }
 
-export function parseFotosDir(): string {
-  const configured = process.env.PARSE_FOTOS_DIR?.trim();
-  return configured ? path.resolve(configured) : path.join(path.dirname(FOTOS_DIR), "parse-fotos");
-}
-
 export function parseFotosTtlHoras(): number {
   const raw = Number(process.env.PARSE_FOTOS_TTL_HORAS);
   return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_TTL_HORAS;
 }
 
 function tenantDir(tenantId: string): string {
-  const tenantKey = createHash("sha256").update(tenantId).digest("hex");
-  return path.join(parseFotosDir(), tenantKey);
+  return parseFotosTenantDir(tenantId);
 }
 
 function caminhosFoto(tenantId: string, ref: string) {
@@ -70,6 +70,7 @@ export async function salvarFotoParse(
 ): Promise<string> {
   const ref = randomBytes(16).toString("hex");
   const paths = caminhosFoto(tenantId, ref);
+  await verificarCotaParse(tenantId, buffer.length);
   await fs.mkdir(paths.dir, { recursive: true, mode: 0o700 });
 
   const nonce = randomBytes(8).toString("hex");

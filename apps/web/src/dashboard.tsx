@@ -1989,7 +1989,7 @@ export function Dashboard() {
     setSalvaId(null);
     setUploading(true);
     try {
-      const resultado = await api.parse(file);
+      const resultado = await api.parse(file, upgradeUpload);
       setParsed(resultado);
       const base = file.name.replace(/\.[^.]+$/, "");
       setCliente(base);
