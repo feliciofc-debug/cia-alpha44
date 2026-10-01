@@ -34,7 +34,19 @@ vi.mock("@cia/db", () => ({
         slug: where.slug,
         nome: where.slug,
       })),
-      findUnique: vi.fn(async () => ({ logoPath: null, logoMime: null })),
+      findUnique: vi.fn(async ({ select }: { select: Record<string, boolean> }) => {
+        if ("logoPath" in select && Object.keys(select).length <= 2) {
+          return { logoPath: null, logoMime: null };
+        }
+        return {
+          slug: "default",
+          nome: "CIA",
+          displayName: null,
+          tagline: null,
+          logoPath: null,
+          brandingAtualizadoEm: null,
+        };
+      }),
     },
     classificacaoCache: {
       findFirst: vi.fn().mockResolvedValue(null),
@@ -174,7 +186,7 @@ describe("tenant com upgradeUpload desligado", () => {
         resultado: calcular.json().resultado,
       },
     });
-    expect(preview.statusCode).toBe(200);
+    expect(preview.statusCode, preview.body).toBe(200);
     expect(preview.headers["content-type"]).toContain("application/pdf");
 
     const salvar = await app.inject({

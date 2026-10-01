@@ -16,17 +16,21 @@ import { FotoItemPorFeature } from "./foto-autenticada.tsx";
 function item(foto: Partial<Pick<Item, "fotoBase64" | "fotoMime" | "fotoRef" | "fotoUrl">>): Item {
   return {
     descOriginal: "Produto",
+    descPt: "Produto",
+    descDuimp: "Produto",
     ncm: "42029200",
+    ncmCandidatos: [],
     pesoBrutoKg: 1,
     pesoLiqKg: 1,
     qtd: 1,
     fobUnitarioUS: 10,
     fobTotalUS: 10,
     aliquotas: { ii: 0, ipi: 0, pis: 0, cofins: 0, icmsEntrada: 0 },
+    aliquotasOverride: false,
     anuencia: [],
     antidumping: false,
     ...foto,
-  } as Item;
+  };
 }
 
 describe("FotoItemPorFeature", () => {
@@ -74,19 +78,18 @@ describe("FotoItemPorFeature", () => {
         className="foto-tabela"
       />,
     );
-    img = screen.getByRole("presentation");
+    img = document.querySelector("img")!;
     expect(img.getAttribute("src")).toBe("/api/cotacoes/cot-1/foto/0");
     expect(img.getAttribute("class")).toBe("foto-tabela");
     expect(mocks.fetchAutenticado).not.toHaveBeenCalled();
   });
 
   it("ligado busca fotoRef com autenticação e revoga o blob no unmount", async () => {
-    mocks.fetchAutenticado.mockResolvedValue(
-      new Response(new Blob(["imagem"], { type: "image/png" }), {
-        status: 200,
-        headers: { "content-type": "image/png" },
-      }),
-    );
+    mocks.fetchAutenticado.mockResolvedValue({
+      ok: true,
+      status: 200,
+      blob: async () => new Blob(["imagem"], { type: "image/png" }),
+    });
     const { unmount } = render(
       <FotoItemPorFeature
         item={item({ fotoRef: "0123456789abcdef0123456789abcdef", fotoMime: "image/png" })}
