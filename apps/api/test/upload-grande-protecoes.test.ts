@@ -103,6 +103,10 @@ describe("upload grande — limites, fila, ZIP, cotas e limpeza", { timeout: 60_
     });
     expect(ok.statusCode).toBe(200);
     expect(ok.json().totalLinhas).toBe(1);
+    expect(
+      (await readdir(uploadsDir, { recursive: true }).catch(() => []))
+        .filter((nome) => String(nome).endsWith(".upload")),
+    ).toEqual([]);
 
     const antecipado = await app.inject({
       method: "POST",
@@ -114,6 +118,10 @@ describe("upload grande — limites, fila, ZIP, cotas e limpeza", { timeout: 60_
     expect(antecipado.json()).toEqual({
       erro: "Arquivo excede 1MB — reduza fotos ou compacte a planilha.",
     });
+    expect(
+      (await readdir(uploadsDir, { recursive: true }).catch(() => []))
+        .filter((nome) => String(nome).endsWith(".upload")),
+    ).toEqual([]);
 
     const acima = Buffer.alloc(1024 * 1024 + 1, 0x61);
     const streaming = await app.inject({

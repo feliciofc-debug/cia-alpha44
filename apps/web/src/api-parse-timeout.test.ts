@@ -31,16 +31,16 @@ describe("timeout do /api/parse por feature", () => {
     mocks.fetchAutenticado.mockImplementation(pendenteAteAbortar);
     const file = new File(["descricao,qtd\nProduto,1"], "teste.csv", { type: "text/csv" });
 
-    const legado = api.parse(file, false);
+    const legado = api.parse(file, false).catch((error: unknown) => error);
     await vi.advanceTimersByTimeAsync(119_999);
     expect((mocks.fetchAutenticado.mock.calls[0]![1] as RequestInit).signal?.aborted).toBe(false);
     await vi.advanceTimersByTimeAsync(1);
-    await expect(legado).rejects.toMatchObject({ name: "AbortError" });
+    await expect(legado).resolves.toMatchObject({ name: "AbortError" });
 
-    const upgrade = api.parse(file, true);
+    const upgrade = api.parse(file, true).catch((error: unknown) => error);
     await vi.advanceTimersByTimeAsync(599_999);
     expect((mocks.fetchAutenticado.mock.calls[1]![1] as RequestInit).signal?.aborted).toBe(false);
     await vi.advanceTimersByTimeAsync(1);
-    await expect(upgrade).rejects.toMatchObject({ name: "AbortError" });
+    await expect(upgrade).resolves.toMatchObject({ name: "AbortError" });
   });
 });

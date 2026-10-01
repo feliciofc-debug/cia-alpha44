@@ -478,9 +478,8 @@ export async function buildServer() {
       try {
         const file = await req.file({ limits: { fileSize: uploadGrandeMaxBytes() } });
         if (!file) {
-          return reply.status(400).send({
-            erro: "Envie um arquivo no campo 'file' (.xlsx, .csv, .pdf ou imagem).",
-          });
+          reply.status(400);
+          return { erro: "Envie um arquivo no campo 'file' (.xlsx, .csv, .pdf ou imagem)." };
         }
         const salvo = await salvarUploadTemporario(req.auth!.tenantId, file.file, abort.signal);
         arquivoTemporario = salvo.arquivo;
@@ -499,12 +498,15 @@ export async function buildServer() {
           || msg.includes("file too large")
           || msg.includes("request file too large")
         ) {
-          return reply.status(422).send({ erro: mensagemUploadGrandeExcedido() });
+          reply.status(422);
+          return { erro: mensagemUploadGrandeExcedido() };
         }
         if (e instanceof UploadGrandeError) {
-          return reply.status(e.statusCode).send({ erro: e.message });
+          reply.status(e.statusCode);
+          return { erro: e.message };
         }
-        return reply.status(422).send({ erro: msg });
+        reply.status(422);
+        return { erro: msg };
       } finally {
         req.raw.off("aborted", onAborted);
         if (arquivoTemporario) await removerUploadTemporario(arquivoTemporario);

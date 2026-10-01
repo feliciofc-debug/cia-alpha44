@@ -1,7 +1,6 @@
 /** Streaming, fila e proteções do upload grande (somente feature upgradeUpload). */
 
 import { randomBytes } from "node:crypto";
-import { createReadStream, createWriteStream } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { Transform, type Readable } from "node:stream";
@@ -150,6 +149,7 @@ export async function salvarUploadTemporario(
   const arquivo = path.join(dir, `${randomBytes(16).toString("hex")}.upload`);
   const usoInicial = await medirUsoParse(tenantId);
   validarUsoParse(usoInicial, 0);
+  const handle = await fs.open(arquivo, "wx", 0o600);
 
   let bytes = 0;
   const limitar = new Transform({
@@ -175,9 +175,10 @@ export async function salvarUploadTemporario(
   });
 
   try {
-    await pipeline(origem, limitar, createWriteStream(arquivo, { flags: "wx", mode: 0o600 }), { signal });
+    await pipeline(origem, limitar, handle.createWriteStream(), { signal });
     return { arquivo, bytes };
   } catch (error) {
+    await handle.close().catch(() => {});
     await fs.rm(arquivo, { force: true });
     throw error;
   }
@@ -189,10 +190,6 @@ export async function lerUploadTemporario(arquivo: string): Promise<Buffer> {
 
 export async function removerUploadTemporario(arquivo: string): Promise<void> {
   await fs.rm(arquivo, { force: true });
-}
-
-export function abrirUploadTemporario(arquivo: string) {
-  return createReadStream(arquivo);
 }
 
 function localizarEocd(buffer: Buffer): number {
