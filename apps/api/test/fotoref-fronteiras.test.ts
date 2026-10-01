@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -93,6 +93,8 @@ describe("fotoRef nas fronteiras HTTP", () => {
   beforeEach(async () => {
     parseDir = await mkdtemp(path.join(os.tmpdir(), "cia-fotoref-http-"));
     process.env.PARSE_FOTOS_DIR = parseDir;
+    process.env.CIA_FEATURES_PATH = path.join(parseDir, "features.json");
+    await writeFile(process.env.CIA_FEATURES_PATH, JSON.stringify({ upgradeUpload: ["default"] }));
     process.env.NODE_ENV = "development";
     process.env.CIA_API_KEY = "fotoref-test-key";
     process.env.CIA_API_TENANT_SLUG = "default";

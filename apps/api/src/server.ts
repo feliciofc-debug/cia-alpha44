@@ -51,6 +51,7 @@ import {
   hidratarFotosRef,
   restaurarRefsNaResposta,
 } from "./services/foto-ref-boundary.js";
+import { upgradeUploadAtivo } from "./services/feature-flags.js";
 import {
   atualizarTenantBranding,
   lerTenantLogo,
@@ -185,6 +186,10 @@ export async function buildServer() {
       throw e;
     }
   });
+
+  app.get("/api/tenant/features", async (req) => ({
+    upgradeUpload: await upgradeUploadAtivo(req),
+  }));
 
   app.get("/api/tenant/branding/logo", async (req, reply) => {
     const logo = await lerTenantLogo(req.auth!.tenantId);
@@ -447,13 +452,12 @@ export async function buildServer() {
     }
     try {
       const buf = await file.toBuffer();
-      return await ingerirArquivo(
-        file.filename,
-        new Uint8Array(buf),
-        getState().ocr,
-        getState().provider,
-        { fotoSink: criarFotoSinkParse(req.auth!.tenantId) },
-      );
+      if (!(await upgradeUploadAtivo(req))) {
+        return await ingerirArquivo(file.filename, new Uint8Array(buf), getState().ocr, getState().provider);
+      }
+      return await ingerirArquivo(file.filename, new Uint8Array(buf), getState().ocr, getState().provider, {
+        fotoSink: criarFotoSinkParse(req.auth!.tenantId),
+      });
     } catch (e) {
       const code = (e as { code?: string }).code;
       const msg = e instanceof Error ? e.message : "Falha ao processar arquivo.";
@@ -466,6 +470,9 @@ export async function buildServer() {
   );
 
   app.get("/api/parse/fotos/:ref", async (req, reply) => {
+    if (!(await upgradeUploadAtivo(req))) {
+      return reply.status(404).send({ erro: "Foto temporária não encontrada." });
+    }
     const ref = String((req.params as { ref?: string }).ref ?? "");
     const foto = await lerFotoParse(req.auth!.tenantId, ref);
     if (!foto) return reply.status(404).send({ erro: "Foto temporária não encontrada." });
@@ -499,12 +506,15 @@ export async function buildServer() {
       });
     }
     const linhasOriginais = body.data.linhas as unknown as LinhaCrua[];
-    let linhas: LinhaCrua[];
-    try {
-      linhas = await hidratarFotosRef(linhasOriginais, req.auth!.tenantId, geminiVisaoHabilitada());
-    } catch (e) {
-      if (e instanceof FotoRefNaoEncontradaError) return reply.status(404).send({ erro: e.message });
-      throw e;
+    const upgradeUpload = await upgradeUploadAtivo(req);
+    let linhas = linhasOriginais;
+    if (upgradeUpload) {
+      try {
+        linhas = await hidratarFotosRef(linhasOriginais, req.auth!.tenantId, geminiVisaoHabilitada());
+      } catch (e) {
+        if (e instanceof FotoRefNaoEncontradaError) return reply.status(404).send({ erro: e.message });
+        throw e;
+      }
     }
     const { itens: itensBase, provider, classificacaoCache, cambioEurUsd, cambioEurUsdData, cambioEurUsdFonte } =
       await montarItens(linhas, getState(), {
@@ -513,7 +523,10 @@ export async function buildServer() {
         cambioEurUsdData: body.data.cambioEurUsdData,
         cambioEurUsdFonte: body.data.cambioEurUsdFonte,
       });
-    const itens = restaurarRefsNaResposta(linhasOriginais, itensBase);
+    const itens =
+      upgradeUpload && linhasOriginais.some((linha) => linha.fotoRef)
+        ? restaurarRefsNaResposta(linhasOriginais, itensBase)
+        : itensBase;
     const state = getState();
     const itensAudit = enriquecerItensPdfNcmAudit(itens, criarPdfNcmAuditCtx(state.ncmCatalog));
     return { itens: itensAudit, provider, classificacaoCache, cambioEurUsd, cambioEurUsdData, cambioEurUsdFonte };
@@ -524,17 +537,23 @@ export async function buildServer() {
   app.post("/api/calcular", async (req, reply) => {
     const parsed = cotacaoSchema.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ erro: "Cotação inválida", detalhe: parsed.error.flatten() });
-    let itensEntrada: import("@cia/shared").Item[];
-    try {
-      itensEntrada = await hidratarFotosRef(parsed.data.itens, req.auth!.tenantId, false);
-    } catch (e) {
-      if (e instanceof FotoRefNaoEncontradaError) return reply.status(404).send({ erro: e.message });
-      throw e;
+    const upgradeUpload = await upgradeUploadAtivo(req);
+    let itensEntrada = parsed.data.itens;
+    if (upgradeUpload) {
+      try {
+        itensEntrada = await hidratarFotosRef(parsed.data.itens, req.auth!.tenantId, false);
+      } catch (e) {
+        if (e instanceof FotoRefNaoEncontradaError) return reply.status(404).send({ erro: e.message });
+        throw e;
+      }
     }
     const cotacao = mesclarAvisoMoedaCotacao({ ...parsed.data, itens: itensEntrada });
     const state = getState();
     const { resultado, itens: itensBase, icms, params } = calcularCotacao(cotacao, state);
-    const itens = restaurarRefsNaResposta(cotacao.itens, itensBase);
+    const itens =
+      upgradeUpload && parsed.data.itens.some((item) => item.fotoRef)
+        ? restaurarRefsNaResposta(cotacao.itens, itensBase)
+        : itensBase;
     const itensAudit = enriquecerItensPdfNcmAudit(itens, criarPdfNcmAuditCtx(state.ncmCatalog));
     const avisosFiscais = cotacao.avisosFiscais ?? icms.avisosFiscais ?? [];
     return { resultado, itens: itensAudit, icms, avisosFiscais, params, moedaPlanilha: cotacao.moedaPlanilha ?? null };
@@ -894,16 +913,14 @@ export async function buildServer() {
     try {
       const tipo = (req.query as { tipo?: string }).tipo === "trade" ? "trade" : "cliente";
       const branding = await pdfBrandingOptions(req, tipo);
-      let itens: import("@cia/shared").Item[];
-      try {
-        itens = await hidratarFotosRef(
-          parsed.data.itens as import("@cia/shared").Item[],
-          req.auth!.tenantId,
-          tipo === "cliente",
-        );
-      } catch (e) {
-        if (e instanceof FotoRefNaoEncontradaError) return reply.status(404).send({ erro: e.message });
-        throw e;
+      let itens = parsed.data.itens as import("@cia/shared").Item[];
+      if (await upgradeUploadAtivo(req)) {
+        try {
+          itens = await hidratarFotosRef(itens, req.auth!.tenantId, tipo === "cliente");
+        } catch (e) {
+          if (e instanceof FotoRefNaoEncontradaError) return reply.status(404).send({ erro: e.message });
+          throw e;
+        }
       }
       const buf = await comTimeout(
         gerarPdfFromPayload(
@@ -937,16 +954,14 @@ export async function buildServer() {
     const parsed = salvarBody.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ erro: "Body inválido", detalhe: parsed.error.flatten() });
     try {
-      let itens: import("@cia/shared").Item[];
-      try {
-        itens = await hidratarFotosRef(
-          parsed.data.itens as import("@cia/shared").Item[],
-          req.auth!.tenantId,
-          true,
-        );
-      } catch (e) {
-        if (e instanceof FotoRefNaoEncontradaError) return reply.status(404).send({ erro: e.message });
-        throw e;
+      let itens = parsed.data.itens as import("@cia/shared").Item[];
+      if (await upgradeUploadAtivo(req)) {
+        try {
+          itens = await hidratarFotosRef(itens, req.auth!.tenantId, true);
+        } catch (e) {
+          if (e instanceof FotoRefNaoEncontradaError) return reply.status(404).send({ erro: e.message });
+          throw e;
+        }
       }
       return await salvarCotacao({
         tenantSlug: tenantSlug(req),

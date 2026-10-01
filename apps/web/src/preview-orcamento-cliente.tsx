@@ -1,6 +1,6 @@
 import { fmtNcm } from "./lib/format.ts";
-import { itemTemFoto } from "./lib/item-foto.ts";
-import { FotoAutenticada } from "./foto-autenticada.tsx";
+import { fotoItemSrc, itemTemFoto } from "./lib/item-foto.ts";
+import { FotoItemPorFeature } from "./foto-autenticada.tsx";
 import type { Cotacao, Despesa, Item, ResultadoCotacao } from "./lib/types.ts";
 import { PdfDownloadBar } from "./pdf-download-bar.tsx";
 import type { PendenciaNcmItem } from "./lib/ncm.ts";
@@ -91,7 +91,30 @@ function Linha({ label, valor }: { label: string; valor: string }) {
   );
 }
 
-function FotosCertificacao({ itens }: { itens: Item[] }) {
+function FotosCertificacao({ itens, upgradeUpload }: { itens: Item[]; upgradeUpload: boolean }) {
+  if (!upgradeUpload) {
+    const itensComFoto = itens.filter((item) => Boolean(fotoItemSrc(item)));
+    if (itensComFoto.length === 0) {
+      return <p className="text-[10px] text-slate-500">Sem foto na planilha</p>;
+    }
+    const cols = itensComFoto.length <= 2 ? itensComFoto.length : 3;
+    return (
+      <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+        {itensComFoto.slice(0, 6).map((item, i) => (
+          <FotoItemPorFeature
+            key={i}
+            item={item}
+            upgradeUpload={false}
+            alt={`Produto ${i + 1}`}
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
+            className="h-14 w-full rounded border border-black/10 object-contain bg-white"
+          />
+        ))}
+      </div>
+    );
+  }
   const itensComFoto = itens.filter(itemTemFoto);
   if (itensComFoto.length === 0) {
     return <p className="text-[10px] text-slate-500">Sem foto na planilha</p>;
@@ -103,9 +126,10 @@ function FotosCertificacao({ itens }: { itens: Item[] }) {
       style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
     >
       {itensComFoto.slice(0, 6).map((item, i) => (
-        <FotoAutenticada
+        <FotoItemPorFeature
           key={i}
           item={item}
+          upgradeUpload
           alt={`Produto ${i + 1}`}
           className="h-14 w-full rounded border border-black/10 object-contain bg-white"
         />
@@ -129,6 +153,7 @@ export function PreviewOrcamentoCliente({
   qtdPendenciasNcm = 0,
   pendenciasNcm,
   onIrParaResolucaoNcm,
+  upgradeUpload = false,
 }: {
   cotacao: Cotacao;
   itens: Item[];
@@ -149,6 +174,7 @@ export function PreviewOrcamentoCliente({
   qtdPendenciasNcm?: number;
   pendenciasNcm?: PendenciaNcmItem[];
   onIrParaResolucaoNcm?: (idx?: number) => void;
+  upgradeUpload?: boolean;
 }) {
   const dataStr = fmtDataBr(criadoEm);
   const porto = `PORTO ${cotacao.origem || "RJ"}`;
@@ -179,6 +205,7 @@ export function PreviewOrcamentoCliente({
   const ncm = [...new Set(itens.map((it) => fmtNcm(it.ncm || "00000000")))].join(" / ");
   const pctMarkup = `${(cotacao.params.markupPct * 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}%`;
   const itemFotoMercadoria = itens.find(itemTemFoto);
+  const fotoMercadoria = itens.map(fotoItemSrc).find(Boolean);
 
   return (
     <div className="overflow-hidden rounded-xl border border-white/10 bg-white text-black shadow-xl">
@@ -252,10 +279,14 @@ export function PreviewOrcamentoCliente({
             <>
               <p className="font-bold">{desc}</p>
               <p className="mt-2">NCM: {ncm}</p>
-              {itemFotoMercadoria ? (
-                <FotoAutenticada
-                  item={itemFotoMercadoria}
+              {(upgradeUpload ? itemFotoMercadoria : fotoMercadoria) ? (
+                <FotoItemPorFeature
+                  item={(upgradeUpload ? itemFotoMercadoria : itens.find((item) => fotoItemSrc(item)))!}
+                  upgradeUpload={upgradeUpload}
                   alt="Produto"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
                   className="mt-2 h-10 max-w-[88px] rounded border border-black/10 object-contain"
                 />
               ) : null}
@@ -281,7 +312,7 @@ export function PreviewOrcamentoCliente({
           }
           right={
             <div className="flex min-h-[120px] flex-col justify-between gap-2">
-              <FotosCertificacao itens={itens} />
+              <FotosCertificacao itens={itens} upgradeUpload={upgradeUpload} />
               <p className="text-right font-bold">{pctMarkup}</p>
             </div>
           }

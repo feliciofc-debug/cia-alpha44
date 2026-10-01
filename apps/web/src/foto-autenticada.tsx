@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactEventHandler } from "react";
 import type { Item } from "./lib/types.ts";
 import { fetchAutenticado } from "./lib/auth-fetch.ts";
 import { fotoItemSrc, fotoItemUrlAutenticada } from "./lib/item-foto.ts";
@@ -12,7 +12,7 @@ export function FotoAutenticada({
   alt: string;
   className: string;
 }) {
-  const dataUrl = fotoItemSrc(item);
+  const dataUrl = item.fotoBase64 ? fotoItemSrc(item) : null;
   const protegida = fotoItemUrlAutenticada(item);
   const [src, setSrc] = useState<string | null>(dataUrl);
   const [falhou, setFalhou] = useState(false);
@@ -51,4 +51,25 @@ export function FotoAutenticada({
 
   if (falhou) return null;
   return <img src={src ?? undefined} alt={alt} className={className} onError={() => setFalhou(true)} />;
+}
+
+export function FotoItemPorFeature({
+  item,
+  upgradeUpload,
+  alt,
+  className,
+  onError,
+}: {
+  item: Item;
+  upgradeUpload: boolean;
+  alt: string;
+  className: string;
+  onError?: ReactEventHandler<HTMLImageElement>;
+}) {
+  if (upgradeUpload) {
+    return <FotoAutenticada item={item} alt={alt} className={className} />;
+  }
+  const src = fotoItemSrc(item);
+  if (!src) return null;
+  return <img src={src} alt={alt} className={className} onError={onError} />;
 }

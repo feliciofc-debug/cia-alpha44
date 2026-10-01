@@ -16,6 +16,8 @@ const tests = [
   "apps/api/test/gate-embarque-89-total-row.test.ts",
   "apps/api/test/gate-mochilas-ncm1-mescla.test.ts",
   "apps/api/test/gate-upload-limit-ncm1.test.ts",
+  "apps/api/test/feature-flags.test.ts",
+  "apps/api/test/feature-flag-disabled.test.ts",
   "apps/api/test/parse-fotoref-equivalencia.test.ts",
   "apps/api/test/parse-fotos-seguranca.test.ts",
   "apps/api/test/fotoref-fronteiras.test.ts",
@@ -28,6 +30,10 @@ const tests = [
   "apps/api/test/gate-fatura-92-planilha-cliente.test.ts",
   "apps/api/test/gate-packing-list-wyc-pdf.test.ts",
   "apps/api/test/ncm-embarque.test.ts",
+];
+
+const webTests = [
+  "src/foto-feature-flag.test.tsx",
 ];
 
 const pipelineTests = [
@@ -73,6 +79,20 @@ for (const rel of tests) {
   );
   if (r.status !== 0) {
     console.error(`\n[gate-pre-deploy] FALHOU: ${rel}`);
+    process.exit(1);
+  }
+}
+
+console.log("\n→ web (feature flag de fotos)");
+for (const rel of webTests) {
+  console.log(`→ apps/web/${rel}`);
+  const r = spawnSync("npx", ["vitest", "run", rel], {
+    cwd: join(root, "apps/web"),
+    stdio: "inherit",
+    shell: true,
+  });
+  if (r.status !== 0) {
+    console.error(`\n[gate-pre-deploy] FALHOU: apps/web/${rel}`);
     process.exit(1);
   }
 }
