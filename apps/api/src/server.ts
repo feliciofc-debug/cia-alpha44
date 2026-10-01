@@ -79,6 +79,18 @@ import {
 } from "./upload-limits.js";
 import type { FastifyRequest } from "fastify";
 import { pathToFileURL } from "node:url";
+import {
+  adquirirVagaParseGrande,
+  iniciarLimpezaUploadsTemporarios,
+  lerUploadTemporario,
+  mensagemUploadGrandeExcedido,
+  removerUploadTemporario,
+  salvarUploadTemporario,
+  uploadGrandeMaxBytes,
+  uploadGrandeRequestMaxBytes,
+  UploadGrandeError,
+  validarZipAntesDoParse,
+} from "./services/parse-upload-grande.js";
 
 const PDF_GERACAO_TIMEOUT_MS = 45_000;
 
@@ -130,7 +142,11 @@ async function pdfBrandingOptions(req: FastifyRequest, tipo: "cliente" | "trade"
 export async function buildServer() {
   const app = Fastify({ logger: true, bodyLimit: UPLOAD_MAX_BYTES });
   const pararLimpezaFotosParse = iniciarLimpezaFotosParse();
-  app.addHook("onClose", async () => pararLimpezaFotosParse());
+  const pararLimpezaUploadsParse = iniciarLimpezaUploadsTemporarios();
+  app.addHook("onClose", async () => {
+    pararLimpezaFotosParse();
+    pararLimpezaUploadsParse();
+  });
   await app.register(cors, { origin: corsOrigins() });
   await app.register(multipart, { limits: { fileSize: UPLOAD_MAX_BYTES } });
   await registrarAuth(app);
@@ -435,8 +451,67 @@ export async function buildServer() {
   // Upload: planilha (.xlsx/.csv) ou PDF/imagem (OCR) → linhas para cotação.
   app.post(
     "/api/parse",
-    { config: { rateLimit: rateLimitParse() } },
+    {
+      bodyLimit: uploadGrandeRequestMaxBytes(),
+      config: { rateLimit: rateLimitParse() },
+    },
     async (req, reply) => {
+    const upgradeUpload = await upgradeUploadAtivo(req);
+    if (upgradeUpload) {
+      const contentLength = Number(req.headers["content-length"]);
+      if (Number.isFinite(contentLength) && contentLength > uploadGrandeRequestMaxBytes()) {
+        return reply.status(422).send({ erro: mensagemUploadGrandeExcedido() });
+      }
+
+      const abort = new AbortController();
+      const onAborted = () => abort.abort();
+      req.raw.once("aborted", onAborted);
+      const liberar = await adquirirVagaParseGrande(abort.signal);
+      if (!liberar) {
+        req.raw.off("aborted", onAborted);
+        return reply.status(503).send({
+          erro: "Processamento de uploads ocupado. Aguarde alguns instantes e tente novamente.",
+        });
+      }
+
+      let arquivoTemporario: string | null = null;
+      try {
+        const file = await req.file({ limits: { fileSize: uploadGrandeMaxBytes() } });
+        if (!file) {
+          return reply.status(400).send({
+            erro: "Envie um arquivo no campo 'file' (.xlsx, .csv, .pdf ou imagem).",
+          });
+        }
+        const salvo = await salvarUploadTemporario(req.auth!.tenantId, file.file, abort.signal);
+        arquivoTemporario = salvo.arquivo;
+        if (file.file.truncated) throw new UploadGrandeError(mensagemUploadGrandeExcedido());
+
+        const buf = await lerUploadTemporario(arquivoTemporario);
+        validarZipAntesDoParse(buf);
+        return await ingerirArquivo(file.filename, buf, getState().ocr, getState().provider, {
+          fotoSink: criarFotoSinkParse(req.auth!.tenantId),
+        });
+      } catch (e) {
+        const code = (e as { code?: string }).code;
+        const msg = e instanceof Error ? e.message : "Falha ao processar arquivo.";
+        if (
+          code === "FST_REQ_FILE_TOO_LARGE"
+          || msg.includes("file too large")
+          || msg.includes("request file too large")
+        ) {
+          return reply.status(422).send({ erro: mensagemUploadGrandeExcedido() });
+        }
+        if (e instanceof UploadGrandeError) {
+          return reply.status(e.statusCode).send({ erro: e.message });
+        }
+        return reply.status(422).send({ erro: msg });
+      } finally {
+        req.raw.off("aborted", onAborted);
+        if (arquivoTemporario) await removerUploadTemporario(arquivoTemporario);
+        liberar();
+      }
+    }
+
     let file;
     try {
       file = await req.file();
@@ -452,12 +527,7 @@ export async function buildServer() {
     }
     try {
       const buf = await file.toBuffer();
-      if (!(await upgradeUploadAtivo(req))) {
-        return await ingerirArquivo(file.filename, new Uint8Array(buf), getState().ocr, getState().provider);
-      }
-      return await ingerirArquivo(file.filename, new Uint8Array(buf), getState().ocr, getState().provider, {
-        fotoSink: criarFotoSinkParse(req.auth!.tenantId),
-      });
+      return await ingerirArquivo(file.filename, new Uint8Array(buf), getState().ocr, getState().provider);
     } catch (e) {
       const code = (e as { code?: string }).code;
       const msg = e instanceof Error ? e.message : "Falha ao processar arquivo.";

@@ -1520,7 +1520,10 @@ export async function parseSupplierFile(
   bytes: Uint8Array,
   opts?: ParseSupplierFileOpts,
 ): Promise<ParsedSupplierFile> {
-  return resultadoParaSupplier(await parsePlanilhaBuffer(Buffer.from(bytes), opts ?? {}));
+  const buffer = Buffer.isBuffer(bytes)
+    ? bytes
+    : Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return resultadoParaSupplier(await parsePlanilhaBuffer(buffer, opts ?? {}));
 }
 
 /** Texto OCR → estrutura de cotação. */
