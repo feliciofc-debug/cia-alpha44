@@ -76,6 +76,7 @@ export interface Item {
   anuencia: string[];
   antidumping: boolean;
   fotoBase64?: string;
+  fotoRef?: string;
   fotoMime?: string;
   fotoPath?: string;
   fotoUrl?: string;
@@ -408,5 +409,6 @@ export interface LinhaCrua {
   fobTotalUS: number | null;
   dimensoes: string | null;
   fotoBase64?: string;
+  fotoRef?: string;
   fotoMime?: string;
 }

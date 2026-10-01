@@ -3,6 +3,8 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync, statSync } from "node:fs";
+import { mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { UPLOAD_MAX_BYTES } from "../src/upload-limits.js";
@@ -37,19 +39,23 @@ function multipartBody(filename: string, buf: Buffer, boundary = "----cia-upload
 
 describe("gate upload limite 60MB — ncm1 com fotos", () => {
   const envBackup = { ...process.env };
+  let parseFotosDir: string;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    parseFotosDir = await mkdtemp(join(os.tmpdir(), "cia-upload-fotos-"));
     process.env = {
       ...envBackup,
       NODE_ENV: "development",
       CIA_JWT_SECRET: "test-jwt-secret-minimo-32-chars!!",
       CIA_API_KEY: "gate-upload-test-key",
+      PARSE_FOTOS_DIR: parseFotosDir,
     };
     vi.resetModules();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     process.env = envBackup;
+    await rm(parseFotosDir, { recursive: true, force: true });
     vi.resetModules();
   });
 
@@ -75,8 +81,15 @@ describe("gate upload limite 60MB — ncm1 com fotos", () => {
     await app.close();
 
     expect(res.statusCode).toBe(200);
-    const body = JSON.parse(res.body) as { totalLinhas?: number; erro?: string };
+    const body = JSON.parse(res.body) as {
+      totalLinhas?: number;
+      erro?: string;
+      linhas?: Array<{ fotoRef?: string; fotoBase64?: string }>;
+    };
     expect(body.erro).toBeUndefined();
     expect(body.totalLinhas).toBe(34);
+    expect(body.linhas?.every((linha) => /^[a-f0-9]{32}$/.test(linha.fotoRef ?? ""))).toBe(true);
+    expect(body.linhas?.some((linha) => linha.fotoBase64)).toBe(false);
+    expect(res.body).not.toContain("fotoBase64");
   }, 120000);
 });

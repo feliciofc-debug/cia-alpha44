@@ -4,7 +4,8 @@ import { lerTokenArmazenado } from "./auth/token-storage.ts";
 import { api, type AnaliseCompleta, type LoginEventoAdmin, type Meta, type TenantBranding, type UsuarioAdmin } from "./lib/api.ts";
 import { brl, fmtNcm, pct, usdKg } from "./lib/format.ts";
 import { fobKgItem } from "./lib/fob-kg.ts";
-import { contarItensComFoto, fotoItemSrc } from "./lib/item-foto.ts";
+import { contarItensComFoto, itemTemFoto } from "./lib/item-foto.ts";
+import { FotoAutenticada } from "./foto-autenticada.tsx";
 import { extrairResumoFinanceiro, type ResumoFinanceiro } from "./lib/financeiro.ts";
 import {
   aplicarEditorNaCotacao,
@@ -583,14 +584,14 @@ function AnalisePainel({
           <tbody>
             {itens.map((it, i) => {
               const fobKg = fobKgItem(it);
-              const foto = fotoItemSrc(it);
+              const temFoto = itemTemFoto(it);
               const ordem = it.ordem ?? i;
               return (
                 <tr key={ordem} className="border-t border-white/5 text-slate-300">
                   <td className="p-2 align-top">
-                    {foto ? (
-                      <img
-                        src={foto}
+                    {temFoto ? (
+                      <FotoAutenticada
+                        item={it}
                         alt=""
                         className="h-12 w-12 rounded border border-white/10 object-contain bg-white"
                       />

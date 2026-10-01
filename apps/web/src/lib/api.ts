@@ -2,6 +2,7 @@ import { despesasParaContainers, outrasDespesasBaseParaContainers, DEFAULT_FRETE
 import { icmsSaidaParaDestino } from "./icms-uf.ts";
 import { PdfDownloadError, type ItemInvalidoPdf } from "./pdf-erro.ts";
 import { fetchAutenticado } from "./auth-fetch.ts";
+import { itensSemFotos } from "./cotacao-payload.ts";
 import { mesclarAvisoMoedaCotacao } from "@cia/shared";
 import type {
   Cotacao,
@@ -682,7 +683,7 @@ export const api = {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           cotacao: payload.cotacao,
-          itens: payload.itens,
+          itens: itensSemFotos(payload.itens),
           resultado: payload.resultado,
           provider: payload.provider,
         }),
